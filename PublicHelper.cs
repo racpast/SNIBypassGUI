@@ -120,7 +120,7 @@ namespace SNIBypassGUI
             "127.0.0.1       fanbox.cc",
             "127.0.0.1       www.fanbox.cc",
             "127.0.0.1       downloads.fanbox.cc",
-            "127.0.0.1       api.fanbox.cc",
+            "104.18.41.140       api.fanbox.cc",
             "127.0.0.1       i.pximg.net",
             "127.0.0.1       pixiv.pximg.net",
             "127.0.0.1       a.pixiv.org",
