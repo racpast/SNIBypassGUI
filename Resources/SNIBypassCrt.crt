@@ -1,0 +1,108 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 2 (0x2)
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=CN, ST=Sichuan, L=Chengdu, O=Racpast Ltd, CN=Racpast Internet Fake Authority CA
+        Validity
+            Not Before: Dec 14 21:58:53 2024 GMT
+            Not After : Dec 12 21:58:53 2034 GMT
+        Subject: C=CN, ST=Sichuan, L=Chengdu, O=Racpast Ltd, CN=Racpast Internet Fake Authority CA
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:96:de:97:ed:07:65:8e:a4:ba:4a:24:1d:81:d3:
+                    b9:57:19:c0:91:3e:e2:0c:82:e3:2b:af:bb:0a:5e:
+                    f4:ff:4f:eb:22:88:1d:44:f7:b9:4b:cb:f1:f9:72:
+                    1e:ff:8e:8b:a3:81:1a:ee:77:98:29:49:b8:03:c1:
+                    30:ad:9f:47:82:f4:15:6d:5e:71:4b:13:d3:e1:8b:
+                    d4:b2:4c:5f:de:45:c4:52:25:be:74:21:7f:22:ea:
+                    44:a9:1c:3c:f7:ce:a3:f7:6d:c0:73:22:21:e1:f8:
+                    d6:0b:65:10:8f:4a:9b:a5:2b:3f:57:9a:7d:a8:4d:
+                    9c:c5:1f:32:e4:48:2a:46:3e:1f:c7:6c:f0:06:1d:
+                    8c:51:ea:15:d5:99:f7:75:33:cf:9e:b5:64:00:2a:
+                    09:7a:e1:0e:64:f6:00:3e:40:0a:17:86:00:43:a0:
+                    41:be:2b:ab:07:c5:31:80:52:58:ca:24:3a:43:d5:
+                    84:52:9c:b9:d2:25:dd:69:76:8f:e3:6a:75:99:9d:
+                    a1:26:36:0e:7b:7b:8e:e6:8f:24:99:6f:ed:bd:6b:
+                    a7:9c:e6:98:16:43:cd:58:3e:81:43:3d:e7:dd:bc:
+                    1d:92:a1:57:90:ed:59:f4:93:89:7d:f4:ef:53:29:
+                    fa:ac:d3:fa:c1:eb:91:5c:fe:cd:aa:24:5f:37:76:
+                    de:91
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Key Usage: 
+                Digital Signature
+            X509v3 Extended Key Usage: 
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            X509v3 Subject Alternative Name: 
+                DNS:pixiv.net, DNS:*.pixiv.net, DNS:fanbox.cc, DNS:*.fanbox.cc, DNS:pximg.net, DNS:*.pximg.net, DNS:pixiv.org, DNS:*.pixiv.org, DNS:pximg.net, DNS:*.pximg.net, DNS:nyaa.si, DNS:*.nyaa.si, DNS:pornhub.com, DNS:*.pornhub.com, DNS:gstatic.com, DNS:*.gstatic.com, DNS:cdn.jsdelivr.net, DNS:*.jsdelivr.net, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:*.m.wikipedia.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:*.m.wikimedia.org, DNS:wikivoyage.org, DNS:*.wikivoyage.org, DNS:e-hentai.org, DNS:*.e-hentai.org, DNS:*.m.wikivoyage.org, DNS:wiktionary.org, DNS:*.wiktionary.org, DNS:*.m.wiktionary.org, DNS:wikibooks.org, DNS:*.wikibooks.org, DNS:*.m.wikibooks.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:*.m.wikinews.org, DNS:wikidata.org, DNS:*.wikidata.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:*.m.wikiversity.org, DNS:wikiquote.org, DNS:*.wikiquote.org, DNS:*.m.wikiquote.org, DNS:mediawiki.org, DNS:*.mediawiki.org, DNS:wikisource.org, DNS:*.wikisource.org, DNS:*.m.wikisource.org, DNS:wikifunctions.org, DNS:*.wikifunctions.org, DNS:archiveofourown.org, DNS:*.archiveofourown.org, DNS:wallhaven.cc, DNS:*.wallhaven.cc, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:e-hentai.org, DNS:*.e-hentai.org, DNS:exhentai.org, DNS:*.exhentai.org, DNS:ehgt.org, DNS:*.ehgt.org
+            X509v3 Subject Key Identifier: 
+                49:BE:78:3A:B1:44:86:EF:54:9A:56:E6:FC:A6:97:2A:0A:F0:63:D7
+            X509v3 Authority Key Identifier: 
+                7F:C6:13:FF:C5:E3:98:FA:72:58:28:15:C4:1C:CE:A5:01:1A:86:AA
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        63:18:f9:1c:04:7a:d1:d8:b8:4c:1a:16:44:14:b3:85:f3:ed:
+        92:ff:64:e6:10:dd:6b:b0:eb:13:13:04:9e:c2:8b:12:76:70:
+        24:3c:a4:6e:df:f8:81:a6:dd:fb:4c:e9:d9:4d:9f:24:55:24:
+        c2:95:35:a8:21:cc:f1:21:e4:0b:1c:97:6e:dd:c9:f6:af:f8:
+        c5:4a:fb:3b:c8:2f:8f:5d:b2:54:c9:62:27:43:75:5d:8d:0b:
+        7f:09:08:6f:e8:70:c2:32:c0:4c:98:80:f8:cb:05:27:cf:f6:
+        ef:95:d2:0e:3f:73:c8:3a:ce:20:30:b4:8a:32:92:35:c2:3e:
+        48:01:fa:76:9d:7e:ae:c5:da:4f:56:1f:14:fe:9e:a3:4f:26:
+        15:8e:e5:81:d6:b6:cc:a3:ec:7e:2e:5e:11:30:c9:e1:ce:e9:
+        2f:6e:26:02:6d:3b:61:03:d9:1f:c8:31:d7:ca:04:a9:c9:e0:
+        35:35:c9:d2:73:24:3b:db:22:d9:16:5f:a7:7d:df:05:31:87:
+        72:b2:6e:21:b3:a6:a1:57:75:ec:a5:84:fd:69:11:92:0d:40:
+        b0:08:b9:88:6b:ed:cb:67:f1:9d:fb:c1:12:01:c6:d1:86:83:
+        ce:d2:ab:ee:64:68:43:63:9a:9d:3d:2f:cc:49:93:03:98:eb:
+        65:a0:2a:2a
+-----BEGIN CERTIFICATE-----
+MIIH+DCCBuCgAwIBAgIBAjANBgkqhkiG9w0BAQsFADB0MQswCQYDVQQGEwJDTjEQ
+MA4GA1UECAwHU2ljaHVhbjEQMA4GA1UEBwwHQ2hlbmdkdTEUMBIGA1UECgwLUmFj
+cGFzdCBMdGQxKzApBgNVBAMMIlJhY3Bhc3QgSW50ZXJuZXQgRmFrZSBBdXRob3Jp
+dHkgQ0EwHhcNMjQxMjE0MjE1ODUzWhcNMzQxMjEyMjE1ODUzWjB0MQswCQYDVQQG
+EwJDTjEQMA4GA1UECAwHU2ljaHVhbjEQMA4GA1UEBwwHQ2hlbmdkdTEUMBIGA1UE
+CgwLUmFjcGFzdCBMdGQxKzApBgNVBAMMIlJhY3Bhc3QgSW50ZXJuZXQgRmFrZSBB
+dXRob3JpdHkgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCW3pft
+B2WOpLpKJB2B07lXGcCRPuIMguMrr7sKXvT/T+siiB1E97lLy/H5ch7/joujgRru
+d5gpSbgDwTCtn0eC9BVtXnFLE9Phi9SyTF/eRcRSJb50IX8i6kSpHDz3zqP3bcBz
+IiHh+NYLZRCPSpulKz9Xmn2oTZzFHzLkSCpGPh/HbPAGHYxR6hXVmfd1M8+etWQA
+Kgl64Q5k9gA+QAoXhgBDoEG+K6sHxTGAUljKJDpD1YRSnLnSJd1pdo/janWZnaEm
+Ng57e47mjySZb+29a6ec5pgWQ81YPoFDPefdvB2SoVeQ7Vn0k4l99O9TKfqs0/rB
+65Fc/s2qJF83dt6RAgMBAAGjggSTMIIEjzALBgNVHQ8EBAMCB4AwHQYDVR0lBBYw
+FAYIKwYBBQUHAwEGCCsGAQUFBwMCMAkGA1UdEwQCMAAwggQUBgNVHREEggQLMIIE
+B4IJcGl4aXYubmV0ggsqLnBpeGl2Lm5ldIIJZmFuYm94LmNjggsqLmZhbmJveC5j
+Y4IJcHhpbWcubmV0ggsqLnB4aW1nLm5ldIIJcGl4aXYub3JnggsqLnBpeGl2Lm9y
+Z4IJcHhpbWcubmV0ggsqLnB4aW1nLm5ldIIHbnlhYS5zaYIJKi5ueWFhLnNpggtw
+b3JuaHViLmNvbYINKi5wb3JuaHViLmNvbYILZ3N0YXRpYy5jb22CDSouZ3N0YXRp
+Yy5jb22CEGNkbi5qc2RlbGl2ci5uZXSCDiouanNkZWxpdnIubmV0gg13aWtpcGVk
+aWEub3Jngg8qLndpa2lwZWRpYS5vcmeCESoubS53aWtpcGVkaWEub3Jngg13aWtp
+bWVkaWEub3Jngg8qLndpa2ltZWRpYS5vcmeCESoubS53aWtpbWVkaWEub3Jngg53
+aWtpdm95YWdlLm9yZ4IQKi53aWtpdm95YWdlLm9yZ4IMZS1oZW50YWkub3Jngg4q
+LmUtaGVudGFpLm9yZ4ISKi5tLndpa2l2b3lhZ2Uub3Jngg53aWt0aW9uYXJ5Lm9y
+Z4IQKi53aWt0aW9uYXJ5Lm9yZ4ISKi5tLndpa3Rpb25hcnkub3Jngg13aWtpYm9v
+a3Mub3Jngg8qLndpa2lib29rcy5vcmeCESoubS53aWtpYm9va3Mub3Jnggx3aWtp
+bmV3cy5vcmeCDioud2lraW5ld3Mub3JnghAqLm0ud2lraW5ld3Mub3Jnggx3aWtp
+ZGF0YS5vcmeCDioud2lraWRhdGEub3Jngg93aWtpdmVyc2l0eS5vcmeCESoud2lr
+aXZlcnNpdHkub3JnghMqLm0ud2lraXZlcnNpdHkub3Jngg13aWtpcXVvdGUub3Jn
+gg8qLndpa2lxdW90ZS5vcmeCESoubS53aWtpcXVvdGUub3Jngg1tZWRpYXdpa2ku
+b3Jngg8qLm1lZGlhd2lraS5vcmeCDndpa2lzb3VyY2Uub3JnghAqLndpa2lzb3Vy
+Y2Uub3JnghIqLm0ud2lraXNvdXJjZS5vcmeCEXdpa2lmdW5jdGlvbnMub3JnghMq
+Lndpa2lmdW5jdGlvbnMub3JnghNhcmNoaXZlb2ZvdXJvd24ub3JnghUqLmFyY2hp
+dmVvZm91cm93bi5vcmeCDHdhbGxoYXZlbi5jY4IOKi53YWxsaGF2ZW4uY2OCEnN0
+ZWFtY29tbXVuaXR5LmNvbYIUKi5zdGVhbWNvbW11bml0eS5jb22CDGUtaGVudGFp
+Lm9yZ4IOKi5lLWhlbnRhaS5vcmeCDGV4aGVudGFpLm9yZ4IOKi5leGhlbnRhaS5v
+cmeCCGVoZ3Qub3JnggoqLmVoZ3Qub3JnMB0GA1UdDgQWBBRJvng6sUSG71SaVub8
+ppcqCvBj1zAfBgNVHSMEGDAWgBR/xhP/xeOY+nJYKBXEHM6lARqGqjANBgkqhkiG
+9w0BAQsFAAOCAQEAYxj5HAR60di4TBoWRBSzhfPtkv9k5hDda7DrExMEnsKLEnZw
+JDykbt/4gabd+0zp2U2fJFUkwpU1qCHM8SHkCxyXbt3J9q/4xUr7O8gvj12yVMli
+J0N1XY0LfwkIb+hwwjLATJiA+MsFJ8/275XSDj9zyDrOIDC0ijKSNcI+SAH6dp1+
+rsXaT1YfFP6eo08mFY7lgda2zKPsfi5eETDJ4c7pL24mAm07YQPZH8gx18oEqcng
+NTXJ0nMkO9si2RZfp33fBTGHcrJuIbOmoVd17KWE/WkRkg1AsAi5iGvty2fxnfvB
+EgHG0YaDztKr7mRoQ2OanT0vzEmTA5jrZaAqKg==
+-----END CERTIFICATE-----

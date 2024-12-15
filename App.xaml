@@ -1,0 +1,15 @@
+﻿<Application x:Class="SNIBypassGUI.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SNIBypassGUI"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HandyControl;component/Themes/SkinDefault.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HandyControl;component/Themes/Theme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <FontFamily x:Key="AaManYuShouXieTi">/SNIBypassGUI;component/Resources/#Aa漫语手写体（简繁）</FontFamily>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
