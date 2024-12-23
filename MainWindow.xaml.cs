@@ -117,6 +117,7 @@ namespace SNIBypassGUI
             }
             else
             {
+                ToggleToDebugMode();
                 SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\n系统hosts";
             }
             if (ConfigINI.INIRead("日志开关", "OutputLog", PathsSet.INIPath) == "false")
@@ -125,6 +126,7 @@ namespace SNIBypassGUI
             }
             else
             {
+                ToggleToDebugMode();
                 GUIDebugBtn.Content = "GUI调试：\n开";
             }
             if (!File.Exists(PathsSet.AcrylicDebugLogFilePath))
@@ -133,6 +135,7 @@ namespace SNIBypassGUI
             }
             else
             {
+                ToggleToDebugMode();
                 AcrylicDebugBtn.Content = "DNS服务调试：\n开";
             }
 
@@ -189,39 +192,33 @@ namespace SNIBypassGUI
                 }
             }
 
-            if (IsNginxRunning)
+            if (IsNginxRunning && IsDnsRunning)
             {
-                if (IsDnsRunning)
-                {
-                    ServiceST.Text = "当前服务状态：\r\n主服务和DNS服务运行中";
-                    ServiceST.Foreground = new SolidColorBrush(Colors.ForestGreen);
-                    TaskbarIconServiceST.Text = "主服务和DNS服务运行中";
-                    TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.ForestGreen);
-                }
-                else
-                {
-                    ServiceST.Text = "当前服务状态：\r\n主服务运行中，但DNS服务未运行";
-                    ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
-                    TaskbarIconServiceST.Text = "仅主服务运行中";
-                    TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
-                }
+                ServiceST.Text = "当前服务状态：\r\n主服务和DNS服务运行中";
+                TaskbarIconServiceST.Text = "主服务和DNS服务运行中";
+                ServiceST.Foreground = new SolidColorBrush(Colors.ForestGreen);
+                TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.ForestGreen);
+            }
+            else if (IsNginxRunning)
+            {
+                ServiceST.Text = "当前服务状态：\r\n主服务运行中，但DNS服务未运行";
+                TaskbarIconServiceST.Text = "仅主服务运行中";
+                ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
+                TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
+            }
+            else if (IsDnsRunning)
+            {
+                ServiceST.Text = "当前服务状态：\r\n主服务未运行，但DNS服务运行中";
+                TaskbarIconServiceST.Text = "仅DNS服务运行中";
+                ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
+                TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
             }
             else
             {
-                if (IsDnsRunning)
-                {
-                    ServiceST.Text = "当前服务状态：\r\n主服务未运行，但DNS服务运行中";
-                    ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
-                    TaskbarIconServiceST.Text = "仅DNS服务运行中";
-                    TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
-                }
-                else
-                {
-                    ServiceST.Text = "当前服务状态：\r\n主服务与DNS服务未运行";
-                    ServiceST.Foreground = new SolidColorBrush(Colors.Red);
-                    TaskbarIconServiceST.Text = "主服务与DNS服务未运行";
-                    TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.Red);
-                }
+                ServiceST.Text = "当前服务状态：\r\n主服务与DNS服务未运行";
+                TaskbarIconServiceST.Text = "主服务与DNS服务未运行";
+                ServiceST.Foreground = new SolidColorBrush(Colors.Red);
+                TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.Red);
             }
 
             WriteLog("完成UpdateServiceST()", LogLevel.Debug);
@@ -254,7 +251,7 @@ namespace SNIBypassGUI
             }
             ConfigINI.INIWrite("程序设置", "Background", "Preset", PathsSet.INIPath);
             ImageBrush bg = new ImageBrush();
-            bg.ImageSource = new BitmapImage(new Uri("pack://application:,,,/SNIBypassGUI;component/Resources/DefaultBkg.jpg"));
+            bg.ImageSource = new BitmapImage(new Uri("pack://application:,,,/SNIBypassGUI;component/Resources/DefaultBkg.png"));
             bg.Stretch = Stretch.UniformToFill;
             MainPage.Background = bg;
 
@@ -267,86 +264,20 @@ namespace SNIBypassGUI
             WriteLog("进入CheckFiles()", LogLevel.Debug);
 
             // 确保必要目录存在
-            FileHelper.EnsureDirectoryExists(PathsSet.dataDirectory);
-            FileHelper.EnsureDirectoryExists(PathsSet.NginxDirectory);
-            FileHelper.EnsureDirectoryExists(PathsSet.nginxConfigDirectory);
-            FileHelper.EnsureDirectoryExists(PathsSet.CADirectory);
-            FileHelper.EnsureDirectoryExists(PathsSet.nginxLogDirectory);
-            FileHelper.EnsureDirectoryExists(PathsSet.nginxTempDirectory);
-            FileHelper.EnsureDirectoryExists(PathsSet.dnsDirectory);
+            foreach (string directory in PathsSet.NeccesaryDirectories)
+            {
+                FileHelper.EnsureDirectoryExists(directory);
+            }
 
             // 释放相关文件
-            if (!File.Exists(PathsSet.nginxPath))
+            foreach (var pair in PathToResourceDic)
             {
-                WriteLog($"文件{PathsSet.nginxPath}不存在，释放。", LogLevel.Warning);
+                if (!File.Exists(pair.Key))
+                {
+                    WriteLog($"文件{pair.Key}不存在，释放。", LogLevel.Warning);
 
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.SNIBypass, PathsSet.nginxPath);
-            }
-            if (!File.Exists(PathsSet.nginxConfigFile_A))
-            {
-                WriteLog($"文件{PathsSet.nginxConfigFile_A}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.nginx, PathsSet.nginxConfigFile_A);
-            }
-            if (!File.Exists(PathsSet.nginxConfigFile_B))
-            {
-                WriteLog($"文件{PathsSet.nginxConfigFile_B}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.bypass, PathsSet.nginxConfigFile_B);
-            }
-            if (!File.Exists(PathsSet.nginxConfigFile_C))
-            {
-                WriteLog($"文件{PathsSet.nginxConfigFile_C}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.shared_proxy_params_1, PathsSet.nginxConfigFile_C);
-            }
-            if (!File.Exists(PathsSet.nginxConfigFile_D))
-            {
-                WriteLog($"文件{PathsSet.nginxConfigFile_D}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.shared_proxy_params_2, PathsSet.nginxConfigFile_D);
-            }
-            if (!File.Exists(PathsSet.nginxConfigFile_E))
-            {
-                WriteLog($"文件{PathsSet.nginxConfigFile_E}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.cert, PathsSet.nginxConfigFile_E);
-            }
-            if (!File.Exists(PathsSet.CERFile))
-            {
-                WriteLog($"文件{PathsSet.CERFile}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.ca, PathsSet.CERFile);
-            }
-            if (!File.Exists(PathsSet.CRTFile))
-            {
-                WriteLog($"文件{PathsSet.CRTFile}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.SNIBypassCrt, PathsSet.CRTFile);
-            }
-            if (!File.Exists(PathsSet.KeyFile))
-            {
-                WriteLog($"文件{PathsSet.KeyFile}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.SNIBypassKey, PathsSet.KeyFile);
-            }
-            if (!File.Exists(PathsSet.AcrylicServiceExeFilePath))
-            {
-                WriteLog($"文件{PathsSet.AcrylicServiceExeFilePath}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.AcrylicService, PathsSet.AcrylicServiceExeFilePath);
-            }
-            if (!File.Exists(PathsSet.AcrylicHostsPath))
-            {
-                WriteLog($"文件{PathsSet.AcrylicHostsPath}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.AcrylicHosts, PathsSet.AcrylicHostsPath);
-            }
-            if (!File.Exists(PathsSet.AcrylicConfigurationPath))
-            {
-                WriteLog($"文件{PathsSet.AcrylicConfigurationPath}不存在，释放。", LogLevel.Warning);
-
-                FileHelper.ExtractNormalFileInResx(Properties.Resources.AcrylicConfiguration, PathsSet.AcrylicConfigurationPath);
+                    FileHelper.ExtractNormalFileInResx(pair.Value, pair.Key);
+                }
             }
 
             // 如果配置文件不存在，则创建配置文件
@@ -358,30 +289,14 @@ namespace SNIBypassGUI
                 ConfigINI.INIWrite("程序设置", "Background", "Preset", PathsSet.INIPath);
                 ConfigINI.INIWrite("程序设置", "DomainNameResolutionMethod", "DnsService", PathsSet.INIPath);
                 ConfigINI.INIWrite("程序设置", "AcrylicDebug", "false", PathsSet.INIPath);
-                ConfigINI.INIWrite("程序设置", "PreviousDNS1", "", PathsSet.INIPath);
-                ConfigINI.INIWrite("程序设置", "PreviousDNS2", "", PathsSet.INIPath);
-                ConfigINI.INIWrite("程序设置", "IsPreviousDnsAutomatic", "true", PathsSet.INIPath);
+                ConfigINI.INIWrite("暂存数据", "PreviousDNS1", "", PathsSet.INIPath);
+                ConfigINI.INIWrite("暂存数据", "PreviousDNS2", "", PathsSet.INIPath);
+                ConfigINI.INIWrite("暂存数据", "IsPreviousDnsAutomatic", "true", PathsSet.INIPath);
 
-                ConfigINI.INIWrite("代理开关", "Amazon（日本）", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Archive of Our Own", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "APKMirror", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "BBC", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "E-Hentai", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Etsy", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "F-Droid", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Nyaa", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "OK", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "OKX.COM", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Pixiv", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Pornhub", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Proton", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Steam Community", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Telegram", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "The New York Times", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "WallHaven", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Wikimedia Foundation", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "YouTube", "true", PathsSet.INIPath);
-                ConfigINI.INIWrite("代理开关", "Z-Library", "true", PathsSet.INIPath);
+                foreach(var configkeyname in SectionNamesSet)
+                {
+                    ConfigINI.INIWrite("代理开关", configkeyname, "true", PathsSet.INIPath);
+                }
 
                 ConfigINI.INIWrite("日志开关", "OutputLog", "false", PathsSet.INIPath);
             }
@@ -428,178 +343,32 @@ namespace SNIBypassGUI
 
             if (ConfigINI.INIRead("程序设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
             {
-                WriteLog($"当前域名解析模式为DNS服务，将更新{HostsSet.AmazoncojpSection}。", LogLevel.Info);
+                WriteLog($"当前域名解析模式为DNS服务，将更新{PathsSet.AcrylicHostsPath}。", LogLevel.Info);
 
                 // 根据配置文件更新 hosts
                 RemoveHosts();
 
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Amazon（日本）", PathsSet.INIPath)) == true)
+                foreach (var sectionname in SectionNamesSet)
                 {
-                    FileHelper.WriteLinesToFile(HostsSet.AmazoncojpSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Archive of Our Own", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.ArchiveofOurOwnSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "APKMirror", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.APKMirrorSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "BBC", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.BBCSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "E-Hentai", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.EHentaiSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Etsy", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.EtsySection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "F-Droid", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.FDroidSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Nyaa", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.NyaaSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "OK", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.OKSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "OKX.COM", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.OKXCOMSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Pixiv", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.PixivSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Pornhub", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.PornhubSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Proton", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.ProtonSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Steam Community", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.SteamCommunitySection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Telegram", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.TelegramSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "The New York Times", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.TheNewYorkTimesSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "WallHaven", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.WallhavenSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Wikimedia Foundation", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.WikimediaFoundationSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "YouTube", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.YoutubeSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Z-Library", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet.ZLibrarySection, PathsSet.AcrylicHostsPath);
+                    if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", sectionname, PathsSet.INIPath)) == true)
+                    {
+                        FileHelper.WriteLinesToFile(SectionNameToHostsRecordDic[sectionname], PathsSet.AcrylicHostsPath);
+                    }
                 }
             }
             else
             {
-                WriteLog($"当前域名解析模式不为DNS服务，将更新{HostsSet_Old.AmazoncojpSection}。", LogLevel.Info);
+                WriteLog($"当前域名解析模式不为DNS服务，将更新{PathsSet.SystemHosts}。", LogLevel.Info);
 
                 // 根据配置文件更新 hosts
                 RemoveHosts();
 
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Amazon（日本）", PathsSet.INIPath)) == true)
+                foreach (var sectionname in SectionNamesSet)
                 {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.AmazoncojpSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Archive of Our Own", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.ArchiveofOurOwnSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "APKMirror", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.APKMirrorSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "BBC", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.BBCSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "E-Hentai", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.EHentaiSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Etsy", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.EtsySection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "F-Droid", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.FDroidSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Nyaa", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.NyaaSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "OK", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.OKSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "OKX.COM", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.OKXCOMSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Pixiv", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.PixivSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Pornhub", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.PornhubSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Proton", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.ProtonSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Steam Community", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.SteamCommunitySection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Telegram", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.TelegramSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "The New York Times", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.TheNewYorkTimesSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "WallHaven", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.WallhavenSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Wikimedia Foundation", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.WikimediaFoundationSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "YouTube", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.YoutubeSection, PathsSet.AcrylicHostsPath);
-                }
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Z-Library", PathsSet.INIPath)) == true)
-                {
-                    FileHelper.WriteLinesToFile(HostsSet_Old.ZLibrarySection, PathsSet.AcrylicHostsPath);
+                    if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", sectionname, PathsSet.INIPath)) == true)
+                    {
+                        FileHelper.WriteLinesToFile(SectionNameToOldHostsRecordDic[sectionname], PathsSet.SystemHosts);
+                    }
                 }
             }
 
@@ -613,53 +382,21 @@ namespace SNIBypassGUI
 
             if (ConfigINI.INIRead("程序设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
             {
-                WriteLog($"当前域名解析模式为DNS服务，将更新{HostsSet.AmazoncojpSection}。", LogLevel.Info);
+                WriteLog($"当前域名解析模式为DNS服务，将更新{PathsSet.AcrylicHostsPath}。", LogLevel.Info);
 
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Amazon.co.jp");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Archive of Our Own");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "APKMirror");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "BBC");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "E-Hentai");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Etsy");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "F-Droid");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Nyaa");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "OK");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "OKX.COM");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Pixiv");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Pornhub");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Proton");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Steam Community");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Telegram");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "The New York Times");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Wallhaven");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Wikimedia Foundation");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "YouTube");
-                FileHelper.RemoveSection(PathsSet.AcrylicHostsPath, "Z-Library");
+                foreach (var sectionname in SectionNamesSet)
+                {
+                    FileHelper.RemoveSection(PathsSet.AcrylicHostsPath,sectionname);
+                }
             }
             else
             {
                 WriteLog($"当前域名解析模式为DNS服务，将更新{PathsSet.SystemHosts}。", LogLevel.Info);
 
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Amazon.co.jp");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Archive of Our Own");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "APKMirror");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "BBC");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "E-Hentai");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Etsy");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "F-Droid");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Nyaa");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "OK");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "OKX.COM");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Pixiv");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Pornhub");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Proton");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Steam Community");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Telegram");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "The New York Times");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Wallhaven");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Wikimedia Foundation");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "YouTube");
-                FileHelper.RemoveSection(PathsSet.SystemHosts, "Z-Library");
+                foreach (var sectionname in SectionNamesSet)
+                {
+                    FileHelper.RemoveSection(PathsSet.SystemHosts, sectionname);
+                }
             }
 
             WriteLog("完成RemoveHosts()", LogLevel.Debug);
@@ -670,26 +407,10 @@ namespace SNIBypassGUI
         {
             WriteLog("进入ToggleButtonSync()", LogLevel.Debug);
 
-            amazoncojpTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Amazon（日本）", PathsSet.INIPath));
-            archiveofourownTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Archive of Our Own", PathsSet.INIPath));
-            apkmirrorTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "APKMirror", PathsSet.INIPath));
-            bbcTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "BBC", PathsSet.INIPath));
-            ehentaiTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "E-Hentai", PathsSet.INIPath));
-            etsyTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Etsy", PathsSet.INIPath));
-            fdroidTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "F-Droid", PathsSet.INIPath));
-            nyaaTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Nyaa", PathsSet.INIPath));
-            okTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "OK", PathsSet.INIPath));
-            okxTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "OKX.COM", PathsSet.INIPath));
-            pixivTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Pixiv", PathsSet.INIPath));
-            pornhubTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Pornhub", PathsSet.INIPath));
-            protonTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Proton", PathsSet.INIPath));
-            steamcommunityTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Steam Community", PathsSet.INIPath));
-            telegramTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Telegram", PathsSet.INIPath));
-            thenewyorktimesTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "The New York Times", PathsSet.INIPath));
-            wallhavenTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "WallHaven", PathsSet.INIPath));
-            wikimediafoundationTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Wikimedia Foundation", PathsSet.INIPath));
-            youtubeTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "YouTube", PathsSet.INIPath));
-            zlibraryTB.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", "Z-Library", PathsSet.INIPath));
+            foreach (var togglebutton in ToggleButtonToSectionNamedDic)
+            {
+                togglebutton.Key.IsChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关",togglebutton.Value, PathsSet.INIPath));
+            }
 
             WriteLog("完成ToggleButtonSync()", LogLevel.Debug);
         }
@@ -699,197 +420,204 @@ namespace SNIBypassGUI
         {
             WriteLog("进入UpdateConfigINI()", LogLevel.Debug);
 
-            if (amazoncojpTB.IsChecked == true)
+            foreach (var togglebutton in ToggleButtonToSectionNamedDic)
             {
-                ConfigINI.INIWrite("代理开关", "Amazon（日本）", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Amazon（日本）", "false", PathsSet.INIPath);
-            }
-
-            if (archiveofourownTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Archive of Our Own", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Archive of Our Own", "false", PathsSet.INIPath);
-            }
-
-            if (apkmirrorTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "APKMirror", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "APKMirror", "false", PathsSet.INIPath);
-            }
-
-            if (bbcTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "BBC", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "BBC", "false", PathsSet.INIPath);
-            }
-
-            if (ehentaiTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "E-Hentai", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "E-Hentai", "false", PathsSet.INIPath);
-            }
-
-            if (etsyTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Etsy", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Etsy", "false", PathsSet.INIPath);
-            }
-
-            if (fdroidTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "F-Droid", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "F-Droid", "false", PathsSet.INIPath);
-            }
-
-            if (nyaaTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Nyaa", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Nyaa", "false", PathsSet.INIPath);
-            }
-
-            if (okTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "OK", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "OK", "false", PathsSet.INIPath);
-            }
-
-            if (okxTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "OKX.COM", "true", PathsSet.INIPath);
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "OKX.COM", "false", PathsSet.INIPath);
-            }
-
-            if (pixivTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Pixiv", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Pixiv", "false", PathsSet.INIPath);
-            }
-
-            if (pornhubTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Pornhub", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Pornhub", "false", PathsSet.INIPath);
-            }
-
-            if (protonTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Proton", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Proton", "false", PathsSet.INIPath);
-            }
-
-            if (steamcommunityTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Steam Community", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Steam Community", "false", PathsSet.INIPath);
-            }
-
-            if (telegramTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Telegram", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Telegram", "false", PathsSet.INIPath);
-            }
-
-            if (thenewyorktimesTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "The New York Times", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "The New York Times", "false", PathsSet.INIPath);
-            }
-
-            if (wallhavenTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "WallHaven", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "WallHaven", "false", PathsSet.INIPath);
-            }
-
-            if (wikimediafoundationTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Wikimedia Foundation", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Wikimedia Foundation", "false", PathsSet.INIPath);
-            }
-
-            if (youtubeTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "YouTube", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "YouTube", "false", PathsSet.INIPath);
-            }
-
-            if (zlibraryTB.IsChecked == true)
-            {
-                ConfigINI.INIWrite("代理开关", "Z-Library", "true", PathsSet.INIPath);
-
-            }
-            else
-            {
-                ConfigINI.INIWrite("代理开关", "Z-Library", "false", PathsSet.INIPath);
+                if (togglebutton.Key.IsChecked == true)
+                {
+                    ConfigINI.INIWrite("代理开关", togglebutton.Value, "true", PathsSet.INIPath);
+                }
+                else
+                {
+                    ConfigINI.INIWrite("代理开关", togglebutton.Value, "false", PathsSet.INIPath);
+                }
             }
 
             WriteLog("完成UpdateConfigINI()", LogLevel.Debug);
+        }
+
+        // 将活动网络适配器首选DNS设置为127.0.0.1并记录先前的为有效的IPv4地址且非127.0.0.1的地址到配置
+        public void SetLocalDNS()
+        {
+            try
+            {
+                List<NetAdp> adapters = NetAdp.GetAdapters();
+                // 找到当前正在使用的适配器
+                NetAdp activeAdapter = null;
+                foreach (var adapter in adapters)
+                {
+                    if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
+                    {
+                        activeAdapter = adapter;
+                        break;
+                    }
+                }
+                if (activeAdapter != null)
+                {
+                    WriteLog($"正在配置适配器: {activeAdapter.Name}", LogLevel.Info);
+
+                    // 设置 DNS服务器
+                    string PreviousDNS1 = null;
+                    string PreviousDNS2 = null;
+
+                    if (activeAdapter.DNS.Length == 0)
+                    {
+                        // DNS设置为空的情况
+                        activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
+                    }
+                    else if (activeAdapter.DNS.Length == 1)
+                    {
+                        // DNS设置中只有一个地址的情况
+                        if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[1]))
+                        {
+                            // DNS设置中只有一个地址，第一个地址为有效地址的情况
+                            if (activeAdapter.DNS[0] == "127.0.0.1")
+                            {
+                                // DNS设置中只有一个地址，第一个地址为有效地址的且第一个地址为127.0.0.1的情况
+                                activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
+                                PreviousDNS1 = "";
+                                PreviousDNS2 = "";
+                            }
+                            else
+                            {
+                                // DNS设置中只有一个地址，第一个地址为有效地址的且第一个地址不为127.0.0.1的情况
+                                activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[0] };
+                                PreviousDNS1 = activeAdapter.DNS[0];
+                                PreviousDNS2 = "";
+                            }
+                        }
+                        else
+                        {
+                            // DNS设置中只有一个地址且第一个地址为无效地址的情况
+                            activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
+                            PreviousDNS1 = "";
+                            PreviousDNS2 = "";
+                        }
+                    }
+                    else if (activeAdapter.DNS.Length == 2)
+                    {
+                        // DNS设置中有两个地址的情况
+                        if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[0]))
+                        {
+                            // DNS设置中有两个地址且第一个地址为有效地址的情况
+                            if (activeAdapter.DNS[0] == "127.0.0.1")
+                            {
+                                // DNS设置中有两个地址，第一个地址为有效地址且第一个地址为127.0.0.1的情况
+                                if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[1]))
+                                {
+                                    // DNS设置中有两个地址，第一个地址为有效地址，第一个地址为127.0.0.1且第二个地址为有效地址的情况
+                                    if (activeAdapter.DNS[1] == "127.0.0.1")
+                                    {
+                                        // DNS设置中有两个地址，第一个地址为有效地址，第一个地址为127.0.0.1，第二个地址为有效地址且第二个地址为127.0.0.1的情况
+                                        activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
+                                        PreviousDNS1 = "";
+                                        PreviousDNS2 = "";
+                                    }
+                                    else
+                                    {
+                                        // DNS设置中有两个地址，第一个地址为有效地址，第一个地址为127.0.0.1，第二个地址为有效地址且第二个地址不为127.0.0.1的情况
+                                        activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[1] };
+                                        PreviousDNS1 = activeAdapter.DNS[1];
+                                        PreviousDNS2 = "";
+                                    }
+                                }
+                                else
+                                {
+                                    // DNS设置中有两个地址，第一个地址为有效地址，第一个地址为127.0.0.1且第二个地址为无效地址的情况
+                                    activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
+                                    PreviousDNS1 = "";
+                                    PreviousDNS2 = "";
+                                }
+                            }
+                            else
+                            {
+                                // DNS设置中有两个地址，第一个地址为有效地址且第一个地址不为127.0.0.1的情况
+                                if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[1]))
+                                {
+                                    // DNS设置中有两个地址，第一个地址为有效地址，第一个地址不为127.0.0.1且第二个地址为有效地址的情况
+                                    if (activeAdapter.DNS[1] == "127.0.0.1")
+                                    {
+                                        // DNS设置中有两个地址，第一个地址为有效地址，第一个地址不为127.0.0.1，第二个地址为有效地址且第二个地址为127.0.0.1的情况
+                                        activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[0] };
+                                        PreviousDNS1 = activeAdapter.DNS[0];
+                                        PreviousDNS2 = "";
+                                    }
+                                    else
+                                    {
+                                        // DNS设置中有两个地址，第一个地址为有效地址，第一个地址不为127.0.0.1，第二个地址为有效地址且第二个地址不为127.0.0.1的情况
+                                        activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[0] };
+                                        PreviousDNS1 = activeAdapter.DNS[0];
+                                        PreviousDNS2 = activeAdapter.DNS[1];
+                                    }
+                                }
+                                else
+                                {
+                                    // DNS设置中有两个地址，第一个地址为有效地址，第一个地址不为127.0.0.1且第二个地址为无效地址的情况
+                                    activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[0] };
+                                    PreviousDNS1 = activeAdapter.DNS[0];
+                                    PreviousDNS2 = "";
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // DNS设置中有两个地址且第一个地址为无效地址的情况
+                            if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[1]))
+                            {
+                                // DNS设置中有两个地址，第一个地址为无效地址且第二个地址为有效地址的情况
+                                if (activeAdapter.DNS[1] == "127.0.0.1")
+                                {
+                                    // DNS设置中有两个地址，第一个地址为无效地址，第二个地址为有效地址且第二个地址为127.0.0.1的情况
+                                    activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
+                                    PreviousDNS1 = "";
+                                    PreviousDNS2 = "";
+                                }
+                                else
+                                {
+                                    // DNS设置中有两个地址，第一个地址为无效地址，第二个地址为有效地址且第二个地址不为127.0.0.1的情况
+                                    activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[1] };
+                                    PreviousDNS1 = activeAdapter.DNS[1];
+                                    PreviousDNS2 = "";
+                                }
+                            }
+                            else
+                            {
+                                // DNS设置中有两个地址，第一个地址为无效地址且第二个地址为无效地址的情况
+                                activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
+                                PreviousDNS1 = "";
+                                PreviousDNS2 = "";
+                            }
+                        }
+                    }
+
+                    string IsDnsAutomatic = activeAdapter.IsDnsAutomatic.ToString();
+
+                    WriteLog($"成功设置活动适配器的DNS为：{activeAdapter.DNS[0]}，{activeAdapter.DNS[1]}", LogLevel.Info);
+                    WriteLog($"将写入的暂存DNS为：{PreviousDNS1}，{PreviousDNS2}", LogLevel.Info);
+                    WriteLog($"当前适配器是否为自动获取DNS：{IsDnsAutomatic}", LogLevel.Info);
+
+                    ConfigINI.INIWrite("暂存数据", "PreviousDNS1", PreviousDNS1, PathsSet.INIPath);
+                    ConfigINI.INIWrite("暂存数据", "PreviousDNS2", PreviousDNS2, PathsSet.INIPath);
+                    ConfigINI.INIWrite("暂存数据", "IsPreviousDnsAutomatic", IsDnsAutomatic, PathsSet.INIPath);
+                }
+                else
+                {
+                    WriteLog($"没有找到活动的网络适配器！", LogLevel.Warning);
+
+                    HandyControl.Controls.MessageBox.Show($"没有找到活动的网络适配器！","警告",MessageBoxButton.OK,MessageBoxImage.Warning);
+                }
+            }
+            catch (NetAdpSetException ex)
+            {
+                WriteLog($"设置DNS时发生错误：{ex.Source}——{ex}", LogLevel.Error);
+
+                HandyControl.Controls.MessageBox.Show($"设置DNS时发生错误：{ex.Source}\r\n{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"遇到异常：{ex}", LogLevel.Error);
+
+                HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         // 启动所有服务
@@ -958,53 +686,52 @@ namespace SNIBypassGUI
                 {
                     ServiceST.Text = "当前服务状态：\r\nDNS服务启动中";
                     ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
-
-                    List<NetAdp> adapters = NetAdp.GetAdapters();
-                    // 找到当前正在使用的适配器
-                    NetAdp activeAdapter = null;
-                    foreach (var adapter in adapters)
+                    try
                     {
-                        if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
-                        {
-                            activeAdapter = adapter;
-                            break;
-                        }
+                        await AcrylicService.StartAcrylicService();
                     }
-                    if (activeAdapter != null)
+                    catch (Exception ex)
                     {
-                        WriteLog($"正在配置适配器: {activeAdapter.Name}",LogLevel.Info);
+                        WriteLog($"遇到异常：{ex}", LogLevel.Error);
 
-                        // 设置 DNS服务器
-                        try
+                        HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+
+                // 更新服务的状态信息
+                UpdateServiceST();
+
+                List<NetAdp> adapters = NetAdp.GetAdapters();
+                // 找到当前正在使用的适配器
+                NetAdp activeAdapter = null;
+                foreach (var adapter in adapters)
+                {
+                    if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
+                    {
+                        activeAdapter = adapter;
+                        break;
+                    }
+                }
+                if (activeAdapter != null)
+                {
+                    if (activeAdapter.DNS.Length > 0)
+                    {
+                        if (activeAdapter.DNS[0] != "127.0.0.1")
                         {
-                            // 将当前适配器的 DNS设置信息读到配置文件备用
-                            string PreviousDNS1 = 1 <= activeAdapter.DNS.Length ? activeAdapter.DNS[0] : null;
-                            string PreviousDNS2 = 2 <= activeAdapter.DNS.Length ? activeAdapter.DNS[1] : null;
-
-                            WriteLog($"读取到活动适配器的DNS地址为: {PreviousDNS1}，{PreviousDNS2}", LogLevel.Info);
-
-                            ConfigINI.INIWrite("程序设置", "PreviousDNS1", PreviousDNS1, PathsSet.INIPath);
-                            ConfigINI.INIWrite("程序设置", "PreviousDNS2", PreviousDNS2, PathsSet.INIPath);
-                            ConfigINI.INIWrite("程序设置", "IsPreviousDnsAutomatic", activeAdapter.IsDnsAutomatic.ToString(), PathsSet.INIPath);
-                            activeAdapter.DNS = new string[] { "127.0.0.1", string.IsNullOrEmpty(ConfigINI.INIRead("程序设置", "PreviousDNS1", PathsSet.INIPath)) == false ? ConfigINI.INIRead("程序设置", "PreviousDNS1", PathsSet.INIPath) : DNS.YoXiDNS };
-
-                            WriteLog($"活动适配器的DNS成功设置为: 127.0.0.1，{((string.IsNullOrEmpty(ConfigINI.INIRead("程序设置", "PreviousDNS1", PathsSet.INIPath)) == false) ? ConfigINI.INIRead("程序设置", "PreviousDNS1", PathsSet.INIPath) : DNS.YoXiDNS) }", LogLevel.Info);
-                        }
-                        catch (NetAdpSetException ex)
-                        {
-                            WriteLog($"设置DNS时发生错误：{ex.Source}——{ex}",LogLevel.Error);
-
-                            HandyControl.Controls.MessageBox.Show($"设置DNS时发生错误：{ex.Source}\r\n{ex}");
+                            SetLocalDNS();
                         }
                     }
                     else
                     {
-                        WriteLog($"没有找到活动网络适配器！", LogLevel.Warning);
+                        SetLocalDNS();
                     }
-                    await AcrylicService.StartAcrylicService();
                 }
+                else
+                {
+                    WriteLog($"没有找到活动的网络适配器！", LogLevel.Warning);
 
-                UpdateServiceST();
+                    HandyControl.Controls.MessageBox.Show($"没有找到活动的网络适配器！", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
             else
             {
@@ -1131,27 +858,39 @@ namespace SNIBypassGUI
                 {
                     ServiceST.Text = "当前服务状态：\r\nDNS服务停止中";
                     ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
-
-                    // 将当前适配器的 DNS设置信息从配置文件同步
-                    List<NetAdp> adapters = NetAdp.GetAdapters();
-                    // 找到当前正在使用的适配器
-                    NetAdp activeAdapter = null;
-                    foreach (var adapter in adapters)
+                    try
                     {
-                        if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
-                        {
-                            activeAdapter = adapter;
-                            break;
-                        }
+                        await AcrylicService.StopAcrylicService();
                     }
-                    if (activeAdapter != null)
+                    catch (Exception ex)
                     {
-                        WriteLog($"正在配置适配器: {activeAdapter.Name}", LogLevel.Info);
+                        WriteLog($"遇到异常：{ex}", LogLevel.Error);
 
-                        // 设置 DNS服务器
-                        try
+                        // 显示错误消息框
+                        HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+
+                UpdateServiceST();
+
+                List<NetAdp> adapters = NetAdp.GetAdapters();
+                // 找到当前正在使用的适配器
+                NetAdp activeAdapter = null;
+                foreach (var adapter in adapters)
+                {
+                    if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
+                    {
+                        activeAdapter = adapter;
+                        break;
+                    }
+                }
+                if (activeAdapter != null)
+                {
+                    if (activeAdapter.DNS.Length > 0)
+                    {
+                        if (activeAdapter.DNS[0] == "127.0.0.1")
                         {
-                            if (StringBoolConverter.StringToBool(ConfigINI.INIRead("程序设置", "IsPreviousDnsAutomatic", PathsSet.INIPath)))
+                            if (StringBoolConverter.StringToBool(ConfigINI.INIRead("暂存数据", "IsPreviousDnsAutomatic", PathsSet.INIPath)))
                             {
                                 activeAdapter.DNS = null;
 
@@ -1159,53 +898,63 @@ namespace SNIBypassGUI
                             }
                             else
                             {
-                                activeAdapter.DNS = new string[] { string.IsNullOrEmpty(ConfigINI.INIRead("程序设置", "PreviousDNS1", PathsSet.INIPath)) == false ? ConfigINI.INIRead("程序设置", "PreviousDNS1", PathsSet.INIPath) : "", string.IsNullOrEmpty(ConfigINI.INIRead("程序设置", "PreviousDNS2", PathsSet.INIPath)) == false ? ConfigINI.INIRead("程序设置", "PreviousDNS2", PathsSet.INIPath) : "" };
+                                if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)))
+                                {
+                                    activeAdapter.DNS = null;
 
-                                WriteLog($"活动适配器的DNS成功设置为: {(string.IsNullOrEmpty(ConfigINI.INIRead("程序设置", "PreviousDNS1", PathsSet.INIPath)) == false ? ConfigINI.INIRead("程序设置", "PreviousDNS1", PathsSet.INIPath) : "")}，{(string.IsNullOrEmpty(ConfigINI.INIRead("程序设置", "PreviousDNS2", PathsSet.INIPath)) == false ? ConfigINI.INIRead("程序设置", "PreviousDNS2", PathsSet.INIPath) : "")}", LogLevel.Info);
+                                    WriteLog($"活动适配器的DNS成功设置为自动获取。", LogLevel.Info);
+                                }
+                                else
+                                {
+                                    if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)))
+                                    {
+                                        activeAdapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath) };
+
+                                        WriteLog($"活动适配器的DNS成功设置为{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}。", LogLevel.Info);
+                                    }
+                                    else
+                                    {
+                                        activeAdapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath), ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath) };
+
+                                        WriteLog($"活动适配器的DNS成功设置为{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}，{ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)}。", LogLevel.Info);
+                                    }
+                                }
                             }
-                            ConfigINI.INIWrite("程序设置", "PreviousDNS1", "", PathsSet.INIPath);
-                            ConfigINI.INIWrite("程序设置", "PreviousDNS2", "", PathsSet.INIPath);
-                            ConfigINI.INIWrite("程序设置", "IsPreviousDnsAutomatic", "True", PathsSet.INIPath);
-                        }
-                        catch (NetAdpSetException ex)
-                        {
-                            WriteLog($"设置DNS时发生错误：{ex.Source}——{ex}", LogLevel.Error);
                         }
                     }
-                    else
-                    {
-                        WriteLog($"没有找到活动网络适配器！", LogLevel.Warning);
-                    }
-                    await AcrylicService.StopAcrylicService();
                 }
+                else
+                {
+                    WriteLog($"没有找到活动的网络适配器！", LogLevel.Warning);
 
-                UpdateServiceST();
+                    HandyControl.Controls.MessageBox.Show($"没有找到活动的网络适配器！", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
             else
             {
                 // 使用 Process.GetProcessesByName 方法获取所有名为 "SNIBypass" 的进程，这将返回一个包含所有匹配进程的 Process 数组
                 Process[] ps1 = Process.GetProcessesByName("SNIBypass");
-                // 检查获取到的进程数组长度是否大于 0
-                // 如果大于 0，说明服务正在运行
 
                 WriteLog($"名为\"SNIBypass\"的进程数组长度为 {ps1.Length} 。", LogLevel.Debug);
 
+                // 检查获取到的进程数组长度是否大于 0
+                // 如果大于 0，说明服务正在运行
                 if (ps1.Length > 0)
                 {
                     ServiceST.Text = "当前服务状态：\r\n主服务停止中";
                     ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
 
-                    // 创建一个任务列表，用于存储每个杀死进程任务的任务对象
+                    // 创建一个任务列表，用于存储每个结束进程任务的任务对象
                     List<Task> tasks = new List<Task>();
                     // 遍历所有找到的 "SNIBypass" 进程
                     foreach (Process process in ps1)
                     {
-                        // 为每个进程创建一个异步任务，该任务尝试杀死进程并处理可能的异常
+                        // 为每个进程创建一个异步任务，该任务尝试结束进程并处理可能的异常
                         Task task = Task.Run(() =>
                         {
                             try
                             {
-                                // 尝试杀死当前遍历到的进程
+                                // 尝试结束当前遍历到的进程
                                 process.Kill();
                                 // 等待进程退出，最多等待5000毫秒（5秒）
                                 bool exited = process.WaitForExit(5000);
@@ -1228,7 +977,7 @@ namespace SNIBypassGUI
                         // 将创建的任务添加到任务列表中
                         tasks.Add(task);
                     }
-                    // 等待所有杀死进程的任务完成
+                    // 等待所有结束进程的任务完成
                     await Task.WhenAll(tasks);
                 }
 
@@ -1398,9 +1147,9 @@ namespace SNIBypassGUI
 
             await StopService();
 
-            ConfigINI.INIWrite("程序设置", "PreviousDNS1", "", PathsSet.INIPath);
-            ConfigINI.INIWrite("程序设置", "PreviousDNS2", "", PathsSet.INIPath);
-            ConfigINI.INIWrite("程序设置", "IsPreviousDnsAutomatic", "True", PathsSet.INIPath);
+            ConfigINI.INIWrite("暂存数据", "PreviousDNS1", "", PathsSet.INIPath);
+            ConfigINI.INIWrite("暂存数据", "PreviousDNS2", "", PathsSet.INIPath);
+            ConfigINI.INIWrite("暂存数据", "IsPreviousDnsAutomatic", "True", PathsSet.INIPath);
 
             DNS.FlushDNS();
 
@@ -1422,12 +1171,13 @@ namespace SNIBypassGUI
             // 修改按钮内容为“检查更新中...”以提示用户正在进行检查
             CheckUpdateBtn.Content = "检查更新中...";
 
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "api.github.com");
-
-            Github.EnsureGithubAPI();
-
             try
             {
+                FileHelper.RemoveSection(PathsSet.SystemHosts, "api.github.com");
+
+                Github.EnsureGithubAPI();
+
+
                 // 异步获取 GitHub 的最新发布信息
                 string LatestReleaseInfo = await HTTPHelper.GetAsync("https://api.github.com/repos/racpast/SNIBypassGUI/releases/latest");
 
@@ -1551,6 +1301,7 @@ namespace SNIBypassGUI
 
             // 更新清理按钮的内容，显示所有临时文件的总大小（以MB为单位）
             CleanBtn.Content = $"清理服务运行日志及缓存 ({FileHelper.GetTotalFileSizeInMB(PathsSet.TempFilesPaths)}MB)";
+            CleanBtn.IsEnabled = true;
 
             WriteLog("完成CleanBtn_Click(object sender, RoutedEventArgs e)", LogLevel.Debug);
         }
@@ -1601,28 +1352,22 @@ namespace SNIBypassGUI
         {
             WriteLog("进入AllOnBtn_Click(object sender, RoutedEventArgs e)", LogLevel.Debug);
 
-            amazoncojpTB.IsChecked = true;
-            archiveofourownTB.IsChecked = true;
-            apkmirrorTB.IsChecked = true;
-            bbcTB.IsChecked = true;
-            ehentaiTB.IsChecked = true;
-            etsyTB.IsChecked = true;
-            fdroidTB.IsChecked = true;
-            nyaaTB.IsChecked = true;
-            okTB.IsChecked = true;
-            okxTB.IsChecked = true;            
-            pixivTB.IsChecked = true;
-            pornhubTB.IsChecked = true;
-            protonTB.IsChecked = true;
-            steamcommunityTB.IsChecked = true;
-            telegramTB.IsChecked = true;
-            thenewyorktimesTB.IsChecked = true;
-            wallhavenTB.IsChecked = true;
-            wikimediafoundationTB.IsChecked = true;
-            youtubeTB.IsChecked = true;
-            zlibraryTB.IsChecked = true;
-            ApplyBtn.IsEnabled = true;
-            UnchangeBtn.IsEnabled = true;
+            bool IsChanged = false;
+
+            foreach (var togglebutton in ToggleButtonToSectionNamedDic)
+            {
+                if(togglebutton.Key.IsChecked != true)
+                {
+                    togglebutton.Key.IsChecked = true;
+                    IsChanged = true;
+                }
+            }
+
+            if (IsChanged)
+            {
+                ApplyBtn.IsEnabled = true;
+                UnchangeBtn.IsEnabled = true;
+            }
 
             WriteLog("完成AllOnBtn_Click(object sender, RoutedEventArgs e)", LogLevel.Debug);
         }
@@ -1632,26 +1377,23 @@ namespace SNIBypassGUI
         {
             WriteLog("进入AllOffBtn_Click(object sender, RoutedEventArgs e)", LogLevel.Debug);
 
-            amazoncojpTB.IsChecked = false;
-            archiveofourownTB.IsChecked = false;
-            apkmirrorTB.IsChecked = false;
-            bbcTB.IsChecked = false;
-            ehentaiTB.IsChecked = false;
-            etsyTB.IsChecked = false;
-            fdroidTB.IsChecked = false;
-            nyaaTB.IsChecked = false;
-            okTB.IsChecked = false;
-            okxTB.IsChecked = false;
-            pixivTB.IsChecked = false;
-            pornhubTB.IsChecked = false;
-            protonTB.IsChecked = false;
-            steamcommunityTB.IsChecked = false;
-            telegramTB.IsChecked = false;
-            thenewyorktimesTB.IsChecked = false;
-            wallhavenTB.IsChecked = false;
-            wikimediafoundationTB.IsChecked = false;
-            youtubeTB.IsChecked = false;
-            zlibraryTB.IsChecked = false;
+            bool IsChanged = false;
+
+            foreach (var togglebutton in ToggleButtonToSectionNamedDic)
+            {
+                if (togglebutton.Key.IsChecked != false)
+                {
+                    togglebutton.Key.IsChecked = false;
+                    IsChanged = true;
+                }
+            }
+
+            if (IsChanged)
+            {
+                ApplyBtn.IsEnabled = true;
+                UnchangeBtn.IsEnabled = true;
+            }
+
             ApplyBtn.IsEnabled = true;
             UnchangeBtn.IsEnabled = true;
 
@@ -1714,7 +1456,9 @@ namespace SNIBypassGUI
                 }
                 catch (Exception ex)
                 {
-                    WriteLog($"遇到错误：{ex}", LogLevel.Error);
+                    WriteLog($"遇到异常：{ex}", LogLevel.Error);
+
+                    HandyControl.Controls.MessageBox.Show($"遇到异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
 
@@ -1913,6 +1657,9 @@ namespace SNIBypassGUI
         {
             WriteLog("进入Window_Loaded(object sender, RoutedEventArgs e)", LogLevel.Debug);
 
+            // 初始化字典
+            InitializeToggleButtonDictionary(this);
+
             // 检查文件，当配置文件不存在时可以创建
             CheckFiles();
 
@@ -1971,6 +1718,11 @@ namespace SNIBypassGUI
                 WriteLog($"处理DNS服务时遇到异常：{ex.Source}——{ex}", LogLevel.Error);
 
                 HandyControl.Controls.MessageBox.Show($"处理DNS服务时遇到异常：{ex.Source}\r\n{ex}","错误",MessageBoxButton.OK,MessageBoxImage.Error);
+            }catch (Exception ex)
+            {
+                WriteLog($"遇到异常：{ex}", LogLevel.Error);
+
+                HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
             // 更新一言
@@ -2055,6 +1807,15 @@ namespace SNIBypassGUI
             WriteLog("完成MenuItem_MouseLeave(object sender, MouseEventArgs e)", LogLevel.Debug);
         }
 
+        // 切换到调试模式的方法
+        private void ToggleToDebugMode()
+        {
+            DebugModeBtn.Content = "调试模式：\n开";
+            SwitchDomainNameResolutionMethodBtn.IsEnabled = true;
+            AcrylicDebugBtn.IsEnabled = true;
+            GUIDebugBtn.IsEnabled = true;
+        }
+
         // 调试模式按钮点击事件
         private void DebugModeBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2064,10 +1825,7 @@ namespace SNIBypassGUI
             {
                 if (HandyControl.Controls.MessageBox.Show("调试模式仅供测试和开发使用，强烈建议您在没有开发者明确指示的情况下不要随意打开。\r\n是否打开调试模式？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    DebugModeBtn.Content = "调试模式：\n开";
-                    SwitchDomainNameResolutionMethodBtn.IsEnabled = true;
-                    AcrylicDebugBtn.IsEnabled = true;
-                    GUIDebugBtn.IsEnabled = true;
+                    ToggleToDebugMode();
                 }
             }
             else
@@ -2173,26 +1931,11 @@ namespace SNIBypassGUI
         {
             WriteLog("进入BackHostsBtn_Click(object sender, RoutedEventArgs e)", LogLevel.Debug);
 
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Amazon.co.jp");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Archive of Our Own");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "APKMirror");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "BBC");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "E-Hentai");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Etsy");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "F-Droid");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Nyaa");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "OK");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "OKX.COM");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Pixiv");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Pornhub");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Proton");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Steam Community");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Telegram");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "The New York Times");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Wallhaven");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Wikimedia Foundation");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "YouTube");
-            FileHelper.RemoveSection(PathsSet.SystemHosts, "Z-Library");
+            foreach (var sectionname in SectionNamesSet)
+            {
+                FileHelper.RemoveSection(PathsSet.SystemHosts, sectionname);
+            }
+
             DNS.FlushDNS();
 
             WriteLog("完成BackHostsBtn_Click(object sender, RoutedEventArgs e)", LogLevel.Debug);

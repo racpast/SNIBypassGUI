@@ -35,6 +35,7 @@
             "#\tPixiv Start",
             "127.0.0.1       pixiv.net",
             "127.0.0.1       *.pixiv.net",
+            "127.0.0.1       *.*.pixiv.net",
             "127.0.0.1       fanbox.cc",
             "104.18.41.140      api.fanbox.cc",
             "127.0.0.1       *.fanbox.cc",
@@ -122,10 +123,10 @@
 
         public static string[] AmazoncojpSection =
         {
-            "#\tAmazon.co.jp Start",
+            "#\tAmazon（日本） Start",
             "127.0.0.1		amazon.co.jp",
             "127.0.0.1		*.amazon.co.jp",
-            "#\tAmazon.co.jp End"
+            "#\tAmazon（日本） End"
         };
 
         public static string[] BBCSection =
@@ -168,10 +169,10 @@
             "#\tGoogle Start",
             "127.0.0.1		google.com",
             "127.0.0.1		*.google.com",
-            "127.0.0.1		google.md",
-            "127.0.0.1		*.google.md",
-            "127.0.0.1		google.ru",
-            "127.0.0.1		*.google.ru",
+            "127.0.0.1		*.google",
+            "127.0.0.1		*.google.*",
+            "127.0.0.1		*.*.google",
+            "127.0.0.1		*.*.google.*",
             "#\tGoogle End"
         };
 
@@ -934,7 +935,7 @@
 
         public static string[] AmazoncojpSection =
         {
-            "#\tAmazon.co.jp Start",
+            "#\tAmazon（日本） Start",
             "127.0.0.1		amazon.co.jp",
             "127.0.0.1		www.amazon.co.jp",
             "127.0.0.1		fls-fe.amazon.co.jp",
@@ -944,7 +945,7 @@
             "127.0.0.1		kdp.amazon.co.jp",
             "127.0.0.1		services.amazon.co.jp",
             "127.0.0.1		advertising.amazon.co.jp",
-            "#\tAmazon.co.jp End"
+            "#\tAmazon（日本） End"
         };
 
         public static string[] BBCSection =

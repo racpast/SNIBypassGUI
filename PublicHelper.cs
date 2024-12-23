@@ -4,6 +4,8 @@ using System.Windows;
 using static SNIBypassGUI.LogHelper;
 using System.Security.Cryptography.X509Certificates;
 using RpNet.FileHelper;
+using System.Collections.Generic;
+using System.Windows.Controls.Primitives;
 
 
 namespace SNIBypassGUI
@@ -19,7 +21,7 @@ namespace SNIBypassGUI
         public static FilesINI ConfigINI = new FilesINI();
 
         // 既定版本号，更新时需要修改
-        public static string PresetGUIVersion = "V3.0";
+        public static string PresetGUIVersion = "V3.1";
 
         // 默认一言
         public static string PresetYiyan = "不是渐行渐远，而是有一天终要重逢。";
@@ -74,15 +76,16 @@ namespace SNIBypassGUI
             // 创建一个指向当前用户根证书存储的X509Store对象
             // StoreName.Root表示根证书存储，StoreLocation.CurrentUser表示当前用户的证书存储
             X509Store store = new X509Store(StoreName.Root, StoreLocation.CurrentUser);
-            // 以最大权限打开证书存储，以便进行添加、删除等操作
-            store.Open(OpenFlags.MaxAllowed);
-            // 获取证书存储中的所有证书
-            X509Certificate2Collection collection = store.Certificates;
-            // 在证书存储中查找具有指定指纹的证书
-            // X509FindType.FindByThumbprint 表示按指纹查找，false 表示不区分大小写（对于指纹查找无效，因为指纹是唯一的）
-            X509Certificate2Collection fcollection = collection.Find(X509FindType.FindByThumbprint, Thumbprint, false);
             try
             {
+                // 以最大权限打开证书存储，以便进行添加、删除等操作
+                store.Open(OpenFlags.MaxAllowed);
+                // 获取证书存储中的所有证书
+                X509Certificate2Collection collection = store.Certificates;
+                // 在证书存储中查找具有指定指纹的证书
+                // X509FindType.FindByThumbprint 表示按指纹查找，false 表示不区分大小写（对于指纹查找无效，因为指纹是唯一的）
+                X509Certificate2Collection fcollection = collection.Find(X509FindType.FindByThumbprint, Thumbprint, false);
+
                 // 检查是否找到了具有该指纹的证书
                 if (fcollection != null)
                 {
@@ -114,10 +117,10 @@ namespace SNIBypassGUI
             }
             catch (Exception ex)
             {
-                WriteLog($"遇到错误：{ex}", LogLevel.Error);
+                WriteLog($"遇到异常：{ex}", LogLevel.Error);
 
                 // 如果在安装证书过程中发生异常，则显示错误消息框
-                HandyControl.Controls.MessageBox.Show($"安装证书失败！\r\n{ex.Message}", "安装证书", MessageBoxButton.OK, MessageBoxImage.Error);
+                HandyControl.Controls.MessageBox.Show($"安装证书失败！\r\n{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
 
                 WriteLog("InstallCertificate()完成，返回false。", LogLevel.Debug);
 
@@ -131,5 +134,127 @@ namespace SNIBypassGUI
                 WriteLog($"证书存储关闭。", LogLevel.Debug);
             }
         }
+
+        public static string[] SectionNamesSet = new string[]
+        {
+            "Amazon（日本）",
+            "Archive of Our Own",
+            "APKMirror",
+            "BBC",
+            "E-Hentai",
+            "Etsy",
+            "F-Droid",
+            "Google",
+            "Nyaa",
+            "OK",
+            "OKX.COM",
+            "Pixiv",
+            "Pornhub",
+            "Proton",
+            "Steam Community",
+            "Telegram",
+            "The New York Times",
+            "Wallhaven",
+            "Wikimedia Foundation",
+            "YouTube",
+            "Z-Library"
+        };
+
+        public static Dictionary<string, string[]> SectionNameToHostsRecordDic = new Dictionary<string, string[]>
+        {
+            {"Amazon（日本）",HostsSet.AmazoncojpSection},
+            {"Archive of Our Own",HostsSet.ArchiveofOurOwnSection},
+            {"APKMirror",HostsSet.APKMirrorSection},
+            {"BBC",HostsSet.BBCSection},
+            {"E-Hentai",HostsSet.EHentaiSection},
+            {"Etsy",HostsSet.EtsySection},
+            {"F-Droid",HostsSet.FDroidSection},
+            {"Google",HostsSet.GoogleSection},
+            {"Nyaa",HostsSet.NyaaSection},
+            {"OK",HostsSet.OKSection},
+            {"OKX.COM",HostsSet.OKXCOMSection},
+            {"Pixiv",HostsSet.PixivSection},
+            {"Pornhub",HostsSet.PornhubSection},
+            {"Proton",HostsSet.ProtonSection},
+            {"Steam Community",HostsSet.SteamCommunitySection},
+            {"Telegram",HostsSet.TelegramSection},
+            {"The New York Times",HostsSet.TheNewYorkTimesSection},
+            {"Wallhaven",HostsSet.WallhavenSection},
+            {"Wikimedia Foundation",HostsSet.WikimediaFoundationSection},
+            {"YouTube",HostsSet.YoutubeSection},
+            {"Z-Library",HostsSet.ZLibrarySection},
+        };
+
+        public static Dictionary<string, string[]> SectionNameToOldHostsRecordDic = new Dictionary<string, string[]>
+        {
+            {"Amazon（日本）",HostsSet_Old.AmazoncojpSection},
+            {"Archive of Our Own",HostsSet_Old.ArchiveofOurOwnSection},
+            {"APKMirror",HostsSet_Old.APKMirrorSection},
+            {"BBC",HostsSet_Old.BBCSection},
+            {"E-Hentai",HostsSet_Old.EHentaiSection},
+            {"Etsy",HostsSet_Old.EtsySection},
+            {"F-Droid",HostsSet_Old.FDroidSection},
+            {"Google",HostsSet_Old.GoogleSection},
+            {"Nyaa",HostsSet_Old.NyaaSection},
+            {"OK",HostsSet_Old.OKSection},
+            {"OKX.COM",HostsSet_Old.OKXCOMSection},
+            {"Pixiv",HostsSet_Old.PixivSection},
+            {"Pornhub",HostsSet_Old.PornhubSection},
+            {"Proton",HostsSet_Old.ProtonSection},
+            {"Steam Community",HostsSet_Old.SteamCommunitySection},
+            {"Telegram",HostsSet_Old.TelegramSection},
+            {"The New York Times",HostsSet_Old.TheNewYorkTimesSection},
+            {"Wallhaven",HostsSet_Old.WallhavenSection},
+            {"Wikimedia Foundation",HostsSet_Old.WikimediaFoundationSection},
+            {"YouTube",HostsSet_Old.YoutubeSection},
+            {"Z-Library",HostsSet_Old.ZLibrarySection},
+        };
+
+        public static Dictionary<ToggleButton, string> ToggleButtonToSectionNamedDic = new Dictionary<ToggleButton, string>();
+
+        // 该方法可以在 MainWindow 的 Loaded 事件中调用，用来初始化字典
+        public static void InitializeToggleButtonDictionary(MainWindow mainWindow)
+        {
+            ToggleButtonToSectionNamedDic = new Dictionary<ToggleButton, string>
+            {
+                {mainWindow.amazoncojpTB,"Amazon（日本）"},
+                {mainWindow.archiveofourownTB,"Archive of Our Own"},
+                {mainWindow.apkmirrorTB, "APKMirror" },
+                {mainWindow.bbcTB, "BBC" },
+                {mainWindow.ehentaiTB, "E-Hentai" },
+                {mainWindow.etsyTB, "Etsy" },
+                {mainWindow.fdroidTB, "F-Droid" },
+                {mainWindow.googleTB,"Google" },
+                {mainWindow.nyaaTB, "Nyaa" },
+                {mainWindow.okTB, "OK" },
+                {mainWindow.okxTB, "OKX.COM" },
+                {mainWindow.pixivTB, "Pixiv" },
+                {mainWindow.pornhubTB, "Pornhub" },
+                {mainWindow.protonTB, "Proton" },
+                {mainWindow.steamcommunityTB,"Steam Community" },
+                {mainWindow.telegramTB,"Telegram" },
+                {mainWindow.thenewyorktimesTB, "The New York Times" },
+                {mainWindow.wallhavenTB, "Wallhaven" },
+                {mainWindow.wikimediafoundationTB, "Wikimedia Foundation" },
+                {mainWindow.youtubeTB, "YouTube" },
+                {mainWindow.zlibraryTB, "Z-Library" },
+            };
+        }
+
+        public static Dictionary<string, byte[]> PathToResourceDic = new Dictionary<string, byte[]>
+        {
+            {PathsSet.nginxPath, Properties.Resources.SNIBypass},
+            {PathsSet.nginxConfigFile_A, Properties.Resources.nginx},
+            {PathsSet.nginxConfigFile_B, Properties.Resources.bypass},
+            {PathsSet.nginxConfigFile_C, Properties.Resources.shared_proxy_params_1},
+            {PathsSet.nginxConfigFile_D, Properties.Resources.shared_proxy_params_2},
+            {PathsSet.nginxConfigFile_E, Properties.Resources.cert},
+            {PathsSet.CERFile,Properties.Resources.ca},
+            {PathsSet.CRTFile,Properties.Resources.SNIBypassCrt},
+            {PathsSet.KeyFile,Properties.Resources.SNIBypassKey},
+            {PathsSet.AcrylicServiceExeFilePath,Properties.Resources.AcrylicService},
+            {PathsSet.AcrylicHostsPath,Properties.Resources.AcrylicHosts},
+            {PathsSet.AcrylicConfigurationPath,Properties.Resources.AcrylicConfiguration},
+        };
     }
 }

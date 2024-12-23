@@ -59,6 +59,8 @@ namespace RpNet.AcrylicServiceHelper
                 {
                     await CMD.RunCommand($"ICACLS \"{AcrylicServiceExeFilePath}\" /inheritance:d");
                     await CMD.RunCommand($"ICACLS \"{AcrylicServiceExeFilePath}\" /remove:g \"Authenticated Users\"");
+                    // 安装服务的时候会将启动类型设置为“自动”导致开机自动启动从而窗口显示状态文本误导用户的问题，应调整为“手动”
+                    await CMD.RunCommand("sc config AcrylicDNSProxySvc start= demand");
                 }
                 return result;
             }

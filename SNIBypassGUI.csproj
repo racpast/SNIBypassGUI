@@ -201,9 +201,6 @@
     <Resource Include="Resources\github.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\DefaultBkg.jpg" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\AcrylicService.exe" />
   </ItemGroup>
   <ItemGroup>
@@ -226,7 +223,13 @@
     <Resource Include="Resources\favicons\youtube.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\MenuBkg.jpg" />
+    <Resource Include="Resources\favicons\google.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\DefaultBkg.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\MenuBkg.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

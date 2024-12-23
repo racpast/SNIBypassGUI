@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace RpNet.NetworkHelper
 {
@@ -779,6 +780,22 @@ namespace RpNet.NetworkHelper
                 // 抛出异常
                 throw ex;
             }
+        }
+    }
+
+    public class IPv4Validator
+    {
+        public static bool IsValidIPv4(string ipAddress)
+        {
+            // 使用正则表达式验证 IPv4 地址的格式
+            string pattern = @"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
+
+            if (!Regex.IsMatch(ipAddress, pattern))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
