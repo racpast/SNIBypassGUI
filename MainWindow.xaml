@@ -24,13 +24,13 @@
                         <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/MenuBkg.png"/>
                     </Border.Background>
                     <StackPanel>
-                        <TextBlock Foreground="Blue" Text="SNIBypassGUI" Margin="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="16"/>
+                        <TextBlock Foreground="#FF2BFF00" Text="SNIBypassGUI" Margin="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="16"/>
                         <TextBlock x:Name="ReferenceTextBlock" Margin="5,0,5,5" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
-			                <Run Foreground="Blue" Text="服务状态："/>
+			                <Run Foreground="#FF00FFED" Text="服务状态："/>
 			                <Run x:Name="TaskbarIconServiceST"  Text="主服务和DNS服务未运行" Foreground="Red"/>
                         </TextBlock>
-                        <TextBlock Foreground="Purple" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="不是渐行渐远，而是有一天终要重逢。" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        <TextBlock Foreground="Purple" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 龙应台「目送」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
+                        <TextBlock Foreground="Orange" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="不是渐行渐远，而是有一天终要重逢。" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <TextBlock Foreground="DarkOrange" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 龙应台「目送」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
                     </StackPanel>
                 </Border>
             </tb:TaskbarIcon.TrayToolTip>
@@ -39,7 +39,7 @@
                     <ContextMenu.Background>
                         <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/MenuBkg.png"/>
                     </ContextMenu.Background>
-                    <MenuItem x:Name="MenuItem_ShowMainWin" Header="显示主窗口" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ShowMainWin_Click" FontWeight="Bold">
+                    <MenuItem Foreground="White" x:Name="MenuItem_ShowMainWin" Header="显示主窗口" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ShowMainWin_Click" FontWeight="Bold">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Path Data="M997.3 456.4l-419-428.5c-36.4-37.3-96.1-37.3-132.5 0l-419 428.5c-57 58.3-16.6 158 64 158h62.9v307.2c0 56.6 45.8 102.4 102.4 102.4h153.6V768c0-28.3 22.9-51.2 51.2-51.2h102.4c28.3 0 51.2 22.9 51.2 51.2v256H768c56.6 0 102.4-45.8 102.4-102.4V614.4h62.9c80.6 0 121-99.7 64-158z" Stretch="Uniform" Fill="#00a2ff" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -55,7 +55,7 @@
                             </Viewbox>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem x:Name="MenuItem_StartService" Header="启动服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StartService_Click" FontWeight="Bold">
+                    <MenuItem Foreground="White" x:Name="MenuItem_StartService" Header="启动服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StartService_Click" FontWeight="Bold">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Path Data="M510.3 98.2c-229.2 0-415.1 185.8-415.1 415S281 928.3 510.3 928.3s415.1-185.8 415.1-415.1c0-229.2-185.9-415-415.1-415z m163.8 448.1L446.5 679.1c-3.3 1.9-6.7 2.8-10.1 2.8-10.5 0-20.1-8.4-20.1-20.1V396.2c0-11.7 9.6-20.1 20.1-20.1 3.4 0 6.8 0.9 10.1 2.8l227.6 132.8c13.3 7.7 13.3 26.9 0 34.6z" Stretch="Uniform" Fill="#FF2BFF00" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -71,7 +71,7 @@
                             </Viewbox>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem x:Name="MenuItem_StopService" Header="停止服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StopService_Click" FontWeight="Bold">
+                    <MenuItem Foreground="White" x:Name="MenuItem_StopService" Header="停止服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StopService_Click" FontWeight="Bold">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Path Data="M512 0C229.2 0 0 229.2 0 512s229.2 512 512 512 512-229.2 512-512S794.8 0 512 0z m208 716c0 2.2-1.8 4-4 4H308c-2.2 0-4-1.8-4-4V308c0-2.2 1.8-4 4-4h408c2.2 0 4 1.8 4 4v408z" Stretch="Uniform" Fill="Red" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -87,7 +87,7 @@
                             </Viewbox>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem x:Name="MenuItem_ExitTool" Header="退出工具" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ExitTool_Click" FontWeight="Bold">
+                    <MenuItem Foreground="White" x:Name="MenuItem_ExitTool" Header="退出工具" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ExitTool_Click" FontWeight="Bold">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Path Data="M581.632 697.344l126.976 0 0 194.56q0 33.792-10.24 58.88t-27.136 40.96-39.424 23.552-48.128 7.68l-452.608 0q-24.576 0-48.128-9.728t-41.472-27.136-29.184-40.96-11.264-52.224l0-706.56q0-24.576 11.776-47.104t30.208-39.936 40.96-28.16 45.056-10.752l449.536 0q26.624 0 50.176 11.776t41.472 29.696 28.16 40.448 10.24 44.032l0 188.416-126.976 0 1.024-195.584-452.608 0-1.024 713.728 452.608 0 0-195.584zM1021.952 505.856q37.888 30.72 2.048 60.416-20.48 15.36-44.544 37.888t-50.176 46.592-51.712 47.616-47.104 40.96q-23.552 18.432-40.448 18.432t-16.896-24.576q2.048-14.336 0.512-35.84t-1.536-36.864q0-17.408-12.288-21.504t-29.696-4.096l-40.96 0-62.464 0q-34.816 0-73.216-0.512t-73.216-0.512l-62.464 0-41.984 0q-8.192 0-17.92-1.536t-17.408-6.656-12.288-14.336-4.608-23.552q0-19.456-0.512-46.08t0.512-47.104q0-27.648 13.312-37.888t43.008-9.216l33.792 0 59.392 0q32.768 0 70.144 0.512t71.168 0.512l61.44 0 38.912 0q25.6 1.024 43.52-4.096t17.92-22.528q0-14.336 1.024-32.256t1.024-32.256q0-23.552 12.8-29.696t32.256 9.216q19.456 16.384 45.568 38.4t52.736 45.056 52.736 45.568 47.616 39.936z" Stretch="Uniform" Fill="#FFFF00C7" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">

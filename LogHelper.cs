@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using static SNIBypassGUI.PublicHelper;
@@ -26,22 +27,27 @@ namespace SNIBypassGUI
         };
 
         // 写入日志的方法
-        public static void WriteLog(string message, LogLevel logLevel = LogLevel.Info)
+        public static void WriteLog(string message, LogLevel logLevel = LogLevel.Info,Exception ex = null)
         {
             if (OutputLog)
             {
                 lock (LockObject)
                 {
+                    string logMessage;
                     if (logLevel != LogLevel.None)
                     {
-                        string logMessage = $"{DateTime.Now} [{logLevel}] {message}{Environment.NewLine}";
-                        File.AppendAllText(PathsSet.GUILogPath, logMessage, Encoding.UTF8);
+                        logMessage = $"{DateTime.Now} [{logLevel}] {message}";
                     }
                     else
                     {
-                        string logMessage = $"{message}{Environment.NewLine}";
-                        File.AppendAllText(PathsSet.GUILogPath, logMessage, Encoding.UTF8);
+                        logMessage = $"{message}";
                     }
+                    if (ex != null)
+                    {
+                        logMessage += $" | 异常: {ex.Message} | 调用堆栈: {ex.StackTrace}";
+                    }
+                    logMessage += $"{Environment.NewLine}";
+                    File.AppendAllText(PathsSet.GUILogPath, logMessage, Encoding.UTF8);
                 }
             }
         }

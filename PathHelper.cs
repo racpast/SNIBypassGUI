@@ -36,6 +36,7 @@ namespace SNIBypassGUI
         public static string AcrylicConfigurationPath = Path.Combine(dnsDirectory, "AcrylicConfiguration.ini");
         public static string SNIBypassGUIExeFilePath = System.Windows.Forms.Application.ExecutablePath;
         public static List<string> TempFilesPaths = new List<String> { nginxLogFile_A, nginxLogFile_B, AcrylicCacheFilePath };
+        public static List<string> TempFilesPathsIncludingGUILog = new List<String> { nginxLogFile_A, nginxLogFile_B, AcrylicCacheFilePath,GUILogPath };
         public static List<string> NeccesaryDirectories = new List<String> { dataDirectory, NginxDirectory, nginxConfigDirectory, CADirectory, nginxLogDirectory, nginxTempDirectory, dnsDirectory };
     }
 }

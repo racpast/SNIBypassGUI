@@ -21,7 +21,7 @@ namespace SNIBypassGUI
         public static FilesINI ConfigINI = new FilesINI();
 
         // 既定版本号，更新时需要修改
-        public static string PresetGUIVersion = "V3.1";
+        public static string PresetGUIVersion = "V3.2";
 
         // 默认一言
         public static string PresetYiyan = "不是渐行渐远，而是有一天终要重逢。";
@@ -41,20 +41,29 @@ namespace SNIBypassGUI
             /// <returns>转换后的布尔值</returns>
             public static bool StringToBool(string input)
             {
-                WriteLog($"StringToBool(string input)被调用，参数input：{input}。", LogLevel.Debug);
-
                 if (string.IsNullOrEmpty(input))
                 {
                     return false; // 空字符串或null返回false
                 }
                 string booleanString = input.Trim().ToLower(); // 去除空格并转换为小写
 
-                bool output = booleanString == "true";
+                return booleanString == "true";
+            }
 
-                WriteLog($"StringToBool(string input)完成，返回{output}。", LogLevel.Debug);
-
-                // 检查字符串是否为 "true"
-                return output;
+            public static string BoolToYesNo(bool? input)
+            {
+                if (input == true)
+                {
+                    return "是";
+                }
+                else if (input == false)
+                {
+                    return "否";
+                }
+                else
+                {
+                    return "未知";
+                }
             }
 
             // 扩展方法，支持处理null值，null值返回false
@@ -71,7 +80,7 @@ namespace SNIBypassGUI
         // 用于安装证书
         public static bool InstallCertificate()
         {
-            WriteLog("InstallCertificate()被调用。", LogLevel.Debug);
+            WriteLog("进入InstallCertificate。", LogLevel.Debug);
 
             // 创建一个指向当前用户根证书存储的X509Store对象
             // StoreName.Root表示根证书存储，StoreLocation.CurrentUser表示当前用户的证书存储
@@ -89,12 +98,10 @@ namespace SNIBypassGUI
                 // 检查是否找到了具有该指纹的证书
                 if (fcollection != null)
                 {
-                    WriteLog($"检测到fcollection不为空。", LogLevel.Debug);
-
                     // 如果找到了证书，则检查证书的数量
                     if (fcollection.Count > 0)
                     {
-                        WriteLog($"检测到证书数量为{fcollection.Count}，尝试移除。", LogLevel.Info);
+                        WriteLog($"检测到证书数量为{fcollection.Count}，进行移除。", LogLevel.Info);
 
                         // 从存储中移除找到的证书（如果存在多个相同指纹的证书，将移除所有）
                         store.RemoveRange(fcollection);
@@ -102,7 +109,7 @@ namespace SNIBypassGUI
                     // 检查指定的证书文件是否存在
                     if (File.Exists(PathsSet.CERFile))
                     {
-                        WriteLog($"检测到证书文件{PathsSet.CERFile}存在，尝试安装。", LogLevel.Info);
+                        WriteLog($"证书文件{PathsSet.CERFile}存在，进行安装。", LogLevel.Info);
 
                         // 从文件中加载证书
                         X509Certificate2 x509 = new X509Certificate2(PathsSet.CERFile);
@@ -110,19 +117,19 @@ namespace SNIBypassGUI
                         store.Add(x509);
                     }
                 }
-                WriteLog("InstallCertificate()完成，返回true。", LogLevel.Debug);
+                WriteLog("完成InstallCertificate，返回true。", LogLevel.Debug);
 
                 // 如果没有找到证书集合（理论上不应该发生，除非Thumbprint为空或格式错误）
                 return true;
             }
             catch (Exception ex)
             {
-                WriteLog($"遇到异常：{ex}", LogLevel.Error);
+                WriteLog($"遇到异常。", LogLevel.Error, ex);
 
                 // 如果在安装证书过程中发生异常，则显示错误消息框
                 HandyControl.Controls.MessageBox.Show($"安装证书失败！\r\n{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
 
-                WriteLog("InstallCertificate()完成，返回false。", LogLevel.Debug);
+                WriteLog("完成InstallCertificate，返回false。", LogLevel.Debug);
 
                 return false;
             }

@@ -13,7 +13,7 @@ namespace RpNet.FileHelper
         // 搜索以 "CustomBkg" 开头的文件，并返回第一个找到的文件的路径
         public static string FindCustomBkg()
         {
-            WriteLog($"FindCustomBkg()被调用。", LogLevel.Debug);
+            WriteLog($"进入FindCustomBkg。", LogLevel.Debug);
 
             string filePath = null;
             // 遍历目标目录中的所有文件
@@ -30,7 +30,7 @@ namespace RpNet.FileHelper
                 }
             }
 
-            WriteLog($"FindCustomBkg()完成，返回{filePath}。", LogLevel.Debug);
+            WriteLog($"完成FindCustomBkg，返回{filePath}。", LogLevel.Debug);
 
             return filePath; // 如果没有找到文件，则返回 null
         }
@@ -38,8 +38,6 @@ namespace RpNet.FileHelper
         // 释放资源型的图像调用方法
         public static BitmapImage GetImage(string imagePath)
         {
-            WriteLog($"GetImage(string imagePath)被调用，参数imagePath：{imagePath}。", LogLevel.Debug);
-
             BitmapImage bitmap = new BitmapImage();
             if (File.Exists(imagePath))
             {
@@ -49,23 +47,22 @@ namespace RpNet.FileHelper
                 {
                     bitmap.StreamSource = ms;
                     bitmap.EndInit();
-                    bitmap.Freeze();  // 在这里释放资源  
+                    bitmap.Freeze();  // 释放资源  
                 }
             }
-
-            WriteLog($"GetImage(string imagePath)完成，返回{bitmap}。", LogLevel.Debug);
-
             return bitmap;
         }
 
         // 用于移除文件中从“#   sectionName Start”到“#   sectionName End”部分的方法，用来操作 hosts
         public static void RemoveSection(string filePath, string sectionName)
         {
-            WriteLog($"RemoveSection(string filePath, string sectionName)被调用，参数filePath：{filePath}，参数sectionName：{sectionName}。", LogLevel.Debug);
+            WriteLog($"进入RemoveSection。", LogLevel.Debug);
 
             if (!File.Exists(filePath))
             {
-                throw new FileNotFoundException($"文件{filePath}不存在！", filePath);
+                WriteLog($"文件{filePath}不存在！", LogLevel.Warning);
+
+                return;
             }
 
             string startMarker = $"#\t{sectionName} Start";
@@ -91,17 +88,19 @@ namespace RpNet.FileHelper
             }
             File.WriteAllText(filePath, newContent.ToString());
 
-            WriteLog($"RemoveSection(string filePath, string sectionName)完成。", LogLevel.Debug);
+            WriteLog($"完成RemoveSection。", LogLevel.Debug);
         }
 
         // 用于把string[] linesToWrite写入一个文件的方法
         public static void WriteLinesToFile(string[] linesToWrite, string filePath)
         {
-            WriteLog($"WriteLinesToFile(string[] linesToWrite, string filePath)被调用，参数string[] linesToWrite：{linesToWrite}，参数filePath：{filePath}。", LogLevel.Debug);
+            WriteLog($"进入WriteLinesToFile。", LogLevel.Debug);
 
             if (!File.Exists(filePath))
             {
-                throw new FileNotFoundException($"文件{filePath}不存在！", filePath);
+                WriteLog($"文件{filePath}不存在！", LogLevel.Warning);
+
+                return;
             }
 
             using (StreamWriter writer = new StreamWriter(filePath, true, Encoding.UTF8))
@@ -112,7 +111,7 @@ namespace RpNet.FileHelper
                 }
             }
 
-            WriteLog($"WriteLinesToFile(string[] linesToWrite, string filePath)完成。", LogLevel.Debug);
+            WriteLog($"完成WriteLinesToFile。", LogLevel.Debug);
         }
 
         /// <summary>
@@ -122,21 +121,15 @@ namespace RpNet.FileHelper
         /// <param name="path">释放到的路径</param>
         public static void ExtractNormalFileInResx(byte[] resource, String path)
         {
-            WriteLog($"ExtractNormalFileInResx(byte[] resource, String path)被调用，参数resource：{resource}，参数path：{path}。", LogLevel.Debug);
-
             FileStream file = new FileStream(path, FileMode.Create);
             file.Write(resource, 0, resource.Length);
             file.Flush();
             file.Close();
-
-            WriteLog($"ExtractNormalFileInResx(byte[] resource, String path)完成。", LogLevel.Debug);
         }
 
         // 用于计算给定文件路径列表中的文件总大小（以MB为单位）的静态方法
         public static double GetTotalFileSizeInMB(List<string> filePaths)
         {
-            WriteLog($"GetTotalFileSizeInMB(List<string> filePaths)被调用，参数filePaths：{filePaths}。", LogLevel.Debug);
-
             // 定义一个变量来存储文件总大小（以字节为单位）
             long totalSizeInBytes = 0;
             // 遍历给定的文件路径列表
@@ -153,8 +146,6 @@ namespace RpNet.FileHelper
             // 将总大小（以字节为单位）转换为MB，并保留两位小数
             double totalSizeInMB = Math.Round((double)totalSizeInBytes / (1024 * 1024), 2);
 
-            WriteLog($"GetTotalFileSizeInMB(List<string> filePaths)完成，返回{totalSizeInMB}。", LogLevel.Debug);
-
             // 返回文件总大小（以MB为单位）
             return totalSizeInMB;
         }
@@ -162,7 +153,7 @@ namespace RpNet.FileHelper
         // 该方法用于确保指定路径的目录存在，如果目录不存在，则创建它
         public static void EnsureDirectoryExists(string path)
         {
-            WriteLog($"EnsureDirectoryExists(string path)被调用，参数path：{path}。", LogLevel.Debug);
+            WriteLog($"进入EnsureDirectoryExists。", LogLevel.Debug);
 
             // 如果目录不存在
             if (!Directory.Exists(path))
@@ -174,7 +165,7 @@ namespace RpNet.FileHelper
             }
             // 如果目录已存在，则不执行任何操作
 
-            WriteLog($"EnsureDirectoryExists(string path)完成。", LogLevel.Debug);
+            WriteLog($"完成EnsureDirectoryExists。", LogLevel.Debug);
         }
     }
 
@@ -187,32 +178,24 @@ namespace RpNet.FileHelper
 
         // 声明INI文件的读操作函数 GetPrivateProfileString()
         [System.Runtime.InteropServices.DllImport("kernel32")]
-        private static extern int GetPrivateProfileString(string section, string key, string def, System.Text.StringBuilder retVal, int size, string filePath);
+        private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
 
 
         // 写入INI的方法
         public void INIWrite(string section, string key, string value, string path)
         {
-            WriteLog($"INIWrite(string section, string key, string value, string path)被调用，参数section：{section}，参数key：{key}，参数value：{value}，参数path：{path}。", LogLevel.Debug);
-
             // section=配置节点名称，key=键名，value=返回键值，path=路径
             WritePrivateProfileString(section, key, value, path);
-
-            WriteLog($"INIWrite(string section, string key, string value, string path)完成。", LogLevel.Debug);
         }
 
         //读取INI的方法
         public string INIRead(string section, string key, string path)
         {
-            WriteLog($"INIRead(string section, string key, string path)被调用，参数section：{section}，参数key：{key}，参数path：{path}。", LogLevel.Debug);
-
             // 每次从ini中读取多少字节
-            System.Text.StringBuilder temp = new System.Text.StringBuilder(255);
+            StringBuilder temp = new StringBuilder(255);
 
             // section=配置节点名称，key = 键名，temp = 上面，path = 路径
             GetPrivateProfileString(section, key, "", temp, 255, path);
-
-            WriteLog($"INIRead(string section, string key, string path)完成，返回{temp}。", LogLevel.Debug);
 
             return temp.ToString();
         }
@@ -220,12 +203,10 @@ namespace RpNet.FileHelper
         //删除一个INI文件
         public void INIDelete(string FilePath)
         {
-            WriteLog($"INIDelete(string FilePath)被调用，参数FilePath：{FilePath}。", LogLevel.Debug);
-
-            File.Delete(FilePath);
-
-            WriteLog($"INIDelete(string FilePath)完成。", LogLevel.Debug);
+            if (File.Exists(FilePath))
+            {
+                File.Delete(FilePath);
+            }
         }
-
     }
 }

@@ -559,11 +559,11 @@ namespace RpNet.NetworkHelper
 
         public static void FlushDNS()
         {
-            WriteLog("FlushDNS()被调用。", LogLevel.Debug);
+            WriteLog("进入FlushDNS。", LogLevel.Debug);
 
             UInt32 result = DnsFlushResolverCache();
 
-            WriteLog("FlushDNS()完成。", LogLevel.Debug);
+            WriteLog("完成FlushDNS。", LogLevel.Debug);
         }
     }
 
@@ -572,7 +572,7 @@ namespace RpNet.NetworkHelper
         // 检测是否可以 Ping 通的方法
         public static bool PingHost(string host)
         {
-            WriteLog($"PingHost(string host)被调用，参数host：{host}。", LogLevel.Debug);
+            WriteLog($"进入PingHost。", LogLevel.Debug);
 
             bool pingable = false;
             Ping pingSender = new Ping();
@@ -586,10 +586,10 @@ namespace RpNet.NetworkHelper
             }
             catch (PingException pex)
             {
-                WriteLog($"遇到异常：{pex}。", LogLevel.Error);
+                WriteLog($"遇到异常：{pex}。", LogLevel.Error, pex);
             }
 
-            WriteLog($"PingHost(string host)完成，返回{pingable}。", LogLevel.Debug);
+            WriteLog($"完成PingHost。", LogLevel.Debug);
 
             return pingable;
         }
@@ -602,7 +602,7 @@ namespace RpNet.NetworkHelper
         // 解决由于 api.github.com 访问异常引起的有关问题（https://github.com/racpast/Pixiv-Nginx-GUI/issues/2）
         public static void EnsureGithubAPI()
         {
-            WriteLog($"EnsureGithubAPI()被调用。", LogLevel.Debug);
+            WriteLog($"进入EnsureGithubAPI。", LogLevel.Debug);
 
             // api.github.com DNS A记录 IPv4 列表
             List<string> APIIPAddress = new List<string>
@@ -630,7 +630,7 @@ namespace RpNet.NetworkHelper
                     break;
                 }
             }
-            WriteLog($"EnsureGithubAPI()完成。", LogLevel.Debug);
+            WriteLog($"完成EnsureGithubAPI。", LogLevel.Debug);
         }
 
         // Github 文件下载加速代理列表
@@ -675,7 +675,7 @@ namespace RpNet.NetworkHelper
         // 寻找最优代理的方法
         public static async Task<string> FindFastestProxy(List<string> proxies, string targetUrl)
         {
-            WriteLog($"FindFastestProxy(List<string> proxies, string targetUrl)被调用，参数proxies：{proxies}，参数targetUrl：{targetUrl}。", LogLevel.Debug);
+            WriteLog($"进入FindFastestProxy。", LogLevel.Debug);
 
             // 逐个测试代理延迟
             var proxyTasks = proxies.Select(async proxy =>
@@ -733,12 +733,10 @@ namespace RpNet.NetworkHelper
                 .OrderBy(result => result.ElapsedMilliseconds)
                 .First();
 
-            string Output = fastestProxy.proxy;
-
-            WriteLog($"FindFastestProxy(List<string> proxies, string targetUrl)完成，返回{Output}。", LogLevel.Debug);
+            WriteLog($"完成FindFastestProxy。", LogLevel.Debug);
 
             // 返回延迟最低的加速代理地址
-            return Output;
+            return fastestProxy.proxy;
         }
     }
 
@@ -754,7 +752,7 @@ namespace RpNet.NetworkHelper
         // 异步获取URL内容的方法
         public static async Task<string> GetAsync(string url)
         {
-            WriteLog($"GetAsync(string url)被调用，参数url：{url}。", LogLevel.Debug);
+            WriteLog("进入GetAsync。", LogLevel.Debug);
 
             try
             {
@@ -768,14 +766,14 @@ namespace RpNet.NetworkHelper
 
                 string Output = await response.Content.ReadAsStringAsync();
 
-                WriteLog($"GetAsync(string url)完成，返回{Output}。", LogLevel.Debug);
+                WriteLog($"完成GetAsync。", LogLevel.Debug);
 
                 // 返回响应内容
                 return Output;
             }
             catch (Exception ex)
             {
-                WriteLog($"遇到异常：{ex}。", LogLevel.Error);
+                WriteLog($"发送请求时遇到异常。", LogLevel.Error, ex);
 
                 // 抛出异常
                 throw ex;
