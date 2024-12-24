@@ -21,8 +21,7 @@ namespace SNIBypassGUI
             "                           |__/  |_|                                         ",
             "——————————————————————————————————————————",
             "版本号：" + PresetGUIVersion,
-            "记录时间：" +DateTime.UtcNow.ToString(),
-            "系统信息：" + OSDescription,
+            "记录时间：" + DateTime.UtcNow.ToString(),
             "——————————————————————————————————————————"
         };
 

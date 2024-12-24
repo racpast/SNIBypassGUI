@@ -27,9 +27,6 @@ namespace SNIBypassGUI
         public static string PresetYiyan = "不是渐行渐远，而是有一天终要重逢。";
         public static string PresetYiyanForm = "—— 龙应台「目送」";
 
-        // 操作系统描述信息
-        public static string OSDescription { get; } = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
-
         // 字符串转换为布尔值的类
         public class StringBoolConverter
         {
