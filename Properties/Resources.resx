@@ -157,4 +157,13 @@
   <data name="SNIBypassKey" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\SNIBypassKey.key;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="如何寻找活动适配器" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\如何寻找活动适配器.mp4;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="如何手动设置适配器" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\如何手动设置适配器.mp4;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="如何手动还原适配器" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\如何手动还原适配器.mp4;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
 </root>

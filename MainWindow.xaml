@@ -19,18 +19,15 @@
         </Grid.Background>
         <tb:TaskbarIcon x:Name="TaskbarIcon" LeftClickCommand="{Binding _TaskbarIconLeftClickCommand}" DoubleClickCommand="{Binding _TaskbarIconLeftClickCommand}" IconSource="/Resources/icon.ico" ToolTipText="SNIBypassGUI">
             <tb:TaskbarIcon.TrayToolTip>
-                <Border BorderBrush="#FF46FFD0" BorderThickness="1" CornerRadius="4" Opacity="0.8" Width="250" Height="auto">
-                    <Border.Background>
-                        <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/MenuBkg.png"/>
-                    </Border.Background>
+                <Border BorderBrush="#FF46FFD0" Background="White" BorderThickness="1" CornerRadius="4" Opacity="0.8" Width="250" Height="auto">
                     <StackPanel>
                         <TextBlock Foreground="#FF2BFF00" Text="SNIBypassGUI" Margin="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="16"/>
                         <TextBlock x:Name="ReferenceTextBlock" Margin="5,0,5,5" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
 			                <Run Foreground="#FF00FFED" Text="服务状态："/>
 			                <Run x:Name="TaskbarIconServiceST"  Text="主服务和DNS服务未运行" Foreground="Red"/>
                         </TextBlock>
-                        <TextBlock Foreground="Orange" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="不是渐行渐远，而是有一天终要重逢。" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        <TextBlock Foreground="DarkOrange" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 龙应台「目送」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
+                        <TextBlock Foreground="DeepPink" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="不是渐行渐远，而是有一天终要重逢。" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <TextBlock Foreground="DarkViolet" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 龙应台「目送」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
                     </StackPanel>
                 </Border>
             </tb:TaskbarIcon.TrayToolTip>
@@ -171,18 +168,35 @@
                         <Span Foreground="#FFC74DE4">
                             <Run Text="项目地址："/>
                         </Span>
-                        <Run Cursor="Hand" PreviewMouseDown="LinkText_PreviewMouseDown" FontFamily="Microsoft Ya Hei UI" Foreground="#FF3C75FF" TextDecorations="Underline">https://github.com/racpast/SNIBypassGUI</Run>
+                        <Run Text=" "/>
+                        <Run Cursor="Hand" PreviewMouseDown="LinkText_PreviewMouseDown" FontFamily="Microsoft Ya Hei UI" Foreground="#FF3C75FF" TextDecorations="Underline" Text="https://github.com/racpast/SNIBypassGUI"/>
                     </Paragraph>
                 </FlowDocument>
             </RichTextBox>
-            <TabControl Grid.Column="1" x:Name="tabcontrol" Margin="10,10,20,20" Style="{StaticResource TabControlInLine}" FontFamily="{StaticResource AaManYuShouXieTi}" Background="Transparent" BorderBrush="White" FontSize="14">
+            <TabControl Grid.Column="1" x:Name="tabcontrol" Margin="10,10,20,20" Style="{StaticResource TabControlInLine}" FontFamily="{StaticResource AaManYuShouXieTi}" Background="Transparent" BorderBrush="White" FontSize="14" SelectionChanged="TabControl_SelectionChanged">
                 <TabItem Header="主页" IsSelected="True" Background="#70FFFFFF">
                     <ScrollViewer>
                         <StackPanel Background="#70FFFFFF">
-                            <TextBlock Margin="20,10,20,5" TextWrapping="Wrap" Text="欢迎使用 &#x000A;SNIBypassGUI！" FontSize="24" Foreground="#FF2100C3" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
-                            <TextBlock Margin="20,0,20,10" TextWrapping="Wrap" Text="如果您是第一次使用 SNIBypassGUI ，请单击下方按钮安装所需证书，所有对话框均选择 是(Y)。" FontSize="19" Foreground="#FF4595FF" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
-                            <Button x:Name="InstallCertBtn" Click="InstallCertBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="一键安装证书"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                            <TextBlock x:Name="ServiceST" Margin="20,0,20,10" TextWrapping="Wrap" Text="当前服务状态：&#x000A;主服务与DNS服务未运行" FontSize="19" Foreground="Red" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
+                            <TextBlock Margin="20,5,20,5" TextWrapping="Wrap" Text="欢迎使用 &#x000A;SNIBypassGUI！" FontSize="24" Foreground="#FF2100C3" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
+                            <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您是第一次使用 SNIBypassGUI ，请单击下方按钮安装所需证书，所有对话框均选择 是(Y)。" FontSize="19" Foreground="#FF4595FF" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
+                            <Button x:Name="InstallCertBtn" Click="InstallCertBtn_Click" Height="30" Margin="10,0,10,0" HorizontalAlignment="Stretch" Content="一键安装证书"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                            <TextBlock x:Name="ServiceST" Margin="20,5,20,0" TextWrapping="Wrap" Text="当前服务状态：&#x000A;主服务与DNS服务未运行" FontSize="21" Foreground="Red" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
+                            <Grid Margin="10,0,10,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="auto"/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="选择正在使用的网络适配器：" FontSize="18" Foreground="#FF4595FF" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
+                                <Button HorizontalAlignment="Right" x:Name="HelpBtn_HowToFindActiveAdapter" Click="HelpBtn_HowToFindActiveAdapter_Click" Grid.Column="1" BorderBrush="#FF212121" Background="#70FFFFFF" hc:BorderElement.CornerRadius="15" Content="如何选择？" hc:IconElement.Geometry="{StaticResource InfoGeometry}" FontWeight="Bold"/>
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition Width="auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="AdaptersCombo" Margin="10,0,10,10" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="#70FFFFFF" FontWeight="Bold" FontSize="16"/>
+                                <Button x:Name="GetActiveAdapterBtn" Grid.Column="1" Click="GetActiveAdapterBtn_Click" Height="30" Margin="0,0,10,10" HorizontalAlignment="Stretch" Content="自动获取"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center" Width="auto"/>
+                            </Grid>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition/>

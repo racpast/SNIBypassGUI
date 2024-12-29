@@ -15,6 +15,8 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <IsWebBootstrapper>false</IsWebBootstrapper>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -89,6 +91,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
+    <Reference Include="System.Management.Automation, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp">
@@ -109,14 +112,17 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="HostsRecordHelper.cs" />
-    <Compile Include="RpNet.AcrylicServiceHelper.cs" />
-    <Compile Include="RpNet.CMDHelper.cs" />
-    <Compile Include="RpNet.FileHelper.cs" />
-    <Compile Include="LogHelper.cs" />
-    <Compile Include="RpNet.NetworkHelper.cs" />
-    <Compile Include="PathHelper.cs" />
-    <Compile Include="PublicHelper.cs" />
+    <Compile Include="Helpers\HostsRecordHelper.cs" />
+    <Compile Include="RpNet\RpNet.AcrylicServiceHelper.cs" />
+    <Compile Include="RpNet\RpNet.CMDHelper.cs" />
+    <Compile Include="RpNet\RpNet.FileHelper.cs" />
+    <Compile Include="Helpers\LogHelper.cs" />
+    <Compile Include="RpNet\RpNet.NetworkHelper.cs" />
+    <Compile Include="Helpers\PathHelper.cs" />
+    <Compile Include="Helpers\PublicHelper.cs" />
+    <Compile Include="VideoHelpWindow.xaml.cs">
+      <DependentUpon>VideoHelpWindow.xaml</DependentUpon>
+    </Compile>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -129,6 +135,10 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="VideoHelpWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -155,7 +165,7 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <None Include="Resources\AcrylicConfiguration.ini" />
-    <Compile Include="RpNet.TaskbarHelper.cs" />
+    <Compile Include="RpNet\RpNet.TaskbarHelper.cs" />
     <Resource Include="Resources\bypass.conf" />
     <Resource Include="Resources\cert.conf" />
     <Resource Include="Resources\nginx.conf" />
@@ -230,6 +240,15 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\MenuBkg.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\如何寻找活动适配器.mp4" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\如何手动设置适配器.mp4" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\如何手动还原适配器.mp4" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

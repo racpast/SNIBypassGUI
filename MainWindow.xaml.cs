@@ -21,6 +21,7 @@ using RpNet.TaskBarHelper;
 using Microsoft.Win32.TaskScheduler;
 using Task = System.Threading.Tasks.Task;
 using System.Windows.Controls.Primitives;
+using System.Linq;
 
 namespace SNIBypassGUI
 {
@@ -30,37 +31,21 @@ namespace SNIBypassGUI
     public partial class MainWindow : Window
     {
         // 定义用于更新临时文件大小和服务状态的计时器
-        private readonly DispatcherTimer _TempFilesUpdateTimer;
-        private readonly DispatcherTimer _ServiceStUpdateTimer;
+        private readonly DispatcherTimer _TabCUpdateTimer;
+        private readonly DispatcherTimer _TabAUpdateTimer;
 
         // 创建 TaskbarIconLeftClickCommand 实例，并将它作为 DataContext 的一部分传递。
         public TaskbarIconLeftClickCommand _TaskbarIconLeftClickCommand { get; }
 
-        // 是否需要记录日志
-        public void UpdateShouldLog()
-        {
-            // 读取日志开关
-            OutputLog = StringBoolConverter.StringToBool(ConfigINI.INIRead("日志开关", "OutputLog", PathsSet.INIPath));
-
-            if (OutputLog)
-            {
-                if (!Directory.Exists(PathsSet.GUILogDirectory))
-                {
-                    // 创建目录
-                    Directory.CreateDirectory(PathsSet.GUILogDirectory);
-                }
-                // 写日志头
-                foreach (var headerline in GUILogHead)
-                {
-                    WriteLog(headerline, LogLevel.None);
-                }
-            }
-        }
-
         // 窗口构造函数
         public MainWindow()
         {
-            UpdateShouldLog();
+            OutputLog = StringBoolConverter.StringToBool(ConfigINI.INIRead("高级设置", "GUIDebug", PathsSet.INIPath));
+
+            foreach (var headerline in GUILogHead)
+            {
+                WriteLog(headerline, LogLevel.None);
+            }
 
             WriteLog("进入MainWindow。", LogLevel.Debug);
 
@@ -84,21 +69,21 @@ namespace SNIBypassGUI
             InitializeComponent();
 
             // 创建一个新的 DispatcherTimer 实例，用于定期更新日志信息
-            _TempFilesUpdateTimer = new DispatcherTimer
+            _TabCUpdateTimer = new DispatcherTimer
             {
                 // 设置 timer 的时间间隔为每5秒触发一次
                 Interval = TimeSpan.FromSeconds(5)
             };
             // 当 timer 到达指定的时间间隔时，将调用 LogUpdateTimer_Tick 方法
-            _TempFilesUpdateTimer.Tick += TempFilesUpdateTimer_Tick;
+            _TabCUpdateTimer.Tick += TabCUpdateTimer_Tick;
             // 创建另一个新的 DispatcherTimer 实例，用于定期更新服务状态信息
-            _ServiceStUpdateTimer = new DispatcherTimer
+            _TabAUpdateTimer = new DispatcherTimer
             {
                 // 设置 timer 的时间间隔为每5秒触发一次
                 Interval = TimeSpan.FromSeconds(5)
             };
-            // 当 timer 到达指定的时间间隔时，将调用 ServiceStUpdateTimer_Tick 方法
-            _ServiceStUpdateTimer.Tick += ServiceStUpdateTimer_Tick;
+            // 当 timer 到达指定的时间间隔时，将调用 TabAUpdateTimer_Tick 方法
+            _TabAUpdateTimer.Tick += TabAUpdateTimer_Tick;
 
             // 窗口可拖动
             this.TopBar.MouseLeftButtonDown += (o, e) => { DragMove(); };
@@ -110,60 +95,68 @@ namespace SNIBypassGUI
         }
 
         // 临时文件大小更新计时器触发事件
-        private void TempFilesUpdateTimer_Tick(object sender, EventArgs e)
+        private void TabCUpdateTimer_Tick(object sender, EventArgs e)
         {
-            WriteLog("进入TempFilesUpdateTimer_Tick。", LogLevel.Debug);
+            WriteLog("进入TabCUpdateTimer_Tick。", LogLevel.Debug);
 
             // 更新清理日志按钮的内容，显示所有日志文件的总大小（以MB为单位）
             CleanBtn.Content = $"清理服务运行日志及缓存 ({FileHelper.GetTotalFileSizeInMB(PathsSet.TempFilesPathsIncludingGUILog)}MB)";
 
-            // 顺便在这里更新调试有关开关
-            if (ConfigINI.INIRead("程序设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
+            SyncFromConfig();
+
+            WriteLog("完成TabCUpdateTimer_Tick。", LogLevel.Debug);
+        }
+
+        // 更新适配器列表的方法
+        private void UpdateAdaptersCombo()
+        {
+            string PreviousSelectedAdapter = AdaptersCombo.SelectedItem?.ToString();
+            List<NetAdp> adapters = NetAdp.GetAdapters();
+
+            // 先更新数据
+            AdaptersCombo.Items.Clear();
+            foreach (var adapter in adapters)
             {
-                SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\nDNS服务";
-            }
-            else
-            {
-                ToggleToDebugMode();
-                SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\n系统hosts";
-            }
-            if (ConfigINI.INIRead("日志开关", "OutputLog", PathsSet.INIPath) == "false")
-            {
-                GUIDebugBtn.Content = "GUI调试：\n关";
-            }
-            else
-            {
-                ToggleToDebugMode();
-                GUIDebugBtn.Content = "GUI调试：\n开";
-            }
-            if (!File.Exists(PathsSet.AcrylicDebugLogFilePath))
-            {
-                AcrylicDebugBtn.Content = "DNS服务调试：\n关";
-            }
-            else
-            {
-                ToggleToDebugMode();
-                AcrylicDebugBtn.Content = "DNS服务调试：\n开";
+                if (adapter.Name != null)
+                {
+                    AdaptersCombo.Items.Add(adapter.Name);
+                }
             }
 
-            WriteLog("完成TempFilesUpdateTimer_Tick。", LogLevel.Debug);
+            // 更新选中的项
+            if (AdaptersCombo.Items.Cast<string>().Contains(PreviousSelectedAdapter))
+            {
+                AdaptersCombo.Text = PreviousSelectedAdapter;
+            }
+            else
+            {
+                AdaptersCombo.SelectedItem = null;
+            }
         }
 
         // 服务状态更新计时器触发事件
-        private void ServiceStUpdateTimer_Tick(object sender, EventArgs e)
+        private void TabAUpdateTimer_Tick(object sender, EventArgs e)
         {
-            WriteLog("进入ServiceStUpdateTimer_Tick。", LogLevel.Debug);
+            WriteLog("进入TabAUpdateTimer_Tick。", LogLevel.Debug);
 
             // 更新服务状态
             UpdateServiceST();
 
-            WriteLog("完成ServiceStUpdateTimer_Tick。", LogLevel.Debug);
+            // 更新网络适配器列表
+            UpdateAdaptersCombo();
+
+            WriteLog("完成TabAUpdateTimer_Tick。", LogLevel.Debug);
         }
 
         // 更新服务状态的方法
         public void UpdateServiceST()
         {
             WriteLog("进入UpdateServiceST。", LogLevel.Debug);
+
+            if (ServiceST == null)
+            {
+                return;
+            }
 
             bool IsNginxRunning;
             bool IsDnsRunning;
@@ -185,6 +178,8 @@ namespace SNIBypassGUI
                 TaskbarIconServiceST.Text = "主服务和DNS服务运行中";
                 ServiceST.Foreground = new SolidColorBrush(Colors.ForestGreen);
                 TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.ForestGreen);
+                AdaptersCombo.IsEnabled = false;
+                GetActiveAdapterBtn.IsEnabled = false;
             }
             else if (IsNginxRunning)
             {
@@ -192,6 +187,8 @@ namespace SNIBypassGUI
                 TaskbarIconServiceST.Text = "仅主服务运行中";
                 ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
+                AdaptersCombo.IsEnabled = false;
+                GetActiveAdapterBtn.IsEnabled = false;
             }
             else if (IsDnsRunning)
             {
@@ -199,6 +196,8 @@ namespace SNIBypassGUI
                 TaskbarIconServiceST.Text = "仅DNS服务运行中";
                 ServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
+                AdaptersCombo.IsEnabled = false;
+                GetActiveAdapterBtn.IsEnabled = false;
             }
             else
             {
@@ -206,6 +205,8 @@ namespace SNIBypassGUI
                 TaskbarIconServiceST.Text = "主服务与DNS服务未运行";
                 ServiceST.Foreground = new SolidColorBrush(Colors.Red);
                 TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.Red);
+                AdaptersCombo.IsEnabled = true;
+                GetActiveAdapterBtn.IsEnabled = true;
             }
 
             WriteLog("完成UpdateServiceST。", LogLevel.Debug);
@@ -274,18 +275,18 @@ namespace SNIBypassGUI
 
                 ConfigINI.INIWrite("程序设置", "IsFirst", "true", PathsSet.INIPath);
                 ConfigINI.INIWrite("程序设置", "Background", "Preset", PathsSet.INIPath);
-                ConfigINI.INIWrite("程序设置", "DomainNameResolutionMethod", "DnsService", PathsSet.INIPath);
-                ConfigINI.INIWrite("程序设置", "AcrylicDebug", "false", PathsSet.INIPath);
+                ConfigINI.INIWrite("程序设置", "ActiveAdapter", "", PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "DebugMode", "false",PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "GUIDebug", "false", PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "DomainNameResolutionMethod", "DnsService", PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "AcrylicDebug", "false", PathsSet.INIPath);
                 ConfigINI.INIWrite("暂存数据", "PreviousDNS1", "", PathsSet.INIPath);
                 ConfigINI.INIWrite("暂存数据", "PreviousDNS2", "", PathsSet.INIPath);
                 ConfigINI.INIWrite("暂存数据", "IsPreviousDnsAutomatic", "true", PathsSet.INIPath);
-
-                ConfigINI.INIWrite("日志开关", "OutputLog", "false", PathsSet.INIPath);
-
                 foreach (var configkeyname in SectionNamesSet)
                 {
                     ConfigINI.INIWrite("代理开关", configkeyname, "true", PathsSet.INIPath);
-                }           
+                }
             }
 
             WriteLog("完成CheckFiles。", LogLevel.Debug);
@@ -328,7 +329,7 @@ namespace SNIBypassGUI
         {
             WriteLog("进入UpdateHosts。", LogLevel.Debug);
 
-            if (ConfigINI.INIRead("程序设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
+            if (ConfigINI.INIRead("高级设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
             {
                 WriteLog($"当前域名解析模式为DNS服务，将更新{PathsSet.AcrylicHostsPath}。", LogLevel.Info);
 
@@ -369,7 +370,7 @@ namespace SNIBypassGUI
         {
             WriteLog("进入RemoveHosts。", LogLevel.Debug);
 
-            if (ConfigINI.INIRead("程序设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
+            if (ConfigINI.INIRead("高级设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
             {
                 WriteLog($"当前域名解析模式为DNS服务，将更新{PathsSet.AcrylicHostsPath}。", LogLevel.Info);
 
@@ -396,10 +397,11 @@ namespace SNIBypassGUI
         }
 
         // 从配置文件同步开关状态
-        public void ToggleButtonSync()
+        public void SyncFromConfig()
         {
-            WriteLog("进入ToggleButtonSync。", LogLevel.Debug);
+            WriteLog("进入SyncFromConfig。", LogLevel.Debug);
 
+            // 更新代理开关
             foreach (var togglebutton in ToggleButtonToSectionNamedDic)
             {
                 bool ShouldChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", togglebutton.Value, PathsSet.INIPath));
@@ -409,7 +411,65 @@ namespace SNIBypassGUI
                 togglebutton.Key.IsChecked = ShouldChecked;
             }
 
-            WriteLog("完成ToggleButtonSync。", LogLevel.Debug);
+            // 更新调试开关
+
+            if (StringBoolConverter.StringToBool(ConfigINI.INIRead("高级设置", "DebugMode", PathsSet.INIPath)))
+            {
+                DebugModeBtn.Content = "调试模式：\n开";
+                SwitchDomainNameResolutionMethodBtn.IsEnabled = true;
+                AcrylicDebugBtn.IsEnabled = true;
+                GUIDebugBtn.IsEnabled = true;
+            }
+            else
+            {
+                DebugModeBtn.Content = "调试模式：\n关";
+                SwitchDomainNameResolutionMethodBtn.IsEnabled = false;
+                AcrylicDebugBtn.IsEnabled = false;
+                GUIDebugBtn.IsEnabled = false;
+            }
+
+            if (StringBoolConverter.StringToBool(ConfigINI.INIRead("高级设置", "GUIDebug", PathsSet.INIPath)))
+            {
+                GUIDebugBtn.Content = "GUI调试：\n开";
+                OutputLog = true;
+            }
+            else
+            {
+                GUIDebugBtn.Content = "GUI调试：\n关";
+                OutputLog = false;
+            }
+
+            if (ConfigINI.INIRead("高级设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
+            {
+                SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\nDNS服务";
+            }
+            else
+            {
+                SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\n系统hosts";
+            }
+
+            if (StringBoolConverter.StringToBool(ConfigINI.INIRead("高级设置", "AcrylicDebug", PathsSet.INIPath)))
+            {
+                AcrylicDebugBtn.Content = "DNS服务调试：\n开";
+                AcrylicService.CreateAcrylicServiceDebugLog();
+            }
+            else
+            {
+                AcrylicDebugBtn.Content = "DNS服务调试：\n关";
+                AcrylicService.RemoveAcrylicServiceDebugLog();
+            }
+
+            string activeAdapter = ConfigINI.INIRead("程序设置", "ActiveAdapter", PathsSet.INIPath);
+            if (AdaptersCombo.Items.Cast<string>().Contains(activeAdapter))
+            {
+                AdaptersCombo.Text = activeAdapter;
+            }
+            else
+            {
+                AdaptersCombo.SelectedItem = null;
+            }
+
+            WriteLog("完成SyncFromConfig。", LogLevel.Debug);
         }
 
         // 从开关列表向配置文件同步
@@ -436,181 +496,114 @@ namespace SNIBypassGUI
         }
 
         // 将活动网络适配器首选DNS设置为127.0.0.1并记录先前的为有效的IPv4地址且非127.0.0.1的地址到配置
-        public void SetLocalDNS()
+        public bool SetLocalDNS(NetAdp activeAdapter)
         {
             WriteLog("进入SetLocalDNS。", LogLevel.Debug);
 
             try
             {
-                List<NetAdp> adapters = NetAdp.GetAdapters();
-
-                NetAdp activeAdapter = null;
-
-                // 找到当前正在使用的适配器，通过判断DNS是否为空来对VPN的虚拟适配器进行筛选
-                foreach (var adapter in adapters)
+                if (activeAdapter.DNS != null)
                 {
-                    if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
-                    {
-                        if(adapter.DNS != null)
-                        {
-                            activeAdapter = adapter;
-                            break;
-                        }
-                    }
-                }
-                if (activeAdapter != null)
-                {
-                    WriteLog($"获取到活动的网络适配器：{activeAdapter.Name}，开始配置。", LogLevel.Info);
+                    WriteLog($"获取到可设置的网络适配器：{activeAdapter.Name}，开始配置。", LogLevel.Info);
 
                     bool IsDnsAutomatic = activeAdapter.IsDnsAutomatic;// 应该在设置DNS之前记录是否为自动获取
                     string PreviousDNS1 = null;
                     string PreviousDNS2 = null;
 
-                    if (activeAdapter.DNS.Length == 0)
+                    if (activeAdapter.DNS[0]?.ToString() != "127.0.0.1")
                     {
-                        // DNS设置为空的情况
-                        activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
-                    }
-                    else if (activeAdapter.DNS.Length == 1)
-                    {
-                        // DNS设置中只有一个地址的情况
-                        if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[0]))
+                        if (activeAdapter.DNS.Length == 0)
                         {
-                            // DNS设置中只有一个地址，第一个地址为有效地址的情况
-                            if (activeAdapter.DNS[0] == "127.0.0.1")
-                            {
-                                // DNS设置中只有一个地址，第一个地址为有效地址的且第一个地址为127.0.0.1的情况
-                                activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
-                                PreviousDNS1 = "";
-                                PreviousDNS2 = "";
-                            }
-                            else
-                            {
-                                // DNS设置中只有一个地址，第一个地址为有效地址的且第一个地址不为127.0.0.1的情况
-                                activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[0] };
-                                PreviousDNS1 = activeAdapter.DNS[0];
-                                PreviousDNS2 = "";
-                            }
-                        }
-                        else
-                        {
-                            // DNS设置中只有一个地址且第一个地址为无效地址的情况
-                            activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
                             PreviousDNS1 = "";
                             PreviousDNS2 = "";
                         }
-                    }
-                    else if (activeAdapter.DNS.Length == 2)
-                    {
-                        // DNS设置中有两个地址的情况
-                        if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[0]))
+                        else if (activeAdapter.DNS.Length == 1)
                         {
-                            // DNS设置中有两个地址且第一个地址为有效地址的情况
-                            if (activeAdapter.DNS[0] == "127.0.0.1")
+                            if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[0]))
                             {
-                                // DNS设置中有两个地址，第一个地址为有效地址且第一个地址为127.0.0.1的情况
-                                if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[1]))
-                                {
-                                    // DNS设置中有两个地址，第一个地址为有效地址，第一个地址为127.0.0.1且第二个地址为有效地址的情况
-                                    if (activeAdapter.DNS[1] == "127.0.0.1")
-                                    {
-                                        // DNS设置中有两个地址，第一个地址为有效地址，第一个地址为127.0.0.1，第二个地址为有效地址且第二个地址为127.0.0.1的情况
-                                        activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
-                                        PreviousDNS1 = "";
-                                        PreviousDNS2 = "";
-                                    }
-                                    else
-                                    {
-                                        // DNS设置中有两个地址，第一个地址为有效地址，第一个地址为127.0.0.1，第二个地址为有效地址且第二个地址不为127.0.0.1的情况
-                                        activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[1] };
-                                        PreviousDNS1 = activeAdapter.DNS[1];
-                                        PreviousDNS2 = "";
-                                    }
-                                }
-                                else
-                                {
-                                    // DNS设置中有两个地址，第一个地址为有效地址，第一个地址为127.0.0.1且第二个地址为无效地址的情况
-                                    activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
-                                    PreviousDNS1 = "";
-                                    PreviousDNS2 = "";
-                                }
+                                PreviousDNS1 = activeAdapter.DNS[0];
+                                PreviousDNS2 = "";
                             }
                             else
                             {
-                                // DNS设置中有两个地址，第一个地址为有效地址且第一个地址不为127.0.0.1的情况
+                                PreviousDNS1 = "";
+                                PreviousDNS2 = "";
+                            }
+                        }
+                        else if (activeAdapter.DNS.Length == 2)
+                        {
+                            if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[0]))
+                            {
+                                PreviousDNS1 = activeAdapter.DNS[0];
+
                                 if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[1]))
                                 {
-                                    // DNS设置中有两个地址，第一个地址为有效地址，第一个地址不为127.0.0.1且第二个地址为有效地址的情况
                                     if (activeAdapter.DNS[1] == "127.0.0.1")
                                     {
-                                        // DNS设置中有两个地址，第一个地址为有效地址，第一个地址不为127.0.0.1，第二个地址为有效地址且第二个地址为127.0.0.1的情况
-                                        activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[0] };
-                                        PreviousDNS1 = activeAdapter.DNS[0];
                                         PreviousDNS2 = "";
                                     }
                                     else
                                     {
-                                        // DNS设置中有两个地址，第一个地址为有效地址，第一个地址不为127.0.0.1，第二个地址为有效地址且第二个地址不为127.0.0.1的情况
-                                        activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[0] };
-                                        PreviousDNS1 = activeAdapter.DNS[0];
                                         PreviousDNS2 = activeAdapter.DNS[1];
                                     }
                                 }
                                 else
                                 {
-                                    // DNS设置中有两个地址，第一个地址为有效地址，第一个地址不为127.0.0.1且第二个地址为无效地址的情况
-                                    activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[0] };
-                                    PreviousDNS1 = activeAdapter.DNS[0];
-                                    PreviousDNS2 = "";
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // DNS设置中有两个地址且第一个地址为无效地址的情况
-                            if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[1]))
-                            {
-                                // DNS设置中有两个地址，第一个地址为无效地址且第二个地址为有效地址的情况
-                                if (activeAdapter.DNS[1] == "127.0.0.1")
-                                {
-                                    // DNS设置中有两个地址，第一个地址为无效地址，第二个地址为有效地址且第二个地址为127.0.0.1的情况
-                                    activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
-                                    PreviousDNS1 = "";
-                                    PreviousDNS2 = "";
-                                }
-                                else
-                                {
-                                    // DNS设置中有两个地址，第一个地址为无效地址，第二个地址为有效地址且第二个地址不为127.0.0.1的情况
-                                    activeAdapter.DNS = new string[] { "127.0.0.1", activeAdapter.DNS[1] };
-                                    PreviousDNS1 = activeAdapter.DNS[1];
                                     PreviousDNS2 = "";
                                 }
                             }
                             else
                             {
-                                // DNS设置中有两个地址，第一个地址为无效地址且第二个地址为无效地址的情况
-                                activeAdapter.DNS = new string[] { "127.0.0.1", DNS.YoXiDNS };
-                                PreviousDNS1 = "";
                                 PreviousDNS2 = "";
+
+                                if (IPv4Validator.IsValidIPv4(activeAdapter.DNS[1]))
+                                {
+                                    if (activeAdapter.DNS[1] == "127.0.0.1")
+                                    {
+                                        PreviousDNS1 = "";
+                                    }
+                                    else
+                                    {
+                                        PreviousDNS1 = activeAdapter.DNS[1];
+                                    }
+                                }
+                                else
+                                {
+                                    PreviousDNS1 = "";
+                                }
                             }
                         }
+
+                        activeAdapter.DNS = new string[] { "127.0.0.1" };
+
+                        activeAdapter.Fresh();
+
+                        WriteLog($"指定网络适配器是否为自动获取DNS：{StringBoolConverter.BoolToYesNo(IsDnsAutomatic)}", LogLevel.Info);
+                        WriteLog($"指定网络适配器的DNS成功设置为首选{activeAdapter.DNS[0]}", LogLevel.Info);
+                        WriteLog($"将暂存的DNS为：{PreviousDNS1}，{PreviousDNS2}", LogLevel.Debug);
+
+                        ConfigINI.INIWrite("暂存数据", "PreviousDNS1", PreviousDNS1, PathsSet.INIPath);
+                        ConfigINI.INIWrite("暂存数据", "PreviousDNS2", PreviousDNS2, PathsSet.INIPath);
+                        ConfigINI.INIWrite("暂存数据", "IsPreviousDnsAutomatic", IsDnsAutomatic.ToString(), PathsSet.INIPath);
                     }
 
-                    activeAdapter.Fresh();
+                    WriteLog("完成SetLocalDNS，返回true。", LogLevel.Debug);
 
-                    WriteLog($"活动网络适配器是否为自动获取DNS：{StringBoolConverter.BoolToYesNo(IsDnsAutomatic)}", LogLevel.Info);
-                    WriteLog($"活动网络适配器的DNS成功设置为首选{activeAdapter.DNS[0]}，备用{activeAdapter.DNS[1]}", LogLevel.Info);
-                    WriteLog($"将暂存的DNS为：{PreviousDNS1}，{PreviousDNS2}", LogLevel.Debug);
-
-                    ConfigINI.INIWrite("暂存数据", "PreviousDNS1", PreviousDNS1, PathsSet.INIPath);
-                    ConfigINI.INIWrite("暂存数据", "PreviousDNS2", PreviousDNS2, PathsSet.INIPath);
-                    ConfigINI.INIWrite("暂存数据", "IsPreviousDnsAutomatic", IsDnsAutomatic.ToString(), PathsSet.INIPath);
+                    return true;
                 }
                 else
                 {
-                    WriteLog($"没有找到活动的网络适配器！", LogLevel.Warning);
+                    WriteLog($"无法设置指定的网络适配器，因为DNS为null！", LogLevel.Warning);
 
-                    HandyControl.Controls.MessageBox.Show($"没有找到活动的网络适配器！","警告",MessageBoxButton.OK,MessageBoxImage.Warning);
+                    if (HandyControl.Controls.MessageBox.Show($"无法设置指定的网络适配器！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                    {
+                        VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
+                        videoHelpWindow.Show();
+                    }
+
+                    WriteLog("完成SetLocalDNS，返回false。", LogLevel.Debug);
+
+                    return false;
                 }
             }
             catch (NetAdpSetException ex)
@@ -621,12 +614,14 @@ namespace SNIBypassGUI
             }
             catch (Exception ex)
             {
-                WriteLog($"遇到异常。", LogLevel.Error,ex);
+                WriteLog($"遇到异常。", LogLevel.Error, ex);
 
                 HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
-            WriteLog("完成SetLocalDNS。", LogLevel.Debug);
+            WriteLog("完成SetLocalDNS，返回false。", LogLevel.Debug);
+
+            return false;
         }
 
         // 启动所有服务
@@ -634,7 +629,7 @@ namespace SNIBypassGUI
         {
             WriteLog("进入StartService。", LogLevel.Debug);
 
-            if (ConfigINI.INIRead("程序设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
+            if (ConfigINI.INIRead("高级设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
             {
                 // 使用 Process.GetProcessesByName 方法获取所有名为 "SNIBypass" 的进程，这将返回一个包含所有匹配进程的 Process 数组
                 Process[] ps1 = Process.GetProcessesByName("SNIBypass");
@@ -703,40 +698,44 @@ namespace SNIBypassGUI
 
                 List<NetAdp> adapters = NetAdp.GetAdapters();
                 NetAdp activeAdapter = null;
-
-                // 找到当前正在使用的适配器，加DNS是否为Null筛选可能来自VPN的虚拟适配器
                 foreach (var adapter in adapters)
                 {
-                    if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
+                    if (adapter.Name == AdaptersCombo.SelectedItem?.ToString())
                     {
-                        if (adapter.DNS != null)
-                        {
-                            activeAdapter = adapter;
-                            break;
-                        }
+                        activeAdapter = adapter;
+                        break;
                     }
                 }
                 if (activeAdapter != null)
                 {
-                    if (activeAdapter.DNS.Length > 0)
+                    if (SetLocalDNS(activeAdapter))
                     {
-                        // 如果适配器的第一个DNS地址不为127.0.0.1，那么需要设置
-                        if (activeAdapter.DNS[0] != "127.0.0.1")
+                        WriteLog($"指定网络适配器为：{activeAdapter.Name}", LogLevel.Info);
+
+                        ConfigINI.INIWrite("程序设置", "ActiveAdapter", activeAdapter.Name, PathsSet.INIPath);
+
+                        if (!activeAdapter.DisableIPv6())
                         {
-                            SetLocalDNS();
+                            WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！", LogLevel.Warning);
+
+                            if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                            {
+                                VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
+                                videoHelpWindow.Show();
+                            }
                         }
-                    }
-                    else
-                    {
-                        // 如果适配器的DNS地址为空，那么需要设置
-                        SetLocalDNS();
+
                     }
                 }
                 else
                 {
-                    WriteLog($"没有找到活动的网络适配器！", LogLevel.Warning);
+                    WriteLog($"没有找到指定的网络适配器！", LogLevel.Warning);
 
-                    HandyControl.Controls.MessageBox.Show($"没有找到活动的网络适配器！", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (HandyControl.Controls.MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                    {
+                        VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
+                        videoHelpWindow.Show();
+                    }
                 }
             }
             else
@@ -775,6 +774,73 @@ namespace SNIBypassGUI
             }
 
             WriteLog("完成StartService。", LogLevel.Debug);
+        }
+
+        public bool UnsetLocalDNS(NetAdp activeAdapter)
+        {
+            WriteLog("进入UnsetLocalDNS。", LogLevel.Debug);
+
+            if (activeAdapter.DNS != null)
+            {
+                if (activeAdapter.DNS.Length > 0)
+                {
+                    // 如果适配器的DNS长度大于0的情况，一般不会发生为0的情况因为已经设置过了
+                    if (activeAdapter.DNS[0] == "127.0.0.1")
+                    {
+                        // 如果适配器的首选DNS为127.0.0.1的情况，需要更改回去
+                        if (StringBoolConverter.StringToBool(ConfigINI.INIRead("暂存数据", "IsPreviousDnsAutomatic", PathsSet.INIPath)))
+                        {
+                            // 之前是自动获取的情况
+                            activeAdapter.DNS = null;
+
+                            WriteLog($"活动网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
+                        }
+                        else
+                        {
+                            // 之前不是自动获取的情况，按照暂存数据设置回去
+                            if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)))
+                            {
+                                activeAdapter.DNS = null;
+
+                                WriteLog($"指定网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
+                            }
+                            else
+                            {
+                                if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)))
+                                {
+                                    activeAdapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath) };
+
+                                    WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}。", LogLevel.Info);
+                                }
+                                else
+                                {
+                                    activeAdapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath), ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath) };
+
+                                    WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}，备用{ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)}。", LogLevel.Info);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                WriteLog("完成UnsetLocalDNS，返回true。", LogLevel.Debug);
+
+                return true;
+            }
+            else
+            {
+                WriteLog($"无法设置指定的网络适配器，因为DNS为null！", LogLevel.Warning);
+
+                if (HandyControl.Controls.MessageBox.Show($"无法还原指定的网络适配器！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                {
+                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
+                    videoHelpWindow.Show();
+                }
+
+                WriteLog("完成UnsetLocalDNS，返回false", LogLevel.Debug);
+
+                return false;
+            }
         }
 
         // 停止所有服务
@@ -864,62 +930,43 @@ namespace SNIBypassGUI
 
             List<NetAdp> adapters = NetAdp.GetAdapters();
             NetAdp activeAdapter = null;
-
-            // 找到当前正在使用的适配器，用DNS非null筛选
+            if (string.IsNullOrEmpty(AdaptersCombo.SelectedItem?.ToString()))
+            {
+                return;
+            }
             foreach (var adapter in adapters)
             {
-                if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
+                if (adapter.Name == AdaptersCombo.SelectedItem?.ToString())
                 {
-                    if (adapter.DNS != null)
-                    {
-                        activeAdapter = adapter;
-                        break;
-                    }
+                    activeAdapter = adapter;
+                    break;
                 }
             }
             if (activeAdapter != null)
             {
-                WriteLog($"获取到活动的网络适配器：{activeAdapter.Name}，开始配置。", LogLevel.Info);
-
-                if (activeAdapter.DNS.Length > 0)
+                if (UnsetLocalDNS(activeAdapter))
                 {
-                    // 如果适配器的DNS长度大于0的情况，一般不会发生为0的情况因为已经设置过了
-                    if (activeAdapter.DNS[0] == "127.0.0.1")
+                    if (!activeAdapter.EnableIPv6())
                     {
-                        // 如果适配器的首选DNS长度为127.0.0.1的情况，需要更改回去
-                        if (StringBoolConverter.StringToBool(ConfigINI.INIRead("暂存数据", "IsPreviousDnsAutomatic", PathsSet.INIPath)))
+
+                        WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！", LogLevel.Warning);
+
+                        if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                         {
-                            // 之前是自动获取的情况
-                            activeAdapter.DNS = null;
-
-                            WriteLog($"活动网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
-                        }
-                        else
-                        {
-                            // 之前不是自动获取的情况，按照暂存数据设置回去
-                            if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)))
-                            {
-                                activeAdapter.DNS = null;
-
-                                WriteLog($"活动网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
-                            }
-                            else
-                            {
-                                if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)))
-                                {
-                                    activeAdapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath) };
-
-                                    WriteLog($"活动网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}。", LogLevel.Info);
-                                }
-                                else
-                                {
-                                    activeAdapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath), ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath) };
-
-                                    WriteLog($"活动网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}，备用{ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)}。", LogLevel.Info);
-                                }
-                            }
+                            VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
+                            videoHelpWindow.Show();
                         }
                     }
+                }
+            }
+            else
+            {
+                WriteLog($"没有找到指定的网络适配器！", LogLevel.Warning);
+
+                if (HandyControl.Controls.MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动还原。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                {
+                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
+                    videoHelpWindow.Show();
                 }
             }
 
@@ -945,14 +992,25 @@ namespace SNIBypassGUI
             // 禁用防手贱重复启动
             StartBtn.IsEnabled = false;
             StopBtn.IsEnabled = false;
+            AdaptersCombo.IsEnabled = false;
+            GetActiveAdapterBtn.IsEnabled = false;
 
-            // 从配置文件修改更新 Hosts
-            UpdateHosts();
+            if (AdaptersCombo.Text == "")
+            {
+                HandyControl.Controls.MessageBox.Show("请先在下拉框中选择当前正在使用的适配器！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
 
-            await StartService();
+                AdaptersCombo.IsEnabled = true;
+            }
+            else
+            {
+                // 从配置文件修改更新 Hosts
+                UpdateHosts();
 
-            // 刷新 DNS缓存
-            DNS.FlushDNS();
+                await StartService();
+
+                // 刷新 DNS缓存
+                DNS.FlushDNS();
+            }
 
             StartBtn.IsEnabled = true;
             StopBtn.IsEnabled = true;
@@ -976,6 +1034,9 @@ namespace SNIBypassGUI
 
             StartBtn.IsEnabled = true;
             StopBtn.IsEnabled = true;
+
+            AdaptersCombo.IsEnabled = true;
+            GetActiveAdapterBtn.IsEnabled = true;
 
             WriteLog("完成StopBtn_Click。", LogLevel.Debug);
         }
@@ -1082,6 +1143,8 @@ namespace SNIBypassGUI
         private async void ExitBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入ExitBtn_Click。", LogLevel.Debug);
+
+            this.Hide();
 
             RemoveHosts();
 
@@ -1191,7 +1254,7 @@ namespace SNIBypassGUI
             CleanBtn.Content = "服务运行日志及缓存清理中";
 
             // 停止定期更新大小的计时器
-            _TempFilesUpdateTimer.Stop();
+            _TabCUpdateTimer.Stop();
 
             bool NeedRestart = false;
 
@@ -1251,7 +1314,7 @@ namespace SNIBypassGUI
             WriteLog($"服务运行日志及缓存清理完成。", LogLevel.Info);
 
             // 重新启用定期更新大小的计时器
-            _TempFilesUpdateTimer.Start();
+            _TabCUpdateTimer.Start();
 
             // 弹出窗口提示清理完成
             HandyControl.Controls.MessageBox.Show("服务运行日志及缓存清理完成！", "清理", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -1281,24 +1344,25 @@ namespace SNIBypassGUI
             {
                 // 如果选中项的标题是"日志"
                 case "设置":
-                    TempFilesUpdateTimer_Tick(_TempFilesUpdateTimer, EventArgs.Empty);
+                    CleanBtn.Content = $"清理服务运行日志及缓存 ({FileHelper.GetTotalFileSizeInMB(PathsSet.TempFilesPathsIncludingGUILog)}MB)";
+                    SyncFromConfig();
                     // 启动日志更新定时器并停止服务状态信息更新定时器
-                    _TempFilesUpdateTimer.Start();
-                    _ServiceStUpdateTimer.Stop();
+                    _TabCUpdateTimer?.Start();
+                    _TabAUpdateTimer?.Stop();
                     break;
                 // 如果选中项的标题是"主页"
                 case "主页":
-                    // 更新服务的状态信息
+                    // 不 UpdateAdaptersCombo() 是因为会引发绑定异常
                     UpdateServiceST();
                     // 停止日志更新定时器并启动服务状态信息更新定时器
-                    _ServiceStUpdateTimer.Start();
-                    _TempFilesUpdateTimer.Stop();
+                    _TabAUpdateTimer?.Start();
+                    _TabCUpdateTimer?.Stop();
                     break;
                 // 如果选中项的标题不是上述两者之一
                 default:
                     // 停止所有定时器
-                    _TempFilesUpdateTimer.Stop();
-                    _ServiceStUpdateTimer.Stop();
+                    _TabCUpdateTimer?.Stop();
+                    _TabAUpdateTimer?.Stop();
                     break;
             }
 
@@ -1534,7 +1598,7 @@ namespace SNIBypassGUI
             WriteLog("进入UnchangeBtn_Click。", LogLevel.Debug);
 
             // 从配置文件同步开关
-            ToggleButtonSync();
+            SyncFromConfig();
             ApplyBtn.IsEnabled = false;
             UnchangeBtn.IsEnabled = false;
 
@@ -1622,22 +1686,22 @@ namespace SNIBypassGUI
             // 更新背景图像
             UpdateBackground();
 
+            UpdateServiceST();
+
+            UpdateAdaptersCombo();
+
             // 从配置信息更新开关状态
-            ToggleButtonSync();
-            //AcrylicDebug
+            SyncFromConfig();
 
             // 在主窗口标题显示版本
             WindowTitle.Text = "SNIBypassGUI " + PresetGUIVersion;
 
-            // 更新服务的状态信息
-            UpdateServiceST();
-
             // 检查应用程序的设置，判断是否为第一次使用
             if (StringBoolConverter.StringToBool(ConfigINI.INIRead("程序设置", "IsFirst", PathsSet.INIPath)))
             {
-                WriteLog("软件应为首次使用，提示用户安装证书。", LogLevel.Info);
+                WriteLog("软件应为首次使用，提示用户安装证书与选择正在使用的网络适配器。", LogLevel.Info);
 
-                MessageBoxResult UserConfirm = HandyControl.Controls.MessageBox.Show("第一次使用需要安装证书，安装证书的对话框请点击“是 (Y)”。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBoxResult UserConfirm = HandyControl.Controls.MessageBox.Show("第一次使用需要安装证书，安装证书的对话框请点击“是 (Y)”。\r\n还需要在下拉框中选择当前正在使用的网络适配器。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 if (UserConfirm == MessageBoxResult.OK)
                 {
                     if (InstallCertificate())
@@ -1681,14 +1745,8 @@ namespace SNIBypassGUI
                 HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
-            // 更新一言
-            await UpdateYiyan();
-
-            // 为 TabControl 的 SelectionChanged 事件添加事件处理程序，用户切换选项卡时，将调用 TabControl_SelectionChanged 方法
-            // 在这里才添加的原因是如果在xaml中添加，窗口加载完成时就会触发 TabControl_SelectionChanged ，而所选页面为主页时会 UpdateServiceST() ，此时 ServiceST 为 Null
-            tabcontrol.SelectionChanged += TabControl_SelectionChanged;
             // 启动用于定期更新服务状态信息的定时器，
-            _ServiceStUpdateTimer.Start();
+            _TabAUpdateTimer.Start();
 
             // 区别由服务启动与用户启动进行不同处理
             string curPath = Environment.CurrentDirectory;
@@ -1701,6 +1759,9 @@ namespace SNIBypassGUI
                 TaskbarIconRunBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 MenuItem_StartService.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             }
+
+            // 更新一言
+            await UpdateYiyan();
 
             WriteLog("完成Window_Loaded。", LogLevel.Debug);
         }
@@ -1763,19 +1824,6 @@ namespace SNIBypassGUI
             WriteLog("完成MenuItem_MouseLeave。", LogLevel.Debug);
         }
 
-        // 切换到调试模式的方法
-        private void ToggleToDebugMode()
-        {
-            WriteLog("进入ToggleToDebugMode。", LogLevel.Debug);
-
-            DebugModeBtn.Content = "调试模式：\n开";
-            SwitchDomainNameResolutionMethodBtn.IsEnabled = true;
-            AcrylicDebugBtn.IsEnabled = true;
-            GUIDebugBtn.IsEnabled = true;
-
-            WriteLog("完成ToggleToDebugMode。", LogLevel.Debug);
-        }
-
         // 调试模式按钮点击事件
         private void DebugModeBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1785,21 +1833,17 @@ namespace SNIBypassGUI
             {
                 if (HandyControl.Controls.MessageBox.Show("调试模式仅供测试和开发使用，强烈建议您在没有开发者明确指示的情况下不要随意打开。\r\n是否打开调试模式？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    ToggleToDebugMode();
+                    ConfigINI.INIWrite("高级设置", "DebugMode", "true", PathsSet.INIPath);
+                    SyncFromConfig();
                 }
             }
             else
             {
-                DebugModeBtn.Content = "调试模式：\n关";
-                SwitchDomainNameResolutionMethodBtn.IsEnabled = false;
-                AcrylicDebugBtn.IsEnabled = false;
-                GUIDebugBtn.IsEnabled = false;
-                GUIDebugBtn.Content = "GUI调试：\n关";
-                ConfigINI.INIWrite("日志开关", "OutputLog", "false", PathsSet.INIPath);
-                SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\nDNS服务";
-                ConfigINI.INIWrite("程序设置", "DomainNameResolutionMethod", "DnsService", PathsSet.INIPath);
-                AcrylicDebugBtn.Content = "DNS服务调试：\n关";
-                AcrylicService.RemoveAcrylicServiceDebugLog();
+                ConfigINI.INIWrite("高级设置", "DebugMode", "false", PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "GUIDebug", "false", PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "DomainNameResolutionMethod", "DnsService", PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "AcrylicDebug", "false", PathsSet.INIPath);
+                SyncFromConfig();
             }
 
             WriteLog("完成DebugModeBtn_Click。", LogLevel.Debug);
@@ -1814,15 +1858,14 @@ namespace SNIBypassGUI
             {
                 if (HandyControl.Controls.MessageBox.Show("在DNS服务无法正常启动的情况下，系统hosts可以作为备选方案使用，\r\n但具有一定局限性（例如pixivFANBOX的作者页面需要手动向系统hosts添加记录）。\r\n是否切换域名解析模式为系统hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\n系统hosts";
-                    ConfigINI.INIWrite("程序设置", "DomainNameResolutionMethod", "SystemHosts", PathsSet.INIPath);
+                    ConfigINI.INIWrite("高级设置", "DomainNameResolutionMethod", "SystemHosts", PathsSet.INIPath);
                 }
             }
             else
             {
-                SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\nDNS服务";
-                ConfigINI.INIWrite("程序设置", "DomainNameResolutionMethod", "DnsService", PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "DomainNameResolutionMethod", "DnsService", PathsSet.INIPath);
             }
+            SyncFromConfig();
 
             WriteLog("完成SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
         }
@@ -1834,17 +1877,16 @@ namespace SNIBypassGUI
 
             if (AcrylicDebugBtn.Content.ToString() == "DNS服务调试：\n关")
             {
-                if (HandyControl.Controls.MessageBox.Show("开启DNS服务调试可以诊断某些问题，重启服务后生效。\r\n请在重启直到程序出现问题后，将 \\data\\dns 目录下的 AcrylicDebug.txt 提交给开发者。\r\n是否打开DNS服务调试？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                if (HandyControl.Controls.MessageBox.Show("开启DNS服务调试可以诊断某些问题，重启服务后生效。\r\n请在重启直到程序出现问题后，将\\data\\dns目录下的AcrylicDebug.txt提交给开发者。\r\n是否打开DNS服务调试？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    AcrylicDebugBtn.Content = "DNS服务调试：\n开";
-                    AcrylicService.CreateAcrylicServiceDebugLog();
+                    ConfigINI.INIWrite("高级设置", "AcrylicDebug", "true", PathsSet.INIPath);
                 }
             }
             else
             {
-                AcrylicDebugBtn.Content = "DNS服务调试：\n关";
-                AcrylicService.RemoveAcrylicServiceDebugLog();
+                ConfigINI.INIWrite("高级设置", "AcrylicDebug", "false", PathsSet.INIPath);
             }
+            SyncFromConfig();
 
             WriteLog("完成AcrylicDebugBtn_Click。", LogLevel.Debug);
         }
@@ -1856,16 +1898,16 @@ namespace SNIBypassGUI
 
             if (GUIDebugBtn.Content.ToString() == "GUI调试：\n关")
             {
-                if (HandyControl.Controls.MessageBox.Show("开启GUI调试模式可以更准确地诊断问题，但生成日志会产生额外的性能开销，请在不需要时关闭。重启程序后生效。\r\n请在重启直到程序出现问题后，将 \\data\\logs 目录下的GUI.log提交给开发者。\r\n是否打开GUI调试模式？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                if (HandyControl.Controls.MessageBox.Show("开启GUI调试模式可以更准确地诊断问题，但生成日志会产生额外的性能开销，请在不需要时关闭。\r\n开启后将自动关闭程序，重启程序后生效。\r\n请在重启直到程序出现问题后，将\\data\\logs目录下的GUI.log提交给开发者。\r\n是否打开GUI调试模式？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    GUIDebugBtn.Content = "GUI调试：\n开";
-                    ConfigINI.INIWrite("日志开关", "OutputLog", "true", PathsSet.INIPath);
+                    ConfigINI.INIWrite("高级设置", "GUIDebug", "true", PathsSet.INIPath);
+                    ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 }
             }
             else
             {
-                GUIDebugBtn.Content = "GUI调试：\n关";
-                ConfigINI.INIWrite("日志开关", "OutputLog", "false", PathsSet.INIPath);
+                ConfigINI.INIWrite("高级设置", "GUIDebug", "false", PathsSet.INIPath);
+                SyncFromConfig();
             }
 
             WriteLog("完成GUIDebugBtn_Click。", LogLevel.Debug);
@@ -1882,6 +1924,10 @@ namespace SNIBypassGUI
                 // 启动记事本并打开文件
                 Process.Start("notepad.exe", PathsSet.SystemHosts);
             }
+            else
+            {
+                HandyControl.Controls.MessageBox.Show("未在指定路径找到系统hosts！\r\n请尝试手动创建该文件。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
 
             WriteLog("完成EditHostsBtn_Click。", LogLevel.Debug);
         }
@@ -1891,17 +1937,73 @@ namespace SNIBypassGUI
         {
             WriteLog("进入BackHostsBtn_Click。", LogLevel.Debug);
 
-            foreach (var sectionname in SectionNamesSet)
+            if (HandyControl.Controls.MessageBox.Show("还原系统hosts功能用于消除本程序对系统hosts所产生的影响。\r\n当您认为本程序（特别是历史版本）对您的系统hosts造成了不良影响时可以使用此功能。\r\n是否还原系统hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                WriteLog($"移除{sectionname}的记录部分。", LogLevel.Info);
+                foreach (var sectionname in SectionNamesSet)
+                {
+                    WriteLog($"移除{sectionname}的记录部分。", LogLevel.Info);
 
-                FileHelper.RemoveSection(PathsSet.SystemHosts, sectionname);
+                    FileHelper.RemoveSection(PathsSet.SystemHosts, sectionname);
+                }
             }
 
             DNS.FlushDNS();
 
             WriteLog("完成BackHostsBtn_Click。", LogLevel.Debug);
         }
+
+        // 自动获取活动适配器按钮的点击事件
+        private void GetActiveAdapterBtn_Click(object sender, RoutedEventArgs e)
+        {
+            WriteLog("进入GetActiveAdapterBtn_Click。", LogLevel.Debug);
+
+            UpdateAdaptersCombo();
+
+            List<NetAdp> adapters = NetAdp.GetAdapters();
+            NetAdp activeAdapter = null;
+            foreach (var adapter in adapters)
+            {
+                if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
+                {
+                    if (adapter.DNS != null)
+                    {
+                        activeAdapter = adapter;
+                        break;
+                    }
+                }
+            }
+            if (activeAdapter != null)
+            {
+                if (AdaptersCombo.Items.Cast<string>().Contains(activeAdapter.Name))
+                {
+                    AdaptersCombo.Text = activeAdapter.Name;
+                   
+                }
+            }
+            else
+            {
+                WriteLog($"没有找到活动且可设置的网络适配器！", LogLevel.Warning);
+
+                if (HandyControl.Controls.MessageBox.Show($"没有找到活动且可设置的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning)==MessageBoxResult.Yes)
+                {
+                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
+                    videoHelpWindow.Show();
+                }
+            }
+
+            WriteLog("完成GetActiveAdapterBtn_Click。", LogLevel.Debug);
+        }
+
+        private void HelpBtn_HowToFindActiveAdapter_Click(object sender, RoutedEventArgs e)
+        {
+            WriteLog("进入HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
+
+            VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何寻找活动的网络适配器", PathsSet.HelpVideo_如何寻找活动适配器_Path);
+            videoHelpWindow.Show();
+
+            WriteLog("完成HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
+        }
+
 
         // 托盘图标点击命令
         public class TaskbarIconLeftClickCommand : ICommand
@@ -1913,7 +2015,7 @@ namespace SNIBypassGUI
                 _mainWindow = mainWindow;
             }
 
-            public event EventHandler CanExecuteChanged;
+            public event EventHandler  CanExecuteChanged;
 
             public bool CanExecute(object parameter)
             {
