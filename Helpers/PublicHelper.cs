@@ -21,11 +21,11 @@ namespace SNIBypassGUI
         public static FilesINI ConfigINI = new FilesINI();
 
         // 既定版本号，更新时需要修改
-        public const string PresetGUIVersion = "V3.3";
+        public const string PresetGUIVersion = "V3.4";
 
         // 默认一言
-        public const string PresetYiyan = "不是渐行渐远，而是有一天终要重逢。";
-        public const string PresetYiyanForm = "—— 龙应台「目送」";
+        public const string PresetYiyan = "行远自迩，登高自卑。";
+        public const string PresetYiyanForm = "—— 戴圣「礼记」";
 
         // 字符串转换为布尔值的类
         public class StringBoolConverter
@@ -114,9 +114,10 @@ namespace SNIBypassGUI
                         store.Add(x509);
                     }
                 }
+                // 如果没有找到证书集合（理论上不应该发生，除非Thumbprint为空或格式错误）
+
                 WriteLog("完成InstallCertificate，返回true。", LogLevel.Debug);
 
-                // 如果没有找到证书集合（理论上不应该发生，除非Thumbprint为空或格式错误）
                 return true;
             }
             catch (Exception ex)
@@ -262,6 +263,20 @@ namespace SNIBypassGUI
             {PathsSet.HelpVideo_如何寻找活动适配器_Path, Properties.Resources.如何寻找活动适配器 },
             {PathsSet.HelpVideo_如何手动设置适配器_Path, Properties.Resources.如何手动设置适配器 },
             {PathsSet.HelpVideo_如何手动还原适配器_Path, Properties.Resources.如何手动还原适配器 }
+        };
+
+        public static Dictionary<string, string> InitialConfigurations = new Dictionary<string, string>
+        {
+            { "程序设置:IsFirst", "true" },
+            { "程序设置:Background", "Preset" },
+            { "程序设置:ActiveAdapter", "" },
+            { "高级设置:DebugMode", "false" },
+            { "高级设置:GUIDebug", "false" },
+            { "高级设置:DomainNameResolutionMethod", "DnsService" },
+            { "高级设置:AcrylicDebug", "false" },
+            { "暂存数据:PreviousDNS1", "" },
+            { "暂存数据:PreviousDNS2", "" },
+            { "暂存数据:IsPreviousDnsAutomatic", "true" }
         };
     }
 }

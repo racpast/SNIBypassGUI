@@ -26,8 +26,8 @@
 			                <Run Foreground="#FF00FFED" Text="服务状态："/>
 			                <Run x:Name="TaskbarIconServiceST"  Text="主服务和DNS服务未运行" Foreground="Red"/>
                         </TextBlock>
-                        <TextBlock Foreground="DeepPink" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="不是渐行渐远，而是有一天终要重逢。" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        <TextBlock Foreground="DarkViolet" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 龙应台「目送」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
+                        <TextBlock Foreground="DeepPink" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="行远自迩，登高自卑。" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <TextBlock Foreground="DarkViolet" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 戴圣「礼记」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
                     </StackPanel>
                 </Border>
             </tb:TaskbarIcon.TrayToolTip>
@@ -173,14 +173,14 @@
                     </Paragraph>
                 </FlowDocument>
             </RichTextBox>
-            <TabControl Grid.Column="1" x:Name="tabcontrol" Margin="10,10,20,20" Style="{StaticResource TabControlInLine}" FontFamily="{StaticResource AaManYuShouXieTi}" Background="Transparent" BorderBrush="White" FontSize="14" SelectionChanged="TabControl_SelectionChanged">
+            <TabControl Grid.Column="1" x:Name="MainTabControl" Margin="10,10,20,20" Style="{StaticResource TabControlInLine}" FontFamily="{StaticResource AaManYuShouXieTi}" Background="Transparent" BorderBrush="White" FontSize="14">
                 <TabItem Header="主页" IsSelected="True" Background="#70FFFFFF">
                     <ScrollViewer>
                         <StackPanel Background="#70FFFFFF">
                             <TextBlock Margin="20,5,20,5" TextWrapping="Wrap" Text="欢迎使用 &#x000A;SNIBypassGUI！" FontSize="24" Foreground="#FF2100C3" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
                             <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您是第一次使用 SNIBypassGUI ，请单击下方按钮安装所需证书，所有对话框均选择 是(Y)。" FontSize="19" Foreground="#FF4595FF" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
                             <Button x:Name="InstallCertBtn" Click="InstallCertBtn_Click" Height="30" Margin="10,0,10,0" HorizontalAlignment="Stretch" Content="一键安装证书"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                            <TextBlock x:Name="ServiceST" Margin="20,5,20,0" TextWrapping="Wrap" Text="当前服务状态：&#x000A;主服务与DNS服务未运行" FontSize="21" Foreground="Red" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
+                            <TextBlock x:Name="ServiceStatusText" Margin="20,5,20,0" TextWrapping="Wrap" Text="当前服务状态：&#x000A;主服务与DNS服务未运行" FontSize="21" Foreground="Red" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
                             <Grid Margin="10,0,10,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="auto"/>
@@ -216,7 +216,7 @@
                                     <ColumnDefinition/>
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="SetStartBtn" Click="SetStartBtn_Click" Height="30"  Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="开机自动启动程序"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
-                                <Button x:Name="DelStartBtn" Height="30" Grid.Column="1" Click="DelStartBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="停止开机自动启动"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
+                                <Button x:Name="StopStartBtn" Height="30" Grid.Column="1" Click="StopStartBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="停止开机自动启动"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
                             </Grid>
                             <Button x:Name="TaskbarIconRunBtn" Click="TaskbarIconRunBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="最小化到托盘图标运行"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
                             <Button x:Name="ExitBtn" Click="ExitBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="退出工具"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>

@@ -53,10 +53,10 @@ namespace RpNet.NetworkHelper
         private string serviceName; // 服务名
         private OperationalStatus status; // 网络适配器的运行状态
         private NetworkInterfaceType type; // 网络适配器的类型
-        private string[] dns; // DNS 服务器地址
+        private string[] dns; // DNS服务器地址
         private Int32? interFace; // 接口索引
         private string gateway; // 默认网关地址
-        private string ip; // IP 地址
+        private string ip; // IP地址
         private string mask; // 子网掩码
         private string guid;// GUID
 

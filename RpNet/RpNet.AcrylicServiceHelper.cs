@@ -1,5 +1,4 @@
 ﻿using Microsoft.Win32;
-using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -64,7 +63,7 @@ namespace RpNet.AcrylicServiceHelper
                 }
                 return result;
             }
-            throw new AcrylicServicException(2);
+            return true;
         }
 
         public static async Task<bool> UninstallAcrylicService()
@@ -73,7 +72,7 @@ namespace RpNet.AcrylicServiceHelper
             {
                 return (await CMD.RunCommand($"\"{AcrylicServiceExeFilePath}\" /UNINSTALL /SILENT")).Success;
             }
-            throw new AcrylicServicException(1);
+            return true;
         }
 
         public static bool AcrylicServiceIsRunning()
@@ -87,7 +86,7 @@ namespace RpNet.AcrylicServiceHelper
             {
                 return (await CMD.RunCommand("Net.exe Start AcrylicDNSProxySvc")).Success;
             }
-            throw new AcrylicServicException(4);
+            return true;
         }
 
         public static async Task<bool> StopAcrylicService()
@@ -96,7 +95,7 @@ namespace RpNet.AcrylicServiceHelper
             {
                 return (await CMD.RunCommand("Net.exe Stop AcrylicDNSProxySvc")).Success;
             }
-            throw new AcrylicServicException(3);
+            return true;
         }
 
         public static bool AcrylicServiceDebugLogIsEnabled()
@@ -125,38 +124,6 @@ namespace RpNet.AcrylicServiceHelper
             if (File.Exists(AcrylicDebugLogFilePath))
             {
                 File.Delete(AcrylicDebugLogFilePath);
-            }
-        }
-    }
-
-    public class AcrylicServicException : Exception
-    {
-        private UInt32 code; // 错误码
-
-        public UInt32 Code { get { return code; } }
-        new public string Source { get; protected set; } // 错误来源
-
-        public AcrylicServicException(UInt32 c) : base("发生错误！错误码：" + c.ToString())
-        {
-            code = c;
-            // 根据错误码设置错误来源描述
-            switch (code)
-            {
-                case 1:
-                    Source = "服务尚未被安装。";
-                    break;
-                case 2:
-                    Source = "服务已经被安装。";
-                    break;
-                case 3:
-                    Source = "服务未在运行。";
-                    break;
-                case 4:
-                    Source = "服务已在运行。";
-                    break;
-                default:
-                    Source = "未知错误。";
-                    break;
             }
         }
     }
