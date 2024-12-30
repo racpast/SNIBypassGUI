@@ -233,11 +233,14 @@ namespace RpNet.NetworkHelper
                 IPAddressCollection dnsServers = adapterProperties.DnsAddresses;
                 switch (dnsServers.Count)
                 {
+                    case 0:
+                        adp.dns = new string[0];
+                        break;
                     case 1:
                         adp.dns = new string[1];
                         adp.dns[0] = dnsServers[0].ToString();
                         break;
-                    case 2:
+                    default:
                         adp.dns = new string[2];
                         adp.dns[0] = dnsServers[0].ToString();
                         adp.dns[1] = dnsServers[1].ToString();

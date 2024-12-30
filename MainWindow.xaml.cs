@@ -50,10 +50,10 @@ namespace SNIBypassGUI
 
             foreach (var headerline in GUILogHead)
             {
-                /** 写日志 **/ WriteLog(headerline, LogLevel.None);
+                /** 日志信息 **/ WriteLog(headerline, LogLevel.None);
             }
 
-            /** 写日志 **/ WriteLog("进入MainWindow。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入MainWindow。", LogLevel.Debug);
 
             // 检查是否已经开启程序，如果已开启则退出
             string MName = Process.GetCurrentProcess().MainModule.ModuleName;
@@ -61,7 +61,7 @@ namespace SNIBypassGUI
             Process[] GUIProcess = Process.GetProcessesByName(PName);
             if (GUIProcess.Length > 1)
             {
-                /** 写日志 **/ WriteLog("检测到程序已经在运行，将退出程序。", LogLevel.Warning);
+                /** 日志信息 **/ WriteLog("检测到程序已经在运行，将退出程序。", LogLevel.Warning);
 
                 HandyControl.Controls.MessageBox.Show("SNIBypassGUI 已经在运行！\r\n请检查是否有托盘图标！(((ﾟДﾟ;)))", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Environment.Exit(1);
@@ -72,6 +72,7 @@ namespace SNIBypassGUI
             this.DataContext = this;
             _TaskbarIconLeftClickCommand = new TaskbarIconLeftClickCommand(this);
 
+            // 初始化
             InitializeComponent();
 
             // 窗口可拖动
@@ -80,13 +81,13 @@ namespace SNIBypassGUI
             // 刷新托盘图标，避免有多个托盘图标出现
             TaskBarIconHelper.RefreshNotification();
 
-            /** 写日志 **/ WriteLog("完成MainWindow。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成MainWindow。", LogLevel.Debug);
         }
 
         // 主页更新计时器触发事件
         private void TabAUpdateTimer_Tick(object sender, EventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入TabAUpdateTimer_Tick。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入TabAUpdateTimer_Tick。", LogLevel.Debug);
 
             // 更新服务状态
             UpdateServiceStatus();
@@ -94,13 +95,13 @@ namespace SNIBypassGUI
             // 更新适配器列表
             UpdateAdaptersCombo();
 
-            /** 写日志 **/ WriteLog("完成TabAUpdateTimer_Tick。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成TabAUpdateTimer_Tick。", LogLevel.Debug);
         }
 
         // 设置页面更新计时器触发事件
         private void TabCUpdateTimer_Tick(object sender, EventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入TabCUpdateTimer_Tick。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入TabCUpdateTimer_Tick。", LogLevel.Debug);
 
             // 更新清理日志按钮的内容，显示所有日志文件的总大小（以MB为单位）
             CleanBtn.Content = $"清理服务运行日志及缓存 ({FileHelper.GetTotalFileSizeInMB(PathsSet.TempFilesPathsIncludingGUILog)}MB)";
@@ -108,13 +109,13 @@ namespace SNIBypassGUI
             // 从配置文件同步调试按钮状态
             SyncControlsFromConfig();
 
-            /** 写日志 **/ WriteLog("完成TabCUpdateTimer_Tick。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成TabCUpdateTimer_Tick。", LogLevel.Debug);
         }
 
         // 更新适配器列表的方法
         private void UpdateAdaptersCombo()
         {
-            /** 写日志 **/ WriteLog("进入UpdateAdaptersCombo。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入UpdateAdaptersCombo。", LogLevel.Debug);
 
             // 记录先前选中的适配器，以便在更新下拉框之后重新选中
             string PreviousSelectedAdapter = AdaptersCombo.SelectedItem?.ToString();
@@ -130,7 +131,7 @@ namespace SNIBypassGUI
             {
                 if (!string.IsNullOrEmpty(adapter.Name))
                 {
-                    /** 写日志 **/ WriteLog($"向适配器列表添加{adapter.Name}。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"向适配器列表添加{adapter.Name}。", LogLevel.Info);
 
                     AdaptersCombo.Items.Add(adapter.Name);
                 }
@@ -147,19 +148,19 @@ namespace SNIBypassGUI
             }
             else
             {
-                /** 写日志 **/ WriteLog($"适配器列表中丢失{PreviousSelectedAdapter}，取消选中。", LogLevel.Warning);
+                /** 日志信息 **/ WriteLog($"适配器列表中丢失{PreviousSelectedAdapter}，取消选中。", LogLevel.Warning);
 
                 // 如果没有匹配的项，取消选中
                 AdaptersCombo.SelectedItem = null;
             }
 
-            /** 写日志 **/ WriteLog("完成UpdateAdaptersCombo。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成UpdateAdaptersCombo。", LogLevel.Debug);
         }
 
         // 更新服务状态的方法
         public void UpdateServiceStatus()
         {
-            /** 写日志 **/ WriteLog("进入UpdateServiceStatus。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入UpdateServiceStatus。", LogLevel.Debug);
 
             // 使用 Process.GetProcessesByName 方法获取所有名为 "SNIBypass" 的进程，这将返回一个包含所有匹配进程的 Process 数组
             Process[] ps1 = Process.GetProcessesByName("SNIBypass");
@@ -170,8 +171,8 @@ namespace SNIBypassGUI
             // 检查DNS服务是否在运行
             bool IsDnsRunning = AcrylicService.AcrylicServiceIsRunning();
 
-            /** 写日志 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}",LogLevel.Info);
-            /** 写日志 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(IsDnsRunning)}",LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}",LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(IsDnsRunning)}",LogLevel.Info);
 
             // 根据不同情况显示不同的服务状态文本
             if (IsNginxRunning && IsDnsRunning)
@@ -215,13 +216,13 @@ namespace SNIBypassGUI
                 GetActiveAdapterBtn.IsEnabled = true;
             }
 
-            /** 写日志 **/ WriteLog("完成UpdateServiceStatus。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成UpdateServiceStatus。", LogLevel.Debug);
         }
 
         // 更新背景图片的方法
         public void UpdateBackground()
         {
-            /** 写日志 **/ WriteLog("进入UpdateBackground。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入UpdateBackground。", LogLevel.Debug);
 
             // 设置图片源为默认背景图片并设置图片的拉伸模式为均匀填充，以适应背景区域
             ImageBrush bg = new ImageBrush();
@@ -239,13 +240,13 @@ namespace SNIBypassGUI
                     // 用资源释放型的读取来获取背景图片
                     bg.ImageSource = FileHelper.GetImage(CustomBkgPath);
 
-                    /** 写日志 **/ WriteLog($"背景图片将设置为自定义：{CustomBkgPath}。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"背景图片将设置为自定义：{CustomBkgPath}。", LogLevel.Info);
                 }
                 else
                 {
                     // 如果没有找到背景图片的路径
 
-                    /** 写日志 **/ WriteLog("背景图片设置为自定义但未在指定位置找到文件，或被删除？将恢复为默认。", LogLevel.Warning);
+                    /** 日志信息 **/ WriteLog("背景图片设置为自定义但未在指定位置找到文件，或被删除？将恢复为默认。", LogLevel.Warning);
 
                     // 将配置设置回默认背景
                     ConfigINI.INIWrite("程序设置", "Background", "Preset", PathsSet.INIPath);
@@ -255,13 +256,13 @@ namespace SNIBypassGUI
             // 设置背景图片
             MainPage.Background = bg;
 
-            /** 写日志 **/ WriteLog("完成UpdateBackground。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成UpdateBackground。", LogLevel.Debug);
         }
 
         // 检查必要目录、文件的存在性，并在必要时创建或释放的方法
         public void InitializeDirectoriesAndFiles()
         {
-            /** 写日志 **/ WriteLog("进入InitializeDirectoriesAndFiles。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入InitializeDirectoriesAndFiles。", LogLevel.Debug);
 
             // 确保必要目录存在
             foreach (string directory in PathsSet.NeccesaryDirectories)
@@ -274,7 +275,7 @@ namespace SNIBypassGUI
             {
                 if (!File.Exists(pair.Key))
                 {
-                    /** 写日志 **/ WriteLog($"文件{pair.Key}不存在，释放。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"文件{pair.Key}不存在，释放。", LogLevel.Info);
 
                     FileHelper.ExtractNormalFileInResx(pair.Value, pair.Key);
                 }
@@ -284,7 +285,7 @@ namespace SNIBypassGUI
             {
                 // 如果配置文件不存在，则创建配置文件
 
-                /** 写日志 **/ WriteLog($"配置文件{PathsSet.INIPath}不存在，创建。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"配置文件{PathsSet.INIPath}不存在，创建。", LogLevel.Info);
 
                 // 写入初始配置
                 foreach (var config in InitialConfigurations)
@@ -303,19 +304,19 @@ namespace SNIBypassGUI
                 }
             }
 
-            /** 写日志 **/ WriteLog("完成InitializeDirectoriesAndFiles。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成InitializeDirectoriesAndFiles。", LogLevel.Debug);
         }
 
         // 更新一言的方法
         public async Task UpdateYiyan()
         {
-            /** 写日志 **/ WriteLog("进入UpdateYiyan。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入UpdateYiyan。", LogLevel.Debug);
 
             try
             {
                 string YiyanJson = await HTTPHelper.GetAsync("https://v1.hitokoto.cn/?c=d");
 
-                /** 写日志 **/ WriteLog($"获取到一言的数据为{YiyanJson}。", LogLevel.Debug);
+                /** 日志信息 **/ WriteLog($"获取到一言的数据为{YiyanJson}。", LogLevel.Debug);
 
                 // 将返回的JSON字符串解析为JObject
                 JObject repodata = JObject.Parse(YiyanJson);
@@ -325,7 +326,7 @@ namespace SNIBypassGUI
                 string From = repodata["from"].ToString();
                 string FromWho = repodata["from_who"].ToString();
 
-                /** 写日志 **/ WriteLog($"解析到一言文本为{Hitokoto}，来源为{From}，作者为{FromWho}。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"解析到一言文本为{Hitokoto}，来源为{From}，作者为{FromWho}。", LogLevel.Info);
 
                 // 将一言与相关信息显示在托盘图标悬浮文本
                 TaskbarIconYiyan.Text = Hitokoto;
@@ -333,25 +334,25 @@ namespace SNIBypassGUI
             }
             catch (Exception ex)
             {
-                /** 写日志 **/ WriteLog($"遇到异常，将设置为默认一言。", LogLevel.Error, ex);
+                /** 日志信息 **/ WriteLog($"遇到异常，将设置为默认一言。", LogLevel.Error, ex);
 
                 TaskbarIconYiyan.Text = PresetYiyan;
                 TaskbarIconYiyanFrom.Text = PresetYiyanForm;
             }
 
-            /** 写日志 **/ WriteLog("完成UpdateYiyan。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成UpdateYiyan。", LogLevel.Debug);
         }
 
         // 从配置文件向 Hosts 文件更新的方法
         public void UpdateHostsFromConfig()
         {
-            /** 写日志 **/ WriteLog("进入UpdateHostsFromConfig。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入UpdateHostsFromConfig。", LogLevel.Debug);
 
             // 根据域名解析模式判断要更新的文件
             bool IsDnsService = ConfigINI.INIRead("高级设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService";
             string FileShouldUpdate = IsDnsService ? PathsSet.AcrylicHostsPath : PathsSet.SystemHosts;
 
-            /** 写日志 **/ WriteLog($"当前域名解析方法是否为DNS服务：{StringBoolConverter.BoolToYesNo(IsDnsService)}，将更新的文件为{FileShouldUpdate}。", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"当前域名解析方法是否为DNS服务：{StringBoolConverter.BoolToYesNo(IsDnsService)}，将更新的文件为{FileShouldUpdate}。", LogLevel.Info);
 
             // 根据域名解析模式获取应该添加的条目数据
             var CorrespondingHosts = IsDnsService ? SectionNameToHostsRecordDic : SectionNameToOldHostsRecordDic;
@@ -363,7 +364,7 @@ namespace SNIBypassGUI
                 {
                     // 条目部分名称对应的开关是打开的情况
 
-                    /** 写日志 **/ WriteLog($"{sectionname}的代理开关为开启，将添加记录。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"{sectionname}的代理开关为开启，将添加记录。", LogLevel.Info);
 
                     // 添加该条目部分
                     FileHelper.WriteLinesToFile(CorrespondingHosts[sectionname], FileShouldUpdate);
@@ -372,41 +373,41 @@ namespace SNIBypassGUI
                 {
                     // 条目部分名称对应的开关是关闭的情况
 
-                    /** 写日志 **/ WriteLog($"{sectionname}的代理开关为关闭，将移除记录。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"{sectionname}的代理开关为关闭，将移除记录。", LogLevel.Info);
 
                     // 从文件中移除该条目部分
                     FileHelper.RemoveSection(FileShouldUpdate, sectionname);
                 }
             }
 
-            /** 写日志 **/ WriteLog("完成UpdateHostsFromConfig。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成UpdateHostsFromConfig。", LogLevel.Debug);
         }
 
         // 移除 Hosts 中全部有关记录的方法
         public void RemoveHosts()
         {
-            /** 写日志 **/ WriteLog("进入RemoveHosts。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入RemoveHosts。", LogLevel.Debug);
 
             // 根据域名解析模式判断要更新的文件
             bool IsDnsService = ConfigINI.INIRead("高级设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService";
             string FileShouldUpdate = IsDnsService ? PathsSet.AcrylicHostsPath : PathsSet.SystemHosts;
 
-            /** 写日志 **/ WriteLog($"当前域名解析方法是否为DNS服务：{StringBoolConverter.BoolToYesNo(IsDnsService)}，将更新的文件为{FileShouldUpdate}。", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"当前域名解析方法是否为DNS服务：{StringBoolConverter.BoolToYesNo(IsDnsService)}，将更新的文件为{FileShouldUpdate}。", LogLevel.Info);
 
             foreach (var sectionname in SectionNamesSet)
             {
-                /** 写日志 **/ WriteLog($"移除{sectionname}的记录部分。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"移除{sectionname}的记录部分。", LogLevel.Info);
 
                 FileHelper.RemoveSection(FileShouldUpdate, sectionname);
             }
 
-            /** 写日志 **/ WriteLog("完成RemoveHosts。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成RemoveHosts。", LogLevel.Debug);
         }
 
         // 从配置文件同步有关控件的方法
         public void SyncControlsFromConfig()
         {
-            /** 写日志 **/ WriteLog("进入SyncControlsFromConfig。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入SyncControlsFromConfig。", LogLevel.Debug);
 
             // 更新代理开关状态
             foreach (var pair in ToggleButtonToSectionNamedDic)
@@ -415,7 +416,7 @@ namespace SNIBypassGUI
 
                 pair.Key.IsChecked = ShouldChecked;
 
-                /** 写日志 **/ WriteLog($"开关{pair.Key.Name}从配置键{pair.Value}同步状态：{StringBoolConverter.BoolToYesNo(ShouldChecked)}。", LogLevel.Debug);
+                /** 日志信息 **/ WriteLog($"开关{pair.Key.Name}从配置键{pair.Value}同步状态：{StringBoolConverter.BoolToYesNo(ShouldChecked)}。", LogLevel.Debug);
             }
 
             // 更新调试有关按钮
@@ -479,20 +480,20 @@ namespace SNIBypassGUI
             }
             else
             {
-                /** 写日志 **/ WriteLog($"适配器列表中丢失{activeAdapter}，取消选中。", LogLevel.Warning);
+                /** 日志信息 **/ WriteLog($"适配器列表中丢失{activeAdapter}，取消选中。", LogLevel.Warning);
 
                 // 如果没有匹配的项，取消选中
 
                 AdaptersCombo.SelectedItem = null;
             }
 
-            /** 写日志 **/ WriteLog("完成SyncControlsFromConfig。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成SyncControlsFromConfig。", LogLevel.Debug);
         }
 
         // 从代理开关列表向配置文件同步的方法
         public void UpdateConfigFromToggleButtons()
         {
-            /** 写日志 **/ WriteLog("进入UpdateConfigFromToggleButtons。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入UpdateConfigFromToggleButtons。", LogLevel.Debug);
 
             // 遍历所有代理开关
             foreach (var pair in ToggleButtonToSectionNamedDic)
@@ -508,152 +509,143 @@ namespace SNIBypassGUI
                     ConfigINI.INIWrite("代理开关", pair.Value, "false", PathsSet.INIPath);
                 }
 
-                /** 写日志 **/ WriteLog($"配置键{pair.Value}从开关{pair.Key.Name}同步状态：{StringBoolConverter.BoolToYesNo(pair.Key.IsChecked)}。", LogLevel.Debug);
+                /** 日志信息 **/ WriteLog($"配置键{pair.Value}从开关{pair.Key.Name}同步状态：{StringBoolConverter.BoolToYesNo(pair.Key.IsChecked)}。", LogLevel.Debug);
             }
 
-            /** 写日志 **/ WriteLog("完成UpdateConfigFromToggleButtons。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成UpdateConfigFromToggleButtons。", LogLevel.Debug);
         }
 
         // 将指定网络适配器首选DNS设置为127.0.0.1，并记录先前的是有效IPv4地址且非127.0.0.1的DNS服务器地址到配置文件中并优先记录到 PreviousDNS1 的方法
         public bool SetLocalDNS(NetAdp Adapter)
         {
-            /** 写日志 **/ WriteLog("进入SetLocalDNS。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入SetLocalDNS。", LogLevel.Debug);
 
             try
             {
-                if (Adapter.DNS != null)
+                /** 日志信息 **/ WriteLog($"开始配置网络适配器：{Adapter.Name}。", LogLevel.Info);
+
+                // 应该在设置DNS之前记录DNS服务器是否为自动获取
+                bool IsDnsAutomatic = Adapter.IsDnsAutomatic;
+
+                string PreviousDNS1 = null;
+                string PreviousDNS2 = null;
+
+                if (Adapter.DNS[0]?.ToString() != "127.0.0.1")
                 {
-                    /** 写日志 **/ WriteLog($"获取到可设置的网络适配器：{Adapter.Name}，开始配置。", LogLevel.Info);
-
-                    // 应该在设置DNS之前记录DNS服务器是否为自动获取
-                    bool IsDnsAutomatic = Adapter.IsDnsAutomatic;
-
-                    string PreviousDNS1 = null;
-                    string PreviousDNS2 = null;
-
-                    if (Adapter.DNS[0]?.ToString() != "127.0.0.1")
+                    // 指定适配器的DNS服务器设置为空，或者首选DNS服务器不为127.0.0.1的情况
+                    if (Adapter.DNS.Length == 0)
                     {
-                        // 指定适配器的DNS服务器设置为空，或者首选DNS服务器不为127.0.0.1的情况
-                        if (Adapter.DNS.Length == 0)
+                        // DNS服务器设置为空的情况
+                        PreviousDNS1 = "";
+                        PreviousDNS2 = "";
+                    }
+                    else if (Adapter.DNS.Length == 1)
+                    {
+                        // DNS服务器设置中只有一个DNS服务器的情况
+                        if (IPv4Validator.IsValidIPv4(Adapter.DNS[0]))
                         {
-                            // DNS服务器设置为空的情况
+                            // 首选DNS服务器是有效IPv4地址的情况
+                            PreviousDNS1 = Adapter.DNS[0];
+                            PreviousDNS2 = "";
+                        }
+                        else
+                        {
+                            // 首选DNS服务器不是有效IPv4地址的情况
                             PreviousDNS1 = "";
                             PreviousDNS2 = "";
                         }
-                        else if (Adapter.DNS.Length == 1)
+                    }
+                    else if (Adapter.DNS.Length == 2)
+                    {
+                        // DNS服务器设置中有两个DNS服务器的情况
+                        if (IPv4Validator.IsValidIPv4(Adapter.DNS[0]))
                         {
-                            // DNS服务器设置中只有一个DNS服务器的情况
-                            if (IPv4Validator.IsValidIPv4(Adapter.DNS[0]))
+                            // 首选DNS服务器是有效IPv4地址的情况
+                            PreviousDNS1 = Adapter.DNS[0];
+                            if (IPv4Validator.IsValidIPv4(Adapter.DNS[1]))
                             {
-                                // 首选DNS服务器是有效IPv4地址的情况
-                                PreviousDNS1 = Adapter.DNS[0];
-                                PreviousDNS2 = "";
-                            }
-                            else
-                            {
-                                // 首选DNS服务器不是有效IPv4地址的情况
-                                PreviousDNS1 = "";
-                                PreviousDNS2 = "";
-                            }
-                        }
-                        else if (Adapter.DNS.Length == 2)
-                        {
-                            // DNS服务器设置中有两个DNS服务器的情况
-                            if (IPv4Validator.IsValidIPv4(Adapter.DNS[0]))
-                            {
-                                // 首选DNS服务器是有效IPv4地址的情况
-                                PreviousDNS1 = Adapter.DNS[0];
-                                if (IPv4Validator.IsValidIPv4(Adapter.DNS[1]))
+                                // 备用DNS服务器是有效IPv4地址的情况
+                                if (Adapter.DNS[1] == "127.0.0.1")
                                 {
-                                    // 备用DNS服务器是有效IPv4地址的情况
-                                    if (Adapter.DNS[1] == "127.0.0.1")
-                                    {
-                                        // 备用DNS服务器是有效IPv4地址但是是127.0.0.1的情况
-                                        PreviousDNS2 = "";
-                                    }
-                                    else
-                                    {
-                                        // 备用DNS服务器是有效IPv4地址且不为127.0.0.1的情况
-                                        PreviousDNS2 = Adapter.DNS[1];
-                                    }
-                                }
-                                else
-                                {
-                                    // 备用DNS服务器不是有效IPv4地址的情况
+                                    // 备用DNS服务器是有效IPv4地址但是是127.0.0.1的情况
                                     PreviousDNS2 = "";
                                 }
+                                else
+                                {
+                                    // 备用DNS服务器是有效IPv4地址且不为127.0.0.1的情况
+                                    PreviousDNS2 = Adapter.DNS[1];
+                                }
                             }
                             else
                             {
-                                // 首选DNS服务器不是有效IPv4地址的情况
+                                // 备用DNS服务器不是有效IPv4地址的情况
                                 PreviousDNS2 = "";
-                                if (IPv4Validator.IsValidIPv4(Adapter.DNS[1]))
+                            }
+                        }
+                        else
+                        {
+                            // 首选DNS服务器不是有效IPv4地址的情况
+                            PreviousDNS2 = "";
+                            if (IPv4Validator.IsValidIPv4(Adapter.DNS[1]))
+                            {
+                                // 备用DNS服务器是有效IPv4地址的情况
+                                if (Adapter.DNS[1] == "127.0.0.1")
                                 {
-                                    // 备用DNS服务器是有效IPv4地址的情况
-                                    if (Adapter.DNS[1] == "127.0.0.1")
-                                    {
-                                        // 备用DNS服务器是有效IPv4地址但是是127.0.0.1的情况
-                                        PreviousDNS1 = "";
-                                    }
-                                    else
-                                    {
-                                        // 备用DNS服务器是有效IPv4地址且不为127.0.0.1的情况
-                                        PreviousDNS1 = Adapter.DNS[1];
-                                    }
+                                    // 备用DNS服务器是有效IPv4地址但是是127.0.0.1的情况
+                                    PreviousDNS1 = "";
                                 }
                                 else
                                 {
-                                    // 备用DNS服务器也不是有效IPv4地址的情况
-                                    PreviousDNS1 = "";
+                                    // 备用DNS服务器是有效IPv4地址且不为127.0.0.1的情况
+                                    PreviousDNS1 = Adapter.DNS[1];
                                 }
                             }
+                            else
+                            {
+                                // 备用DNS服务器也不是有效IPv4地址的情况
+                                PreviousDNS1 = "";
+                            }
                         }
-
-                        // 将指定适配器的DNS服务器设置为首选127.0.0.1
-                        Adapter.DNS = new string[] { "127.0.0.1" };
-
-                        // 刷新指定适配器的信息
-                        Adapter.Fresh();
-
-                        /** 写日志 **/ WriteLog($"指定网络适配器是否为自动获取DNS：{StringBoolConverter.BoolToYesNo(IsDnsAutomatic)}", LogLevel.Info);
-                        /** 写日志 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{Adapter.DNS[0]}", LogLevel.Info);
-                        /** 写日志 **/ WriteLog($"将暂存的DNS服务器为：{PreviousDNS1}，{PreviousDNS2}", LogLevel.Debug);
-
-                        // 将停止服务时恢复适配器所需要的信息写入配置文件备用
-                        ConfigINI.INIWrite("暂存数据", "PreviousDNS1", PreviousDNS1, PathsSet.INIPath);
-                        ConfigINI.INIWrite("暂存数据", "PreviousDNS2", PreviousDNS2, PathsSet.INIPath);
-                        ConfigINI.INIWrite("暂存数据", "IsPreviousDnsAutomatic", IsDnsAutomatic.ToString(), PathsSet.INIPath);
                     }
 
-                    /** 写日志 **/ WriteLog("完成SetLocalDNS，返回true。", LogLevel.Debug);
+                    // 将指定适配器的DNS服务器设置为首选127.0.0.1
+                    Adapter.DNS = new string[] { "127.0.0.1" };
 
-                    return true;
-                }
-                else
-                {
-                    /** 写日志 **/ WriteLog($"无法设置指定的网络适配器，因为DNS为null！", LogLevel.Warning);
+                    // 刷新指定适配器的信息
+                    Adapter.Fresh();
 
-                    if (HandyControl.Controls.MessageBox.Show($"无法设置指定的网络适配器！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
-                    {
-                        VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                        videoHelpWindow.Show();
-                    }
+                    /** 日志信息 **/ WriteLog($"指定网络适配器是否为自动获取DNS：{StringBoolConverter.BoolToYesNo(IsDnsAutomatic)}", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{Adapter.DNS[0]}", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"将暂存的DNS服务器为：{PreviousDNS1}，{PreviousDNS2}", LogLevel.Debug);
+
+                    // 将停止服务时恢复适配器所需要的信息写入配置文件备用
+                    ConfigINI.INIWrite("暂存数据", "PreviousDNS1", PreviousDNS1, PathsSet.INIPath);
+                    ConfigINI.INIWrite("暂存数据", "PreviousDNS2", PreviousDNS2, PathsSet.INIPath);
+                    ConfigINI.INIWrite("暂存数据", "IsPreviousDnsAutomatic", IsDnsAutomatic.ToString(), PathsSet.INIPath);
                 }
+
+                /** 日志信息 **/ WriteLog("完成SetLocalDNS，返回true。", LogLevel.Debug);
+
+                return true;
             }
             catch (NetAdpSetException ex)
             {
-                /** 写日志 **/ WriteLog($"设置活动网络适配器时发生错误。", LogLevel.Error, ex);
+                /** 日志信息 **/ WriteLog($"无法设置指定的网络适配器！", LogLevel.Error, ex);
 
-                HandyControl.Controls.MessageBox.Show($"设置活动网络适配器时发生错误：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (HandyControl.Controls.MessageBox.Show($"无法设置指定的网络适配器！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                {
+                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
+                    videoHelpWindow.Show();
+                }
             }
             catch (Exception ex)
             {
-                /** 写日志 **/ WriteLog($"遇到异常。", LogLevel.Error, ex);
+                /** 日志信息 **/ WriteLog($"遇到异常。", LogLevel.Error, ex);
 
                 HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
-            /** 写日志 **/ WriteLog("完成SetLocalDNS，返回false。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成SetLocalDNS，返回false。", LogLevel.Debug);
 
             return false;
         }
@@ -661,11 +653,10 @@ namespace SNIBypassGUI
         // 从配置文件还原适配器的方法
         public bool RestoreAdapterDNS(NetAdp Adapter)
         {
-            /** 写日志 **/ WriteLog("进入RestoreAdapterDNS。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入RestoreAdapterDNS。", LogLevel.Debug);
 
-            if (Adapter.DNS != null)
+            try
             {
-                // 指定适配器的DNS设置不为空的情况
                 if (Adapter.DNS.Length > 0)
                 {
                     // 指定适配器的DNS长度大于0的情况
@@ -678,7 +669,7 @@ namespace SNIBypassGUI
                             // 设置指定适配器DNS服务器为自动获取
                             Adapter.DNS = null;
 
-                            /** 写日志 **/ WriteLog($"活动网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
+                            /** 日志信息 **/ WriteLog($"活动网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
                         }
                         else
                         {
@@ -689,7 +680,7 @@ namespace SNIBypassGUI
                                 // 设置指定适配器DNS服务器为自动获取
                                 Adapter.DNS = null;
 
-                                /** 写日志 **/ WriteLog($"指定网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
+                                /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
                             }
                             else
                             {
@@ -699,27 +690,27 @@ namespace SNIBypassGUI
                                     // 暂存地址二不存在的情况
                                     Adapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath) };
 
-                                    /** 写日志 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}。", LogLevel.Info);
+                                    /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}。", LogLevel.Info);
                                 }
                                 else
                                 {
                                     // 暂存地址二存在的情况
                                     Adapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath), ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath) };
 
-                                    /** 写日志 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}，备用{ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)}。", LogLevel.Info);
+                                    /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}，备用{ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)}。", LogLevel.Info);
                                 }
                             }
                         }
                     }
                 }
 
-                /** 写日志 **/ WriteLog("完成RestoreAdapterDNS，返回true。", LogLevel.Debug);
+                /** 日志信息 **/ WriteLog("完成RestoreAdapterDNS，返回true。", LogLevel.Debug);
 
                 return true;
             }
-            else
+            catch(NetAdpSetException ex)
             {
-                /** 写日志 **/ WriteLog($"无法设置指定的网络适配器，因为DNS为null！", LogLevel.Warning);
+                /** 日志信息 **/ WriteLog($"无法还原指定的网络适配器！", LogLevel.Error, ex);
 
                 if (HandyControl.Controls.MessageBox.Show($"无法还原指定的网络适配器！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
@@ -727,8 +718,14 @@ namespace SNIBypassGUI
                     videoHelpWindow.Show();
                 }
             }
+            catch (Exception ex)
+            {
+                /** 日志信息 **/ WriteLog($"遇到异常。", LogLevel.Error, ex);
 
-            /** 写日志 **/ WriteLog("完成RestoreAdapterDNS，返回false", LogLevel.Debug);
+                HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            /** 日志信息 **/ WriteLog("完成RestoreAdapterDNS，返回false", LogLevel.Debug);
 
             return false;
         }
@@ -736,7 +733,7 @@ namespace SNIBypassGUI
         // 启动所有服务的方法
         public async Task StartService()
         {
-            /** 写日志 **/ WriteLog("进入StartService。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入StartService。", LogLevel.Debug);
 
             if (ConfigINI.INIRead("高级设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
             {
@@ -747,11 +744,11 @@ namespace SNIBypassGUI
                 // 检查获取到的进程数组长度是否大于 0，如果大于 0，说明主服务正在运行
                 bool IsNginxRunning = ps1.Length > 0;
 
-                /** 写日志 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
 
                 if (ps1.Length <= 0)
                 {
-                    /** 写日志 **/ WriteLog($"主服务未运行，将启动主服务。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"主服务未运行，将启动主服务。", LogLevel.Info);
 
                     // 显示文本提示启动中
                     ServiceStatusText.Text = "当前服务状态：\r\n主服务启动中";
@@ -772,7 +769,7 @@ namespace SNIBypassGUI
                     }
                     catch (Exception ex)
                     {
-                        /** 写日志 **/ WriteLog($"尝试启动主服务时遇到异常。", LogLevel.Error, ex);
+                        /** 日志信息 **/ WriteLog($"尝试启动主服务时遇到异常。", LogLevel.Error, ex);
 
                         // 如果启动进程时发生异常，则显示一个错误消息框
                         HandyControl.Controls.MessageBox.Show($"无法启动主服务: {ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -785,13 +782,13 @@ namespace SNIBypassGUI
                 // 检查DNS服务是否在运行
                 bool IsDnsRunning = AcrylicService.AcrylicServiceIsRunning();
 
-                /** 写日志 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(IsDnsRunning)}", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(IsDnsRunning)}", LogLevel.Info);
 
                 if (!IsDnsRunning)
                 {
                     // DNS服务未在运行的情况
 
-                    /** 写日志 **/ WriteLog($"DNS服务未运行，将启动DNS服务。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"DNS服务未运行，将启动DNS服务。", LogLevel.Info);
 
                     // 显示文本提示启动中
                     ServiceStatusText.Text = "当前服务状态：\r\nDNS服务启动中";
@@ -803,7 +800,7 @@ namespace SNIBypassGUI
                     }
                     catch (Exception ex)
                     {
-                        /** 写日志 **/ WriteLog($"尝试启动DNS服务时遇到异常。", LogLevel.Error, ex);
+                        /** 日志信息 **/ WriteLog($"尝试启动DNS服务时遇到异常。", LogLevel.Error, ex);
 
                         HandyControl.Controls.MessageBox.Show($"无法启动DNS服务:{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
@@ -828,7 +825,7 @@ namespace SNIBypassGUI
                 if (activeAdapter != null)
                 {
                     // 获取到选中的适配器的情况
-                    /** 写日志 **/ WriteLog($"指定网络适配器为：{activeAdapter.Name}", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"指定网络适配器为：{activeAdapter.Name}", LogLevel.Info);
 
                     // 获取到的适配器不为空的情况
                     if (SetLocalDNS(activeAdapter))
@@ -841,7 +838,7 @@ namespace SNIBypassGUI
                         {
                             // 未能禁用指定适配器IPv6的情况
 
-                            /** 写日志 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！", LogLevel.Warning);
+                            /** 日志信息 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！", LogLevel.Warning);
 
                             if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                             {
@@ -855,7 +852,7 @@ namespace SNIBypassGUI
                 {
                     // 未能获取到选中的适配器的情况
 
-                    /** 写日志 **/ WriteLog($"没有找到指定的网络适配器！", LogLevel.Warning);
+                    /** 日志信息 **/ WriteLog($"没有找到指定的网络适配器！", LogLevel.Warning);
 
                     if (HandyControl.Controls.MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                     {
@@ -873,11 +870,11 @@ namespace SNIBypassGUI
                 // 检查获取到的进程数组长度是否大于 0，如果大于 0，说明主服务正在运行
                 bool IsNginxRunning = ps.Length > 0;
 
-                /** 写日志 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
 
                 if (ps.Length <= 0)
                 {
-                    /** 写日志 **/ WriteLog($"主服务未运行，将启动主服务。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"主服务未运行，将启动主服务。", LogLevel.Info);
 
                     // 显示文本提示启动中
                     ServiceStatusText.Text = "当前服务状态：\r\n主服务启动中";
@@ -893,7 +890,7 @@ namespace SNIBypassGUI
                     }
                     catch (Exception ex)
                     {
-                        /** 写日志 **/ WriteLog($"尝试启动主服务时遇到异常。", LogLevel.Error, ex);
+                        /** 日志信息 **/ WriteLog($"尝试启动主服务时遇到异常。", LogLevel.Error, ex);
 
                         HandyControl.Controls.MessageBox.Show($"无法启动主服务: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
@@ -902,13 +899,13 @@ namespace SNIBypassGUI
                 UpdateServiceStatus();
             }
 
-            /** 写日志 **/ WriteLog("完成StartService。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成StartService。", LogLevel.Debug);
         }
 
         // 停止所有服务的方法
         public async Task StopService()
         {
-            /** 写日志 **/ WriteLog("进入StopService。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入StopService。", LogLevel.Debug);
 
             // 使用 Process.GetProcessesByName 方法获取所有名为“SNIBypass”的进程，这将返回一个包含所有匹配进程的 Process 数组
             Process[] ps1 = Process.GetProcessesByName("SNIBypass");
@@ -916,11 +913,11 @@ namespace SNIBypassGUI
             // 检查获取到的进程数组长度是否大于 0，如果大于 0，说明服务正在运行
             bool IsNginxRunning = ps1.Length > 0;
 
-            /** 写日志 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
 
             if (IsNginxRunning)
             {
-                /** 写日志 **/ WriteLog($"主服务运行中，将停止主服务。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"主服务运行中，将停止主服务。", LogLevel.Info);
 
                 // 显示文本提示服务停止中
                 ServiceStatusText.Text = "当前服务状态：\r\n主服务停止中";
@@ -943,14 +940,14 @@ namespace SNIBypassGUI
                             // 如果进程在超时时间内没有退出，则显示警告消息框
                             if (!exited)
                             {
-                                /** 写日志 **/ WriteLog($"退出进程{process.ProcessName}超时。", LogLevel.Warning);
+                                /** 日志信息 **/ WriteLog($"退出进程{process.ProcessName}超时。", LogLevel.Warning);
 
                                 HandyControl.Controls.MessageBox.Show($"退出进程{process.ProcessName}超时。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
                             }
                         }
                         catch (Exception ex)
                         {
-                            /** 写日志 **/ WriteLog($"尝试停止主服务时遇到异常。", LogLevel.Error, ex);
+                            /** 日志信息 **/ WriteLog($"尝试停止主服务时遇到异常。", LogLevel.Error, ex);
 
                             // 如果在结束进程的过程中发生异常，则显示错误消息框
                             HandyControl.Controls.MessageBox.Show($"停止主服务时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -969,11 +966,11 @@ namespace SNIBypassGUI
             // 检查DNS服务是否在运行
             bool IsDnsRunning = AcrylicService.AcrylicServiceIsRunning();
 
-            /** 写日志 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(IsDnsRunning)}", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(IsDnsRunning)}", LogLevel.Info);
 
             if (IsDnsRunning)
             {
-                /** 写日志 **/ WriteLog($"DNS服务运行中，将停止DNS服务。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"DNS服务运行中，将停止DNS服务。", LogLevel.Info);
 
                 // 显示文本提示服务停止中
                 ServiceStatusText.Text = "当前服务状态：\r\nDNS服务停止中";
@@ -985,7 +982,7 @@ namespace SNIBypassGUI
                 }
                 catch (Exception ex)
                 {
-                    /** 写日志 **/ WriteLog($"尝试停止DNS服务时遇到异常。", LogLevel.Error);
+                    /** 日志信息 **/ WriteLog($"尝试停止DNS服务时遇到异常。", LogLevel.Error);
 
                     HandyControl.Controls.MessageBox.Show($"停止DNS服务时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
@@ -1018,7 +1015,7 @@ namespace SNIBypassGUI
                     {
                         // 未能重新启用指定适配器IPv6的情况
 
-                        /** 写日志 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！", LogLevel.Warning);
+                        /** 日志信息 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！", LogLevel.Warning);
 
                         if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                         {
@@ -1035,7 +1032,7 @@ namespace SNIBypassGUI
                 {
                     // 适配器下拉框选中项不为空的情况
 
-                    /** 写日志 **/ WriteLog($"没有找到指定的网络适配器！", LogLevel.Warning);
+                    /** 日志信息 **/ WriteLog($"没有找到指定的网络适配器！", LogLevel.Warning);
 
                     if (HandyControl.Controls.MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动还原。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                     {
@@ -1046,24 +1043,24 @@ namespace SNIBypassGUI
                 // 如果适配器下拉框选中项为空就是没选择，不需要还原适配器
             }
 
-            /** 写日志 **/ WriteLog("完成StopService。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成StopService。", LogLevel.Debug);
         }
 
         // 刷新状态按钮的点击事件
         private void RefreshBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入RefreshBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入RefreshBtn_Click。", LogLevel.Debug);
 
             // 更新服务的状态信息
             UpdateServiceStatus();
 
-            /** 写日志 **/ WriteLog("完成RefreshBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成RefreshBtn_Click。", LogLevel.Debug);
         }
 
         // 启动按钮的点击事件
         private async void StartBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入StartBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入StartBtn_Click。", LogLevel.Debug);
 
             // 禁用按钮，防手贱不停地启动
             StartBtn.IsEnabled = false;
@@ -1097,13 +1094,13 @@ namespace SNIBypassGUI
             StartBtn.IsEnabled = true;
             StopBtn.IsEnabled = true;
 
-            /** 写日志 **/ WriteLog("完成StartBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成StartBtn_Click。", LogLevel.Debug);
         }
 
         // 停止按钮的点击事件
         private async void StopBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入StopBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入StopBtn_Click。", LogLevel.Debug);
 
             // 禁用按钮，防手贱不停地停止
             StartBtn.IsEnabled = false;
@@ -1126,13 +1123,13 @@ namespace SNIBypassGUI
             AdaptersCombo.IsEnabled = true;
             GetActiveAdapterBtn.IsEnabled = true;
 
-            /** 写日志 **/ WriteLog("完成StopBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成StopBtn_Click。", LogLevel.Debug);
         }
 
         // 设置开机启动按钮的点击事件
         private void SetStartBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入SetStartBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入SetStartBtn_Click。", LogLevel.Debug);
 
             try
             {
@@ -1146,7 +1143,7 @@ namespace SNIBypassGUI
                     // 如果任务已存在，则删除它，以便创建新的任务
                     if (existingTask != null)
                     {
-                        /** 写日志 **/ WriteLog("计划任务StartSNIBypassGUI已经存在，进行移除。", LogLevel.Warning);
+                        /** 日志信息 **/ WriteLog("计划任务StartSNIBypassGUI已经存在，进行移除。", LogLevel.Warning);
 
                         ts.RootFolder.DeleteTask(taskName);
                     }
@@ -1175,25 +1172,25 @@ namespace SNIBypassGUI
                     ts.RootFolder.RegisterTaskDefinition(taskName, td);
                 }
 
-                /** 写日志 **/ WriteLog("成功设置SNIBypassGUI为开机启动。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog("成功设置SNIBypassGUI为开机启动。", LogLevel.Info);
 
                 // 显示提示信息，表示已成功设置为开机启动
                 HandyControl.Controls.MessageBox.Show("成功设置SNIBypassGUI为开机启动！\r\n当开机自动启动时，将会自动在托盘图标运行并启动服务。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                /** 写日志 **/ WriteLog($"尝试设置SNIBypassGUI为开机启动时遇到异常。", LogLevel.Error,ex);
+                /** 日志信息 **/ WriteLog($"尝试设置SNIBypassGUI为开机启动时遇到异常。", LogLevel.Error,ex);
 
                 HandyControl.Controls.MessageBox.Show($"设置开机启动时遇到异常: {ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
-            /** 写日志 **/ WriteLog("完成SetStartBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成SetStartBtn_Click。", LogLevel.Debug);
         }
 
         // 停止开机启动按钮的点击事件
         private void StopStartBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入StopStartBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入StopStartBtn_Click。", LogLevel.Debug);
 
             try
             {
@@ -1207,32 +1204,32 @@ namespace SNIBypassGUI
                     // 如果任务已存在，则删除它
                     if (existingTask != null)
                     {
-                        /** 写日志 **/ WriteLog("计划任务StartSNIBypassGUI存在，进行移除。", LogLevel.Info);
+                        /** 日志信息 **/ WriteLog("计划任务StartSNIBypassGUI存在，进行移除。", LogLevel.Info);
 
                         ts.RootFolder.DeleteTask(taskName);
                     }
                 }
 
-                /** 写日志 **/ WriteLog("成功停止SNIBypassGUI的开机启动。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog("成功停止SNIBypassGUI的开机启动。", LogLevel.Info);
 
                 // 显示提示信息，表示已成功停止开机启动
                 HandyControl.Controls.MessageBox.Show("成功停止StartSNIBypassGUI的开机启动！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                /** 写日志 **/ WriteLog($"尝试停止SNIBypassGUI的开机启动时遇到异常。", LogLevel.Error, ex);
+                /** 日志信息 **/ WriteLog($"尝试停止SNIBypassGUI的开机启动时遇到异常。", LogLevel.Error, ex);
 
                 // 捕获异常并显示错误信息
                 HandyControl.Controls.MessageBox.Show($"停止开机启动时遇到异常: {ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
-            /** 写日志 **/ WriteLog("完成StopStartBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成StopStartBtn_Click。", LogLevel.Debug);
         }
 
         // 退出工具按钮的点击事件
         private async void ExitBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入ExitBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入ExitBtn_Click。", LogLevel.Debug);
 
             // 先隐藏窗体，在后台退出程序
             this.Hide();
@@ -1261,13 +1258,13 @@ namespace SNIBypassGUI
             Environment.Exit(0);
 
             // 不必要的日志记录
-            /** 写日志 **/ WriteLog("完成ExitBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成ExitBtn_Click。", LogLevel.Debug);
         }
 
         // 检查更新按钮的点击事件，用于检查 SNIBypassGUI 是否有新版本可用
         private async void CheckUpdateBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入CheckUpdateBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入CheckUpdateBtn_Click。", LogLevel.Debug);
 
             // 禁用检查更新按钮防止点来点去
             CheckUpdateBtn.IsEnabled = false;
@@ -1289,7 +1286,7 @@ namespace SNIBypassGUI
                 // 异步获取 GitHub 的最新发布信息
                 string LatestReleaseInfo = await HTTPHelper.GetAsync("https://api.github.com/repos/racpast/SNIBypassGUI/releases/latest");
 
-                /** 写日志 **/ WriteLog($"获取到GitHub的最新发布JSON信息为{LatestReleaseInfo}", LogLevel.Debug);
+                /** 日志信息 **/ WriteLog($"获取到GitHub的最新发布JSON信息为{LatestReleaseInfo}", LogLevel.Debug);
 
                 // 解析返回的JSON字符串
                 JObject repodata = JObject.Parse(LatestReleaseInfo);
@@ -1302,12 +1299,12 @@ namespace SNIBypassGUI
                 // 从解析后的JSON中获取资产信息
                 string LatestReleaseDownloadLink = assets[0]["browser_download_url"].ToString();
 
-                /** 写日志 **/ WriteLog($"解析到最后一次发布的标签为{LatestReleaseTag}，日期为{LatestReleasePublishedDt}，下载地址为{LatestReleaseDownloadLink}。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"解析到最后一次发布的标签为{LatestReleaseTag}，日期为{LatestReleasePublishedDt}，下载地址为{LatestReleaseDownloadLink}。", LogLevel.Info);
 
                 // 比较当前安装的版本与最后一次发布的版本
                 if (LatestReleaseTag.ToUpper() != PresetGUIVersion)
                 {
-                    /** 写日志 **/ WriteLog("检测到SNIBypassGUI有新版本可以使用。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog("检测到SNIBypassGUI有新版本可以使用。", LogLevel.Info);
 
                     // 修改按钮内容以提示用户正在寻找最优代理
                     CheckUpdateBtn.Content = "寻找最优代理中...";
@@ -1318,7 +1315,7 @@ namespace SNIBypassGUI
                     // 拼接下载地址
                     string proxiedLatestReleaseDownloadLink = $"https://{fastestProxy}/{LatestReleaseDownloadLink}";
 
-                    /** 写日志 **/ WriteLog($"获取到下载加速代理链接：{proxiedLatestReleaseDownloadLink}。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"获取到下载加速代理链接：{proxiedLatestReleaseDownloadLink}。", LogLevel.Info);
 
                     if (HandyControl.Controls.MessageBox.Show($"SNIBypassGUI有新版本可用，请及时获取最新版本！\r\n点击“确定”将直接打开下载链接。\r\n版本号：{LatestReleaseTag.ToUpper()}\r\n发布时间(GMT)：{LatestReleasePublishedDt}", "检查更新", MessageBoxButton.OKCancel, MessageBoxImage.Information) == MessageBoxResult.OK)
                     {
@@ -1328,7 +1325,7 @@ namespace SNIBypassGUI
                 }
                 else
                 {
-                    /** 写日志 **/ WriteLog($"检测到SNIBypassGUI已经是最新版本。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"检测到SNIBypassGUI已经是最新版本。", LogLevel.Info);
 
                     // 如果没有新版本，则弹出提示框告知用户已是最新版本
                     HandyControl.Controls.MessageBox.Show("SNIBypassGUI目前已是最新版本！", "检查更新", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -1337,17 +1334,19 @@ namespace SNIBypassGUI
             // 更准确的报错信息（https://github.com/racpast/Pixiv-Nginx-GUI/issues/2）
             catch (OperationCanceledException ex)
             {
-                /** 写日志 **/ WriteLog("尝试检查更新时遇到异常。", LogLevel.Error, ex);
+                /** 日志信息 **/ WriteLog("尝试检查更新时遇到异常。", LogLevel.Error, ex);
 
                 // 如果获取信息请求超时或被取消，显示提示信息
                 HandyControl.Controls.MessageBox.Show("获取信息操作超时或被取消！\r\n请检查是否可以正常访问api.github.com，如果可以请反馈到开发者处！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
-                /** 写日志 **/ WriteLog($"尝试检查更新时遇到异常。", LogLevel.Error, ex);
+                /** 日志信息 **/ WriteLog($"尝试检查更新时遇到异常。", LogLevel.Error, ex);
 
                 // 捕获异常并弹出错误提示框
                 HandyControl.Controls.MessageBox.Show($"检查更新时遇到异常: {ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                throw ex;
             }
             finally
             {
@@ -1356,13 +1355,13 @@ namespace SNIBypassGUI
                 CheckUpdateBtn.Content = "检查 SNIBypassGUI 是否有新版本可用";               
             }
 
-            /** 写日志 **/ WriteLog("完成CheckUpdateBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成CheckUpdateBtn_Click。", LogLevel.Debug);
         }
 
         // 清理按钮的点击事件
         private async void CleanBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入CleanBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入CleanBtn_Click。", LogLevel.Debug);
 
             // 禁用按钮并显示提示信息
             CleanBtn.IsEnabled = false;
@@ -1376,11 +1375,11 @@ namespace SNIBypassGUI
             // 检查获取到的进程数组长度是否大于 0，如果大于 0，说明服务正在运行
             bool IsNginxRunning = ps.Length > 0;
 
-            /** 写日志 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"主服务运行中：{StringBoolConverter.BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
 
             if (IsNginxRunning)
             {
-                /** 写日志 **/ WriteLog($"主服务运行中，将停止主服务。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"主服务运行中，将停止主服务。", LogLevel.Info);
 
                 // 显示文本提示服务停止中
                 ServiceStatusText.Text = "当前服务状态：\r\n主服务停止中";
@@ -1404,14 +1403,14 @@ namespace SNIBypassGUI
                             // 如果进程在超时时间内没有退出，则显示警告消息框
                             if (!exited)
                             {
-                                /** 写日志 **/ WriteLog($"退出进程{process.ProcessName}超时。", LogLevel.Warning);
+                                /** 日志信息 **/ WriteLog($"退出进程{process.ProcessName}超时。", LogLevel.Warning);
 
                                 HandyControl.Controls.MessageBox.Show($"退出进程{process.ProcessName}超时。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
                             }
                         }
                         catch (Exception ex)
                         {
-                            /** 写日志 **/ WriteLog($"尝试停止主服务时遇到异常。", LogLevel.Error, ex);
+                            /** 日志信息 **/ WriteLog($"尝试停止主服务时遇到异常。", LogLevel.Error, ex);
 
                             // 如果在结束进程的过程中发生异常，则显示错误消息框
                             HandyControl.Controls.MessageBox.Show($"停止主服务时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1427,11 +1426,11 @@ namespace SNIBypassGUI
             // 检查DNS服务是否在运行
             bool IsDnsRunning = AcrylicService.AcrylicServiceIsRunning();
 
-            /** 写日志 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(IsDnsRunning)}", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(IsDnsRunning)}", LogLevel.Info);
 
             if (IsDnsRunning)
             {
-                /** 写日志 **/ WriteLog($"DNS服务运行中，将停止DNS服务。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"DNS服务运行中，将停止DNS服务。", LogLevel.Info);
 
                 // 显示文本提示服务停止中
                 ServiceStatusText.Text = "当前服务状态：\r\nDNS服务停止中";
@@ -1444,7 +1443,7 @@ namespace SNIBypassGUI
                 }
                 catch (Exception ex)
                 {
-                    /** 写日志 **/ WriteLog($"尝试停止DNS服务时遇到异常。", LogLevel.Error);
+                    /** 日志信息 **/ WriteLog($"尝试停止DNS服务时遇到异常。", LogLevel.Error);
 
                     HandyControl.Controls.MessageBox.Show($"停止DNS服务时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
@@ -1459,7 +1458,7 @@ namespace SNIBypassGUI
                 {
                     // 如果文件存在则删除
 
-                    /** 写日志 **/ WriteLog($"临时文件{path}存在，删除。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"临时文件{path}存在，删除。", LogLevel.Info);
 
                     File.Delete(path);
                 }
@@ -1472,7 +1471,7 @@ namespace SNIBypassGUI
                 {
                     // GUI调试开启的情况
 
-                    /** 写日志 **/ WriteLog($"GUI调试开启，将不会删除调试日志{PathsSet.GUILogPath}。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"GUI调试开启，将不会删除调试日志{PathsSet.GUILogPath}。", LogLevel.Info);
 
                     HandyControl.Controls.MessageBox.Show("GUI调试开启时将不会删除调试日志，请尝试关闭GUI调试。","提示",MessageBoxButton.OK,MessageBoxImage.Information);
                 }
@@ -1482,10 +1481,10 @@ namespace SNIBypassGUI
 
                     File.Delete(PathsSet.GUILogPath);
                 }
-                /** 写日志 **/ WriteLog($"临时文件{PathsSet.GUILogPath}存在，删除。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"临时文件{PathsSet.GUILogPath}存在，删除。", LogLevel.Info);
             }
 
-            /** 写日志 **/ WriteLog($"服务运行日志及缓存清理完成。", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"服务运行日志及缓存清理完成。", LogLevel.Info);
 
             // 重新启用定期更新大小的计时器
             _TabCUpdateTimer.Start();
@@ -1499,13 +1498,13 @@ namespace SNIBypassGUI
             // 重新启用按钮
             CleanBtn.IsEnabled = true;
 
-            /** 写日志 **/ WriteLog("完成CleanBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成CleanBtn_Click。", LogLevel.Debug);
         }
 
         // 选项卡发生改变时的事件
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入TabControl_SelectionChanged。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入TabControl_SelectionChanged。", LogLevel.Debug);
 
             if (sender is TabControl tabControl)
             {
@@ -1513,7 +1512,7 @@ namespace SNIBypassGUI
                 // 尝试将 TabControl 的选中项转换为 TabItem
                 var selectedItem = tabControl.SelectedItem as TabItem;
 
-                /** 写日志 **/ WriteLog($"获取到选项卡标题：{selectedItem?.Header.ToString()}。", LogLevel.Debug);
+                /** 日志信息 **/ WriteLog($"获取到选项卡标题：{selectedItem?.Header.ToString()}。", LogLevel.Debug);
 
                 // 根据选中项的标题来决定执行哪个操作
                 switch (selectedItem?.Header.ToString())
@@ -1543,13 +1542,13 @@ namespace SNIBypassGUI
                 }
             }
 
-            /** 写日志 **/ WriteLog("完成TabControl_SelectionChanged。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成TabControl_SelectionChanged。", LogLevel.Debug);
         }
 
         // 全部开启按钮的点击事件
         private void AllOnBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入AllOnBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入AllOnBtn_Click。", LogLevel.Debug);
 
             bool IsChanged = false;
 
@@ -1570,13 +1569,13 @@ namespace SNIBypassGUI
                 UnchangeBtn.IsEnabled = true;
             }
 
-            /** 写日志 **/ WriteLog("完成AllOnBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成AllOnBtn_Click。", LogLevel.Debug);
         }
 
         // 全部关闭按钮的点击事件
         private void AllOffBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入AllOffBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入AllOffBtn_Click。", LogLevel.Debug);
 
             bool IsChanged = false;
 
@@ -1597,24 +1596,24 @@ namespace SNIBypassGUI
                 UnchangeBtn.IsEnabled = true;
             }
 
-            /** 写日志 **/ WriteLog("完成AllOffBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成AllOffBtn_Click。", LogLevel.Debug);
         }
 
         // 安装证书按钮的点击事件
         private void InstallCertBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入InstallCertBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入InstallCertBtn_Click。", LogLevel.Debug);
 
             // 安装证书
             InstallCertificate();
 
-            /** 写日志 **/ WriteLog("完成InstallCertBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成InstallCertBtn_Click。", LogLevel.Debug);
         }
 
         // 自定义背景按钮的点击事件
         private void CustomBkgBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入CustomBkgBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入CustomBkgBtn_Click。", LogLevel.Debug);
 
             // 创建OpenFileDialog实例
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -1631,7 +1630,7 @@ namespace SNIBypassGUI
                 // 获取选中的文件路径
                 string sourceFile = openFileDialog.FileName;
 
-                /** 写日志 **/ WriteLog($"用户在对话框中选择了{sourceFile}。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"用户在对话框中选择了{sourceFile}。", LogLevel.Info);
 
                 try
                 {
@@ -1661,44 +1660,44 @@ namespace SNIBypassGUI
                 }
                 catch (Exception ex)
                 {
-                    /** 写日志 **/ WriteLog($"遇到异常。", LogLevel.Error, ex);
+                    /** 日志信息 **/ WriteLog($"遇到异常。", LogLevel.Error, ex);
 
                     HandyControl.Controls.MessageBox.Show($"遇到异常: {ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
 
-            /** 写日志 **/ WriteLog("完成CustomBkgBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成CustomBkgBtn_Click。", LogLevel.Debug);
         }
 
         // 恢复默认背景按钮的点击事件
         private void DefaultBkgBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入DefaultBkgBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入DefaultBkgBtn_Click。", LogLevel.Debug);
 
             // 设置配置为默认背景
             ConfigINI.INIWrite("程序设置", "Background", "Preset", PathsSet.INIPath);
             // 更新背景图片
             UpdateBackground();
 
-            /** 写日志 **/ WriteLog("完成DefaultBkgBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成DefaultBkgBtn_Click。", LogLevel.Debug);
         }
 
         // 代理开关点击事件
         private void ToggleButtonsClick(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入ToggleButtonsClick。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入ToggleButtonsClick。", LogLevel.Debug);
 
             // 启用更改有关按钮
             ApplyBtn.IsEnabled = true;
             UnchangeBtn.IsEnabled = true;
 
-            /** 写日志 **/ WriteLog("完成ToggleButtonsClick。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成ToggleButtonsClick。", LogLevel.Debug);
         }
 
         // 链接文本点击事件
         private void LinkText_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入LinkText_PreviewMouseDown。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入LinkText_PreviewMouseDown。", LogLevel.Debug);
 
             string url;
             if (sender is TextBlock textblock)
@@ -1712,7 +1711,7 @@ namespace SNIBypassGUI
             }
             else
             {
-                /** 写日志 **/ WriteLog("完成LinkText_PreviewMouseDown。", LogLevel.Debug);
+                /** 日志信息 **/ WriteLog("完成LinkText_PreviewMouseDown。", LogLevel.Debug);
 
                 return;
             }
@@ -1723,18 +1722,18 @@ namespace SNIBypassGUI
                 url = "https://" + url;
             }
 
-            /** 写日志 **/ WriteLog($"用户点击的链接被识别为{url}。", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"用户点击的链接被识别为{url}。", LogLevel.Info);
 
             // 使用 Process.Start 来打开默认浏览器并导航到链接
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
-            /** 写日志 **/ WriteLog("完成LinkText_PreviewMouseDown。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成LinkText_PreviewMouseDown。", LogLevel.Debug);
         }
 
         // 应用更改按钮点击事件
         private async void ApplyBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入ApplyBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入ApplyBtn_Click。", LogLevel.Debug);
 
             // 禁用有关按钮
             ApplyBtn.IsEnabled = false;
@@ -1746,7 +1745,7 @@ namespace SNIBypassGUI
             // 如果DNS服务在运行，则稍后需要重启
             bool WasDnsServiceRunning = AcrylicService.AcrylicServiceIsRunning();
 
-            /** 写日志 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(WasDnsServiceRunning)}", LogLevel.Info);
+            /** 日志信息 **/ WriteLog($"DNS服务运行中：{StringBoolConverter.BoolToYesNo(WasDnsServiceRunning)}", LogLevel.Info);
 
             try
             {
@@ -1754,7 +1753,7 @@ namespace SNIBypassGUI
             }
             catch (Exception ex)
             {
-                /** 写日志 **/ WriteLog($"尝试停止DNS服务时遇到异常。", LogLevel.Error);
+                /** 日志信息 **/ WriteLog($"尝试停止DNS服务时遇到异常。", LogLevel.Error);
 
                 HandyControl.Controls.MessageBox.Show($"停止DNS服务时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -1776,13 +1775,13 @@ namespace SNIBypassGUI
 
             ApplyBtn.Content = "应用更改";
 
-            /** 写日志 **/ WriteLog("完成ApplyBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成ApplyBtn_Click。", LogLevel.Debug);
         }
 
         // 取消更改按钮点击事件
         private void UnchangeBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入UnchangeBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入UnchangeBtn_Click。", LogLevel.Debug);
 
             // 禁用有关按钮
             ApplyBtn.IsEnabled = false;
@@ -1791,63 +1790,63 @@ namespace SNIBypassGUI
             // 从配置文件同步开关
             SyncControlsFromConfig();
 
-            /** 写日志 **/ WriteLog("完成UnchangeBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成UnchangeBtn_Click。", LogLevel.Debug);
         }
 
         // 菜单：显示主窗口点击事件
         private void MenuItem_ShowMainWin_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入MenuItem_ShowMainWin_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入MenuItem_ShowMainWin_Click。", LogLevel.Debug);
 
             // 显示并激活窗体
             this.Show();
             this.Activate();
 
-            /** 写日志 **/ WriteLog("完成MenuItem_ShowMainWin_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成MenuItem_ShowMainWin_Click。", LogLevel.Debug);
         }
 
         // 菜单：启动服务点击事件
         private void MenuItem_StartService_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入MenuItem_StartService_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入MenuItem_StartService_Click。", LogLevel.Debug);
 
             // 模拟点击“启动”按钮
             StartBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             // 显示通知
             TaskbarIcon.ShowBalloonTip("服务启动完成", "您现在可以尝试访问列表中的网站。", BalloonIcon.Info);
 
-            /** 写日志 **/ WriteLog("完成MenuItem_StartService_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成MenuItem_StartService_Click。", LogLevel.Debug);
         }
 
         // 菜单：停止服务点击事件
         private void MenuItem_StopService_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入MenuItem_StopService_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入MenuItem_StopService_Click。", LogLevel.Debug);
 
             // 模拟点击“停止”按钮
             StopBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             // 显示通知
             TaskbarIcon.ShowBalloonTip("服务停止完成", "感谢您的使用 ~\\(≥▽≤)/~", BalloonIcon.Info);
 
-            /** 写日志 **/ WriteLog("完成MenuItem_StopService_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成MenuItem_StopService_Click。", LogLevel.Debug);
         }
 
         // 菜单：退出工具点击事件
         private void MenuItem_ExitTool_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入MenuItem_ExitTool_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入MenuItem_ExitTool_Click。", LogLevel.Debug);
 
             // 模拟点击“退出工具”按钮
             ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
             // 不必要的日志记录
-            /** 写日志 **/ WriteLog("进入MenuItem_ExitTool_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入MenuItem_ExitTool_Click。", LogLevel.Debug);
         }
 
         // 托盘图标点击事件
         public async void TaskbarIcon_LeftClick()
         {
-            /** 写日志 **/ WriteLog("进入TaskbarIcon_LeftClick。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入TaskbarIcon_LeftClick。", LogLevel.Debug);
 
             // 显示并激活主窗体
             this.Show();
@@ -1855,26 +1854,26 @@ namespace SNIBypassGUI
             // 更新一言
             await UpdateYiyan();
 
-            /** 写日志 **/ WriteLog("完成TaskbarIcon_LeftClick。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成TaskbarIcon_LeftClick。", LogLevel.Debug);
         }
 
         // 最小化到托盘图标运行按钮点击事件
         private void TaskbarIconRunBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入TaskbarIconRunBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入TaskbarIconRunBtn_Click。", LogLevel.Debug);
 
             // 隐藏窗体
             this.Hide();
             // 显示通知
             TaskbarIcon.ShowBalloonTip("已最小化运行", "点击图标显示主窗体或右键显示菜单", BalloonIcon.Info);
 
-            /** 写日志 **/ WriteLog("完成TaskbarIconRunBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成TaskbarIconRunBtn_Click。", LogLevel.Debug);
         }
 
         // 窗口加载完成事件
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入Window_Loaded。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入Window_Loaded。", LogLevel.Debug);
 
             // 在主窗口标题显示版本
             WindowTitle.Text = "SNIBypassGUI " + PresetGUIVersion;
@@ -1910,7 +1909,7 @@ namespace SNIBypassGUI
             // 检查应用程序的设置，判断是否为第一次使用
             if (StringBoolConverter.StringToBool(ConfigINI.INIRead("程序设置", "IsFirst", PathsSet.INIPath)))
             {
-                /** 写日志 **/ WriteLog("软件应为首次使用，提示用户安装证书与选择正在使用的网络适配器。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog("软件应为首次使用，提示用户安装证书与选择正在使用的网络适配器。", LogLevel.Info);
 
                 MessageBoxResult UserConfirm = HandyControl.Controls.MessageBox.Show("第一次使用需要安装证书，已经安装的证书会重新进行安装。有关证书的对话框请点击“是 (Y)”。\r\n还需要在下拉框中选择当前正在使用的网络适配器。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 if (UserConfirm == MessageBoxResult.OK)
@@ -1926,17 +1925,17 @@ namespace SNIBypassGUI
             {
                 if (!AcrylicService.AcrylicServiceIsRunning())
                 {
-                    /** 写日志 **/ WriteLog("DNS服务未在运行，将进行处理。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog("DNS服务未在运行，将进行处理。", LogLevel.Info);
 
                     if (AcrylicService.AcrylicServiceIsInstalled() == false)
                     {
-                        /** 写日志 **/ WriteLog("DNS服务未安装，将尝试安装。", LogLevel.Info);
+                        /** 日志信息 **/ WriteLog("DNS服务未安装，将尝试安装。", LogLevel.Info);
 
                         await AcrylicService.InstallAcrylicService();
                     }
                     else
                     {
-                        /** 写日志 **/ WriteLog("DNS服务已安装，将尝试重新安装。", LogLevel.Info);
+                        /** 日志信息 **/ WriteLog("DNS服务已安装，将尝试重新安装。", LogLevel.Info);
 
                         await AcrylicService.UninstallAcrylicService();
                         await AcrylicService.InstallAcrylicService();
@@ -1944,7 +1943,7 @@ namespace SNIBypassGUI
                 }
             }catch (Exception ex)
             {
-                /** 写日志 **/ WriteLog($"遇到异常。", LogLevel.Error, ex);
+                /** 日志信息 **/ WriteLog($"遇到异常。", LogLevel.Error, ex);
 
                 HandyControl.Controls.MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -1957,7 +1956,7 @@ namespace SNIBypassGUI
             bool isRunWinService = (curPath != Path.GetDirectoryName(PathsSet.currentDirectory));
             if (isRunWinService)
             {
-                /** 写日志 **/ WriteLog("程序应为计划任务启动，将托盘运行并自动启动服务。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog("程序应为计划任务启动，将托盘运行并自动启动服务。", LogLevel.Info);
 
                 // 如果是由服务启动，则托盘运行并自动启动服务
                 TaskbarIconRunBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -1967,26 +1966,26 @@ namespace SNIBypassGUI
             // 更新一言
             await UpdateYiyan();
 
-            /** 写日志 **/ WriteLog("完成Window_Loaded。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成Window_Loaded。", LogLevel.Debug);
         }
 
         // 窗口关闭事件
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入Window_Closing。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入Window_Closing。", LogLevel.Debug);
 
             // 取消事件
             e.Cancel = true;
             // 模拟点击“最小化到托盘图标运行”按钮
             TaskbarIconRunBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-            /** 写日志 **/ WriteLog("完成Window_Closing。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成Window_Closing。", LogLevel.Debug);
         }
 
         // 菜单选项鼠标进入事件（用于突出显示）
         private void MenuItem_MouseEnter(object sender, MouseEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入MenuItem_MouseEnter。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入MenuItem_MouseEnter。", LogLevel.Debug);
 
             if (sender is MenuItem menuitem)
             {
@@ -2011,13 +2010,13 @@ namespace SNIBypassGUI
                 menuitem.FontSize = menuitem.FontSize + 2;
             }
 
-            /** 写日志 **/ WriteLog("完成MenuItem_MouseEnter。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成MenuItem_MouseEnter。", LogLevel.Debug);
         }
 
         // 菜单选项鼠标离开事件（用于还原显示）
         private void MenuItem_MouseLeave(object sender, MouseEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入MenuItem_MouseLeave。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入MenuItem_MouseLeave。", LogLevel.Debug);
 
             if (sender is MenuItem menuitem)
             {
@@ -2026,13 +2025,13 @@ namespace SNIBypassGUI
                 menuitem.FontSize = menuitem.FontSize - 2;
             }
 
-            /** 写日志 **/ WriteLog("完成MenuItem_MouseLeave。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成MenuItem_MouseLeave。", LogLevel.Debug);
         }
 
         // 调试模式按钮的点击事件
         private void DebugModeBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入DebugModeBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入DebugModeBtn_Click。", LogLevel.Debug);
 
             if (DebugModeBtn.Content.ToString() == "调试模式：\n关")
             {
@@ -2051,13 +2050,13 @@ namespace SNIBypassGUI
 
             SyncControlsFromConfig();
 
-            /** 写日志 **/ WriteLog("完成DebugModeBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成DebugModeBtn_Click。", LogLevel.Debug);
         }
 
         // 域名解析模式按钮的点击事件
         private void SwitchDomainNameResolutionMethodBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
 
             if (SwitchDomainNameResolutionMethodBtn.Content.ToString() == "域名解析模式：\nDNS服务")
             {
@@ -2073,13 +2072,13 @@ namespace SNIBypassGUI
 
             SyncControlsFromConfig();
 
-            /** 写日志 **/ WriteLog("完成SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
         }
 
         // DNS服务调试按钮的点击事件
         private void AcrylicDebugBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入AcrylicDebugBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入AcrylicDebugBtn_Click。", LogLevel.Debug);
 
             if (AcrylicDebugBtn.Content.ToString() == "DNS服务调试：\n关")
             {
@@ -2095,13 +2094,13 @@ namespace SNIBypassGUI
 
             SyncControlsFromConfig();
 
-            /** 写日志 **/ WriteLog("完成AcrylicDebugBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成AcrylicDebugBtn_Click。", LogLevel.Debug);
         }
 
         // GUI调试按钮的点击事件
         private void GUIDebugBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入GUIDebugBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入GUIDebugBtn_Click。", LogLevel.Debug);
 
             if (GUIDebugBtn.Content.ToString() == "GUI调试：\n关")
             {
@@ -2119,13 +2118,13 @@ namespace SNIBypassGUI
                 SyncControlsFromConfig();
             }
 
-            /** 写日志 **/ WriteLog("完成GUIDebugBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成GUIDebugBtn_Click。", LogLevel.Debug);
         }
 
         // 编辑系统hosts按钮点击事件
         private void EditHostsBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入EditHostsBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入EditHostsBtn_Click。", LogLevel.Debug);
 
             // 检查文件是否存在
             if (File.Exists(PathsSet.SystemHosts))
@@ -2135,24 +2134,24 @@ namespace SNIBypassGUI
             }
             else
             {
-                /** 写日志 **/ WriteLog("未在指定路径找到系统hosts！", LogLevel.Warning);
+                /** 日志信息 **/ WriteLog("未在指定路径找到系统hosts！", LogLevel.Warning);
 
                 HandyControl.Controls.MessageBox.Show("未在指定路径找到系统hosts！\r\n请尝试手动创建该文件。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
 
-            /** 写日志 **/ WriteLog("完成EditHostsBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成EditHostsBtn_Click。", LogLevel.Debug);
         }
 
         // 还原系统hosts按钮点击事件
         private void BackHostsBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入BackHostsBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入BackHostsBtn_Click。", LogLevel.Debug);
 
             if (HandyControl.Controls.MessageBox.Show("还原系统hosts功能用于消除本程序对系统hosts所产生的影响。\r\n当您认为本程序（特别是历史版本）对您的系统hosts造成了不良影响时可以使用此功能。\r\n是否还原系统hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 foreach (var sectionname in SectionNamesSet)
                 {
-                    /** 写日志 **/ WriteLog($"移除{sectionname}的记录部分。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"移除{sectionname}的记录部分。", LogLevel.Info);
 
                     FileHelper.RemoveSection(PathsSet.SystemHosts, sectionname);
                 }
@@ -2160,13 +2159,13 @@ namespace SNIBypassGUI
 
             DNS.FlushDNS();
 
-            /** 写日志 **/ WriteLog("完成BackHostsBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成BackHostsBtn_Click。", LogLevel.Debug);
         }
 
         // 自动获取活动适配器按钮的点击事件
         private void GetActiveAdapterBtn_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入GetActiveAdapterBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入GetActiveAdapterBtn_Click。", LogLevel.Debug);
 
             // 更新适配器列表
             UpdateAdaptersCombo();
@@ -2180,12 +2179,9 @@ namespace SNIBypassGUI
             {
                 if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
                 {
-                    if (adapter.DNS != null)
-                    {
-                        // 如果适配器已经启用且适配器DNS不为null，记录备用并跳出循环
-                        activeAdapter = adapter;
-                        break;
-                    }
+                    // 如果适配器已经启用且适配器DNS不为null，记录备用并跳出循环
+                    activeAdapter = adapter;
+                    break;
                 }
             }
             if (activeAdapter != null)
@@ -2205,7 +2201,7 @@ namespace SNIBypassGUI
             {
                 // 未能找到符合条件的适配器的情况
 
-                /** 写日志 **/ WriteLog($"没有找到活动且可设置的网络适配器！", LogLevel.Warning);
+                /** 日志信息 **/ WriteLog($"没有找到活动且可设置的网络适配器！", LogLevel.Warning);
 
                 if (HandyControl.Controls.MessageBox.Show($"没有找到活动且可设置的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
@@ -2214,18 +2210,18 @@ namespace SNIBypassGUI
                 }
             }
 
-            /** 写日志 **/ WriteLog("完成GetActiveAdapterBtn_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成GetActiveAdapterBtn_Click。", LogLevel.Debug);
         }
 
         // 帮助按钮：如何选择适配器的点击事件
         private void HelpBtn_HowToFindActiveAdapter_Click(object sender, RoutedEventArgs e)
         {
-            /** 写日志 **/ WriteLog("进入HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("进入HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
 
             VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何寻找活动的网络适配器", PathsSet.HelpVideo_如何寻找活动适配器_Path);
             videoHelpWindow.Show();
 
-            /** 写日志 **/ WriteLog("完成HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
+            /** 日志信息 **/ WriteLog("完成HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
         }
 
         // 托盘图标点击命令
