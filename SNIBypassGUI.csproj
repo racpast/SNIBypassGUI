@@ -250,5 +250,8 @@
   <ItemGroup>
     <None Include="Resources\如何手动还原适配器.mp4" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\favicons\pixivFANBOX.ico" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

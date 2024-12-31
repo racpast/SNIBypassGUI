@@ -36,14 +36,20 @@
             "127.0.0.1       pixiv.net",
             "127.0.0.1       *.pixiv.net",
             "127.0.0.1       *.*.pixiv.net",
-            "127.0.0.1       fanbox.cc",
-            "104.18.41.140      api.fanbox.cc",
-            "127.0.0.1       *.fanbox.cc",
             "127.0.0.1       pximg.net",
             "127.0.0.1       *.pximg.net",
             "127.0.0.1       pixiv.org",
             "127.0.0.1       *.pixiv.org",
             "#\tPixiv End"
+        };
+
+        public static string[] pixivFANBOXSection =
+        {
+            "#\tpixivFANBOX Start",
+            "127.0.0.1       fanbox.cc",
+            "104.18.41.140      api.fanbox.cc",
+            "127.0.0.1       *.fanbox.cc",
+            "#\tpixivFANBOX End"
         };
 
         public static string[] PornhubSection =
@@ -227,7 +233,7 @@
 
         public static string[] YoutubeSection =
         {
-            "#\tYoutube Start",
+            "#\tYouTube Start",
             "127.0.0.1		youtube.com",
             "127.0.0.1		*.youtube.com",
             "127.0.0.1		ytimg.com",
@@ -236,7 +242,7 @@
             "127.0.0.1		*.ggpht.com",
             "127.0.0.1      googlevideo.com",
             "127.0.0.1      *.googlevideo.com",
-            "#\tYoutube End"
+            "#\tYouTube End"
         };
 
         public static string[] ZLibrarySection =
@@ -314,16 +320,22 @@
             "127.0.0.1       i3.pixiv.net",
             "127.0.0.1       i4.pixiv.net",
             "127.0.0.1       app-api.pixiv.net",
-            "127.0.0.1       fanbox.cc",
-            "127.0.0.1       www.fanbox.cc",
-            "127.0.0.1       downloads.fanbox.cc",
-            "104.18.41.140       api.fanbox.cc",
             "127.0.0.1       i.pximg.net",
             "127.0.0.1       s.pximg.net",
             "127.0.0.1       pixiv.pximg.net",
             "127.0.0.1       a.pixiv.org",
             "127.0.0.1       d.pixiv.org",
             "#\tPixiv End"
+        };
+
+        public static string[] pixivFANBOXSection =
+        {
+            "#\tpixivFANBOX Start",
+            "127.0.0.1       fanbox.cc",
+            "127.0.0.1       www.fanbox.cc",
+            "127.0.0.1       downloads.fanbox.cc",
+            "104.18.41.140       api.fanbox.cc",
+            "#\tpixivFANBOX End"
         };
 
         public static string[] PornhubSection =
@@ -1078,12 +1090,12 @@
 
         public static string[] YoutubeSection =
         {
-            "#\tYoutube Start",
+            "#\tYouTube Start",
             "127.0.0.1		youtube.com",
             "127.0.0.1		www.youtube.com",
             "127.0.0.1		i.ytimg.com",
             "127.0.0.1		yt3.ggpht.com",
-            "#\tYoutube End"
+            "#\tYouTube End"
         };
 
         public static string[] ZLibrarySection =

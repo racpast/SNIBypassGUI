@@ -21,6 +21,8 @@ using RpNet.NetworkHelper;
 using RpNet.AcrylicServiceHelper;
 using RpNet.TaskBarHelper;
 using Task = System.Threading.Tasks.Task;
+using System.Windows.Controls.Primitives;
+using System.Security.Cryptography.X509Certificates;
 
 namespace SNIBypassGUI
 {
@@ -82,6 +84,112 @@ namespace SNIBypassGUI
             TaskBarIconHelper.RefreshNotification();
 
             /** 日志信息 **/ WriteLog("完成MainWindow。", LogLevel.Debug);
+        }
+
+        // 将代理开关添加到列表的方法
+        private void AddSwitchItems()
+        {
+            /** 日志信息 **/ WriteLog("进入AddSwitchItems。", LogLevel.Debug);
+
+            int ItemIndex = 0;
+            foreach(SwitchItem item in Switchs)
+            {
+                Image favicon = new Image
+                {
+                    Source = new BitmapImage(new Uri(item.FaviconImageSource, UriKind.RelativeOrAbsolute)),
+                    Width = 32,
+                    Height = 32,
+                    Margin = new Thickness(10, 10, 10, 5),
+                };
+                Grid.SetColumn(favicon, 0);
+                Grid.SetRow(favicon, ItemIndex);
+                // 添加站点图标
+                Switchlist.Children.Add(favicon);
+
+                TextBlock textBlock = new TextBlock
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(5, 3, 10, 3)
+                };
+                textBlock.Inlines.Add(new Run { Text = item.SwitchTitle, FontWeight = FontWeights.Bold, FontSize = 18 });
+                textBlock.Inlines.Add(new LineBreak());
+                if (item.LinksText.Contains('|'))
+                {
+                    string[] parts = item.LinksText.Split('|');
+
+                    foreach (var part in parts)
+                    {
+                        if (part == "、" || part == "等")
+                        {
+                            textBlock.Inlines.Add(new Run { Text = part, FontSize = 15, FontWeight = FontWeights.Bold});
+                        }
+                        else
+                        {
+                            Run run = new Run { Text = part, Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xF9, 0xFF)), FontSize = 15, Cursor = Cursors.Hand, FontFamily = new FontFamily("Microsoft Tai Le") };
+                            run.PreviewMouseDown += LinkText_PreviewMouseDown;
+                            textBlock.Inlines.Add(run);
+                        }
+                    }
+                }
+                else
+                {
+                    Run run = new Run { Text = item.LinksText, Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xF9, 0xFF)), FontSize = 15, Cursor = Cursors.Hand, FontFamily = new FontFamily("Microsoft Tai Le") };
+                    run.PreviewMouseDown += LinkText_PreviewMouseDown;
+                    textBlock.Inlines.Add(run);
+                }
+                Grid.SetColumn(textBlock, 1);
+                Grid.SetRow(textBlock, ItemIndex);
+                // 添加站点标题及链接
+                Switchlist.Children.Add(textBlock);
+
+                ToggleButton toggleButton = new ToggleButton
+                {
+                    Width = 40,
+                    Margin = new Thickness(5, 0, 5, 0),
+                    IsChecked = true,
+                    Style = (Style)FindResource("ToggleButtonSwitch")
+                };
+                toggleButton.Click += ToggleButtonsClick;
+                Grid.SetColumn(toggleButton, 2);
+                Grid.SetRow(toggleButton, ItemIndex);
+                // 添加切换开关
+                Switchlist.Children.Add(toggleButton);
+
+                /*
+                 * https://learn.microsoft.com/zh-cn/dotnet/api/system.windows.frameworkelement.registername
+                 * 
+                 * FrameworkElement.RegisterName(String, Object) 方法
+                 * 
+                 * 定义: 
+                 * 命名空间: System.Windows
+                 * 程序集: PresentationFramework.dll
+                 * 
+                 * 提供一个可简化对 NameScope(https://learn.microsoft.com/zh-cn/dotnet/api/system.windows.namescope) 注册方法访问的访问器。
+                 * public void RegisterName (string name, object scopedElement);
+                 * 
+                 * 参数: 
+                 * name: 要在指定的名称-对象映射中使用的名称。
+                 * scopedElement: 映射的对象。
+                 * 
+                 * 注解: 
+                 * 此方法是调用的 RegisterName(https://learn.microsoft.com/zh-cn/dotnet/api/system.windows.namescope.registername)便利方法。 
+                 * 实现将检查连续的父元素，直到找到适用的 NameScope 实现，通过查找实现的 INameScope(https://learn.microsoft.com/zh-cn/dotnet/api/system.windows.markup.inamescope)元素来找到该实现。 
+                 * 有关名称范围的详细信息，请参阅 WPF XAML 名称范围。调用 RegisterName 是必需的，以便在代码中创建时为应用程序正确挂钩动画情节提要。 
+                 * 这是因为其中一个关键情节提要属性 TargetName使用运行时名称查找，而不是能够引用目标元素。 即使该元素可通过代码引用访问，也是如此。
+                 * 有关为何需要注册情节提要目标名称的详细信息，请参阅 情节提要概述。
+                 * 
+                */
+                Switchlist.RegisterName(item.ToggleButtonName, toggleButton);
+
+                Switchlist.RowDefinitions.Add(new RowDefinition());
+
+                ItemIndex++;
+            }
+            // 设置首列与尾列背景
+            Grid.SetRowSpan(FirstColumnBorder, ItemIndex);
+            Grid.SetRowSpan(LastColumnBorder, ItemIndex);
+
+            /** 日志信息 **/ WriteLog("完成AddSwitchItems。", LogLevel.Debug);
         }
 
         // 主页更新计时器触发事件
@@ -298,9 +406,9 @@ namespace SNIBypassGUI
                 }
 
                 // 写入初始代理开关配置
-                foreach (var configkeyname in SectionNamesSet)
+                foreach (SwitchItem pair in Switchs)
                 {
-                    ConfigINI.INIWrite("代理开关", configkeyname, "true", PathsSet.INIPath);
+                    ConfigINI.INIWrite("代理开关", pair.SectionName, "true", PathsSet.INIPath);
                 }
             }
 
@@ -355,28 +463,28 @@ namespace SNIBypassGUI
             /** 日志信息 **/ WriteLog($"当前域名解析方法是否为DNS服务：{StringBoolConverter.BoolToYesNo(IsDnsService)}，将更新的文件为{FileShouldUpdate}。", LogLevel.Info);
 
             // 根据域名解析模式获取应该添加的条目数据
-            var CorrespondingHosts = IsDnsService ? SectionNameToHostsRecordDic : SectionNameToOldHostsRecordDic;
-
+            string CorrespondingHosts = IsDnsService ? "HostsRecord" : "OldHostsRecord";
+            
             // 遍历条目部分名称
-            foreach (var sectionname in SectionNamesSet)
+            foreach (SwitchItem pair in Switchs)
             {
-                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", sectionname, PathsSet.INIPath)) == true)
+                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", pair.SectionName, PathsSet.INIPath)) == true)
                 {
                     // 条目部分名称对应的开关是打开的情况
 
-                    /** 日志信息 **/ WriteLog($"{sectionname}的代理开关为开启，将添加记录。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"{pair.SectionName}的代理开关为开启，将添加记录。", LogLevel.Info);
 
                     // 添加该条目部分
-                    FileHelper.WriteLinesToFile(CorrespondingHosts[sectionname], FileShouldUpdate);
+                    FileHelper.WriteLinesToFile((string[])pair.GetType().GetProperty(CorrespondingHosts).GetValue(pair), FileShouldUpdate);
                 }
                 else
                 {
                     // 条目部分名称对应的开关是关闭的情况
 
-                    /** 日志信息 **/ WriteLog($"{sectionname}的代理开关为关闭，将移除记录。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"{pair.SectionName}的代理开关为关闭，将移除记录。", LogLevel.Info);
 
                     // 从文件中移除该条目部分
-                    FileHelper.RemoveSection(FileShouldUpdate, sectionname);
+                    FileHelper.RemoveSection(FileShouldUpdate, pair.SectionName);
                 }
             }
 
@@ -394,11 +502,11 @@ namespace SNIBypassGUI
 
             /** 日志信息 **/ WriteLog($"当前域名解析方法是否为DNS服务：{StringBoolConverter.BoolToYesNo(IsDnsService)}，将更新的文件为{FileShouldUpdate}。", LogLevel.Info);
 
-            foreach (var sectionname in SectionNamesSet)
+            foreach (SwitchItem pair in Switchs)
             {
-                /** 日志信息 **/ WriteLog($"移除{sectionname}的记录部分。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"移除{pair.SectionName}的记录部分。", LogLevel.Info);
 
-                FileHelper.RemoveSection(FileShouldUpdate, sectionname);
+                FileHelper.RemoveSection(FileShouldUpdate, pair.SectionName);
             }
 
             /** 日志信息 **/ WriteLog("完成RemoveHosts。", LogLevel.Debug);
@@ -410,13 +518,16 @@ namespace SNIBypassGUI
             /** 日志信息 **/ WriteLog("进入SyncControlsFromConfig。", LogLevel.Debug);
 
             // 更新代理开关状态
-            foreach (var pair in ToggleButtonToSectionNamedDic)
+            foreach (SwitchItem pair in Switchs)
             {
-                bool ShouldChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", pair.Value, PathsSet.INIPath));
+                bool ShouldChecked = StringBoolConverter.StringToBool(ConfigINI.INIRead("代理开关", pair.SectionName, PathsSet.INIPath));
 
-                pair.Key.IsChecked = ShouldChecked;
-
-                /** 日志信息 **/ WriteLog($"开关{pair.Key.Name}从配置键{pair.Value}同步状态：{StringBoolConverter.BoolToYesNo(ShouldChecked)}。", LogLevel.Debug);
+                ToggleButton toggleButtonInstance = (ToggleButton)this.FindName(pair.ToggleButtonName);
+                if (toggleButtonInstance != null)
+                {
+                    toggleButtonInstance.IsChecked = ShouldChecked;
+                    /** 日志信息 **/ WriteLog($"开关{toggleButtonInstance.Name}从配置键{pair.SectionName}同步状态：{StringBoolConverter.BoolToYesNo(ShouldChecked)}。", LogLevel.Debug);
+                }
             }
 
             // 更新调试有关按钮
@@ -496,20 +607,24 @@ namespace SNIBypassGUI
             /** 日志信息 **/ WriteLog("进入UpdateConfigFromToggleButtons。", LogLevel.Debug);
 
             // 遍历所有代理开关
-            foreach (var pair in ToggleButtonToSectionNamedDic)
+            foreach (var pair in Switchs)
             {
-                if (pair.Key.IsChecked == true)
+                ToggleButton toggleButtonInstance = (ToggleButton)this.FindName(pair.ToggleButtonName);
+                if (toggleButtonInstance != null)
                 {
-                    // 代理开关是开启的情况
-                    ConfigINI.INIWrite("代理开关", pair.Value, "true", PathsSet.INIPath);
-                }
-                else
-                {
-                    // 代理开关是关闭的情况
-                    ConfigINI.INIWrite("代理开关", pair.Value, "false", PathsSet.INIPath);
-                }
+                    if (toggleButtonInstance.IsChecked == true)
+                    {
+                        // 代理开关是开启的情况
+                        ConfigINI.INIWrite("代理开关", pair.SectionName, "true", PathsSet.INIPath);
+                    }
+                    else
+                    {
+                        // 代理开关是关闭的情况
+                        ConfigINI.INIWrite("代理开关", pair.SectionName, "false", PathsSet.INIPath);
+                    }
 
-                /** 日志信息 **/ WriteLog($"配置键{pair.Value}从开关{pair.Key.Name}同步状态：{StringBoolConverter.BoolToYesNo(pair.Key.IsChecked)}。", LogLevel.Debug);
+                    /** 日志信息 **/ WriteLog($"配置键{pair.SectionName}从开关{toggleButtonInstance.Name}同步状态：{StringBoolConverter.BoolToYesNo(toggleButtonInstance.IsChecked)}。", LogLevel.Debug);
+                }
             }
 
             /** 日志信息 **/ WriteLog("完成UpdateConfigFromToggleButtons。", LogLevel.Debug);
@@ -542,7 +657,7 @@ namespace SNIBypassGUI
                     else if (Adapter.DNS.Length == 1)
                     {
                         // DNS服务器设置中只有一个DNS服务器的情况
-                        if (IPv4Validator.IsValidIPv4(Adapter.DNS[0]))
+                        if (IPValidator.IsValidIPv4(Adapter.DNS[0]))
                         {
                             // 首选DNS服务器是有效IPv4地址的情况
                             PreviousDNS1 = Adapter.DNS[0];
@@ -558,11 +673,11 @@ namespace SNIBypassGUI
                     else if (Adapter.DNS.Length == 2)
                     {
                         // DNS服务器设置中有两个DNS服务器的情况
-                        if (IPv4Validator.IsValidIPv4(Adapter.DNS[0]))
+                        if (IPValidator.IsValidIPv4(Adapter.DNS[0]))
                         {
                             // 首选DNS服务器是有效IPv4地址的情况
                             PreviousDNS1 = Adapter.DNS[0];
-                            if (IPv4Validator.IsValidIPv4(Adapter.DNS[1]))
+                            if (IPValidator.IsValidIPv4(Adapter.DNS[1]))
                             {
                                 // 备用DNS服务器是有效IPv4地址的情况
                                 if (Adapter.DNS[1] == "127.0.0.1")
@@ -586,7 +701,7 @@ namespace SNIBypassGUI
                         {
                             // 首选DNS服务器不是有效IPv4地址的情况
                             PreviousDNS2 = "";
-                            if (IPv4Validator.IsValidIPv4(Adapter.DNS[1]))
+                            if (IPValidator.IsValidIPv4(Adapter.DNS[1]))
                             {
                                 // 备用DNS服务器是有效IPv4地址的情况
                                 if (Adapter.DNS[1] == "127.0.0.1")
@@ -834,16 +949,29 @@ namespace SNIBypassGUI
                         // 如果设置成功，说明该适配器可用，则记录到配置文件中来为自动选中做准备
                         ConfigINI.INIWrite("程序设置", "ActiveAdapter", activeAdapter.Name, PathsSet.INIPath);
 
-                        if (!activeAdapter.DisableIPv6())
+                        // 刷新DNS缓存
+                        DNS.FlushDNS();
+
+                        // 根据给定域名解析的IP判断是否需要禁用指定适配器的IPv6
+                        string IPForIPv6DisableDecision = DNS.GetIpAddressFromDomain(DomainForIPv6DisableDecision);
+
+                        /** 日志信息 **/ WriteLog($"指定的首选DNS服务器设置完成，{DomainForIPv6DisableDecision}解析到{IPForIPv6DisableDecision}。", LogLevel.Info);
+
+                        if (IPValidator.IsValidIPv6(IPForIPv6DisableDecision))
                         {
-                            // 未能禁用指定适配器IPv6的情况
+                            // 如果解析的IP是IPv6，说明当前系统IPv6 DNS优先，需要禁用指定适配器的IPv6
 
-                            /** 日志信息 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！", LogLevel.Warning);
-
-                            if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                            if (!activeAdapter.DisableIPv6())
                             {
-                                VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                                videoHelpWindow.Show();
+                                // 未能禁用指定适配器IPv6的情况
+
+                                /** 日志信息 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！", LogLevel.Warning);
+
+                                if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                                {
+                                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
+                                    videoHelpWindow.Show();
+                                }
                             }
                         }
                     }
@@ -1553,12 +1681,16 @@ namespace SNIBypassGUI
             bool IsChanged = false;
 
             // 遍历所有开关
-            foreach (var pair in ToggleButtonToSectionNamedDic)
+            foreach (var pair in Switchs)
             {
-                if(pair.Key.IsChecked != true)
+                ToggleButton toggleButtonInstance = (ToggleButton)this.FindName(pair.ToggleButtonName);
+                if (toggleButtonInstance != null)
                 {
-                    pair.Key.IsChecked = true;
-                    IsChanged = true;
+                    if (toggleButtonInstance.IsChecked != true)
+                    {
+                        toggleButtonInstance.IsChecked = true;
+                        IsChanged = true;
+                    }
                 }
             }
 
@@ -1580,14 +1712,19 @@ namespace SNIBypassGUI
             bool IsChanged = false;
 
             // 遍历所有开关
-            foreach (var pair in ToggleButtonToSectionNamedDic)
+            foreach (var pair in Switchs)
             {
-                if (pair.Key.IsChecked != false)
+                ToggleButton toggleButtonInstance = (ToggleButton)this.FindName(pair.ToggleButtonName);
+                if (toggleButtonInstance != null)
                 {
-                    pair.Key.IsChecked = false;
-                    IsChanged = true;
+                    if (toggleButtonInstance.IsChecked != false)
+                    {
+                        toggleButtonInstance.IsChecked = false;
+                        IsChanged = true;
+                    }
                 }
             }
+
 
             if (IsChanged)
             {
@@ -1875,6 +2012,9 @@ namespace SNIBypassGUI
         {
             /** 日志信息 **/ WriteLog("进入Window_Loaded。", LogLevel.Debug);
 
+            // 将代理开关添加到列表
+            AddSwitchItems();
+
             // 在主窗口标题显示版本
             WindowTitle.Text = "SNIBypassGUI " + PresetGUIVersion;
 
@@ -1887,9 +2027,6 @@ namespace SNIBypassGUI
             // 可以避免因 MainTabControl 或其中控件尚未完全加载时访问控件而导致的 null 错误。
             // 通过这种方式，确保了事件只在控件准备好时才会被触发，避免了早期调用导致的问题。
             MainTabControl.SelectionChanged += TabControl_SelectionChanged;
-
-            // 初始化字典
-            InitializeToggleButtonDictionary(this);
 
             // 检查文件，当配置文件不存在时可以创建
             InitializeDirectoriesAndFiles();
@@ -1906,17 +2043,29 @@ namespace SNIBypassGUI
             // 从配置信息更新开关状态
             SyncControlsFromConfig();
 
-            // 检查应用程序的设置，判断是否为第一次使用
-            if (StringBoolConverter.StringToBool(ConfigINI.INIRead("程序设置", "IsFirst", PathsSet.INIPath)))
+            // 创建一个指向当前用户根证书存储的X509Store对象
+            // StoreName.Root表示根证书存储，StoreLocation.CurrentUser表示当前用户的证书存储
+            X509Store store = new X509Store(StoreName.Root, StoreLocation.CurrentUser);
+            // 以最大权限打开证书存储，以便进行添加、删除等操作
+            store.Open(OpenFlags.MaxAllowed);
+            // 获取证书存储中的所有证书
+            X509Certificate2Collection collection = store.Certificates;
+            // 在证书存储中查找具有指定指纹的证书
+            // X509FindType.FindByThumbprint 表示按指纹查找，false 表示不区分大小写（对于指纹查找无效，因为指纹是唯一的）
+            X509Certificate2Collection fcollection = collection.Find(X509FindType.FindByThumbprint, Thumbprint, false);
+            // 检查是否找到了具有该指纹的证书
+            if (fcollection != null)
             {
-                /** 日志信息 **/ WriteLog("软件应为首次使用，提示用户安装证书与选择正在使用的网络适配器。", LogLevel.Info);
-
-                MessageBoxResult UserConfirm = HandyControl.Controls.MessageBox.Show("第一次使用需要安装证书，已经安装的证书会重新进行安装。有关证书的对话框请点击“是 (Y)”。\r\n还需要在下拉框中选择当前正在使用的网络适配器。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                if (UserConfirm == MessageBoxResult.OK)
+                // 如果找到了证书，则检查证书的数量
+                if (fcollection.Count == 0)
                 {
-                    if (InstallCertificate())
+                    /** 日志信息 **/ WriteLog($"未找到指纹为{Thumbprint}的证书，提示用户安装证书。", LogLevel.Info);
+
+                    MessageBoxResult UserConfirm = HandyControl.Controls.MessageBox.Show("第一次使用需要安装证书，有关证书的对话框请点击“是 (Y)”。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    if (UserConfirm == MessageBoxResult.OK)
                     {
-                        ConfigINI.INIWrite("程序设置", "IsFirst", "false", PathsSet.INIPath);
+                        InstallCertificate();
                     }
                 }
             }
@@ -2149,11 +2298,11 @@ namespace SNIBypassGUI
 
             if (HandyControl.Controls.MessageBox.Show("还原系统hosts功能用于消除本程序对系统hosts所产生的影响。\r\n当您认为本程序（特别是历史版本）对您的系统hosts造成了不良影响时可以使用此功能。\r\n是否还原系统hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                foreach (var sectionname in SectionNamesSet)
+                foreach (SwitchItem pair in Switchs)
                 {
-                    /** 日志信息 **/ WriteLog($"移除{sectionname}的记录部分。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"移除{pair.SectionName}的记录部分。", LogLevel.Info);
 
-                    FileHelper.RemoveSection(PathsSet.SystemHosts, sectionname);
+                    FileHelper.RemoveSection(PathsSet.SystemHosts, pair.SectionName);
                 }
             }
 
