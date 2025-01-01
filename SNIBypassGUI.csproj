@@ -79,6 +79,9 @@
     <Reference Include="Hardcodet.NotifyIcon.Wpf, Version=2.0.0.0, Culture=neutral, PublicKeyToken=682384a853a08aad, processorArchitecture=MSIL">
       <HintPath>packages\Hardcodet.NotifyIcon.Wpf.2.0.1\lib\net472\Hardcodet.NotifyIcon.Wpf.dll</HintPath>
     </Reference>
+    <Reference Include="ImageCropper">
+      <HintPath>F:\迅雷下载\ImageCropper.WPF-master\ImageCropper\bin\Release\net472\ImageCropper.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Win32.TaskScheduler, Version=2.11.0.0, Culture=neutral, PublicKeyToken=e25603a88b3aa7da, processorArchitecture=MSIL">
       <HintPath>packages\TaskScheduler.2.11.0\lib\net45\Microsoft.Win32.TaskScheduler.dll</HintPath>
       <Private>True</Private>
@@ -113,6 +116,9 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Helpers\HostsRecordHelper.cs" />
+    <Compile Include="ImageClippingWindow.xaml.cs">
+      <DependentUpon>ImageClippingWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="RpNet\RpNet.AcrylicServiceHelper.cs" />
     <Compile Include="RpNet\RpNet.CMDHelper.cs" />
     <Compile Include="RpNet\RpNet.FileHelper.cs" />
@@ -123,6 +129,10 @@
     <Compile Include="VideoHelpWindow.xaml.cs">
       <DependentUpon>VideoHelpWindow.xaml</DependentUpon>
     </Compile>
+    <Page Include="ImageClippingWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -208,9 +218,6 @@
     <Resource Include="Resources\favicons\wikimediafoundation.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\github.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\AcrylicService.exe" />
   </ItemGroup>
   <ItemGroup>
@@ -249,6 +256,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\如何手动还原适配器.mp4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\favicons\pixivFANBOX.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\自定义背景操作.mp4" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

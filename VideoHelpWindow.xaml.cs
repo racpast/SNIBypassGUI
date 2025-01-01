@@ -1,17 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace SNIBypassGUI
 {
@@ -27,7 +18,7 @@ namespace SNIBypassGUI
             _tip = tip;
             _videopath = videopath;
             InitializeComponent();
-            // 窗口可拖动
+            // 窗口可拖动化
             this.TopBar.MouseLeftButtonDown += (o, e) => { DragMove(); };
         }
 
@@ -46,6 +37,7 @@ namespace SNIBypassGUI
 
         private void videoView_MediaEnded(object sender, RoutedEventArgs e)
         {
+            // 循环播放视频
             videoView.Stop();
             videoView.Play();
         }
@@ -62,6 +54,7 @@ namespace SNIBypassGUI
 
         private void videoView_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // 判断当前媒体状态来决定暂停还是播放
             if (GetMediaState(videoView) == MediaState.Play)
             {
                 videoView.Pause();
@@ -77,7 +70,7 @@ namespace SNIBypassGUI
             videoView.Stop();
         }
 
-        // 通过反射获取MediaElement控件的当前媒体状态
+        // 通过反射获取 MediaElement 控件的当前媒体状态
         private MediaState GetMediaState(MediaElement myMedia)
         {
             FieldInfo hlp = typeof(MediaElement).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);

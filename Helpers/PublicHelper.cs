@@ -6,6 +6,8 @@ using System.Security.Cryptography.X509Certificates;
 using RpNet.FileHelper;
 using System.Collections.Generic;
 using System.Windows.Controls.Primitives;
+using System.Collections.ObjectModel;
+using System.Windows.Documents;
 
 
 namespace SNIBypassGUI
@@ -21,11 +23,14 @@ namespace SNIBypassGUI
         public static FilesINI ConfigINI = new FilesINI();
 
         // 既定版本号，更新时需要修改
-        public const string PresetGUIVersion = "V3.3";
+        public const string PresetGUIVersion = "V3.4";
+
+        // 用于判断是否需要禁用适配器IPv6的域名
+        public const string DomainForIPv6DisableDecision = "pixiv.net";
 
         // 默认一言
-        public const string PresetYiyan = "不是渐行渐远，而是有一天终要重逢。";
-        public const string PresetYiyanForm = "—— 龙应台「目送」";
+        public const string PresetYiyan = "行远自迩，登高自卑。";
+        public const string PresetYiyanForm = "—— 戴圣「礼记」";
 
         // 字符串转换为布尔值的类
         public class StringBoolConverter
@@ -114,9 +119,10 @@ namespace SNIBypassGUI
                         store.Add(x509);
                     }
                 }
+                // 如果没有找到证书集合（理论上不应该发生，除非Thumbprint为空或格式错误）
+
                 WriteLog("完成InstallCertificate，返回true。", LogLevel.Debug);
 
-                // 如果没有找到证书集合（理论上不应该发生，除非Thumbprint为空或格式错误）
                 return true;
             }
             catch (Exception ex)
@@ -139,112 +145,6 @@ namespace SNIBypassGUI
             }
         }
 
-        public static string[] SectionNamesSet = new string[]
-        {
-            "Amazon（日本）",
-            "Archive of Our Own",
-            "APKMirror",
-            "BBC",
-            "E-Hentai",
-            "Etsy",
-            "F-Droid",
-            "Google",
-            "Nyaa",
-            "OK",
-            "OKX.COM",
-            "Pixiv",
-            "Pornhub",
-            "Proton",
-            "Steam Community",
-            "Telegram",
-            "The New York Times",
-            "Wallhaven",
-            "Wikimedia Foundation",
-            "YouTube",
-            "Z-Library"
-        };
-
-        public static Dictionary<string, string[]> SectionNameToHostsRecordDic = new Dictionary<string, string[]>
-        {
-            {"Amazon（日本）",HostsSet.AmazoncojpSection},
-            {"Archive of Our Own",HostsSet.ArchiveofOurOwnSection},
-            {"APKMirror",HostsSet.APKMirrorSection},
-            {"BBC",HostsSet.BBCSection},
-            {"E-Hentai",HostsSet.EHentaiSection},
-            {"Etsy",HostsSet.EtsySection},
-            {"F-Droid",HostsSet.FDroidSection},
-            {"Google",HostsSet.GoogleSection},
-            {"Nyaa",HostsSet.NyaaSection},
-            {"OK",HostsSet.OKSection},
-            {"OKX.COM",HostsSet.OKXCOMSection},
-            {"Pixiv",HostsSet.PixivSection},
-            {"Pornhub",HostsSet.PornhubSection},
-            {"Proton",HostsSet.ProtonSection},
-            {"Steam Community",HostsSet.SteamCommunitySection},
-            {"Telegram",HostsSet.TelegramSection},
-            {"The New York Times",HostsSet.TheNewYorkTimesSection},
-            {"Wallhaven",HostsSet.WallhavenSection},
-            {"Wikimedia Foundation",HostsSet.WikimediaFoundationSection},
-            {"YouTube",HostsSet.YoutubeSection},
-            {"Z-Library",HostsSet.ZLibrarySection},
-        };
-
-        public static Dictionary<string, string[]> SectionNameToOldHostsRecordDic = new Dictionary<string, string[]>
-        {
-            {"Amazon（日本）",HostsSet_Old.AmazoncojpSection},
-            {"Archive of Our Own",HostsSet_Old.ArchiveofOurOwnSection},
-            {"APKMirror",HostsSet_Old.APKMirrorSection},
-            {"BBC",HostsSet_Old.BBCSection},
-            {"E-Hentai",HostsSet_Old.EHentaiSection},
-            {"Etsy",HostsSet_Old.EtsySection},
-            {"F-Droid",HostsSet_Old.FDroidSection},
-            {"Google",HostsSet_Old.GoogleSection},
-            {"Nyaa",HostsSet_Old.NyaaSection},
-            {"OK",HostsSet_Old.OKSection},
-            {"OKX.COM",HostsSet_Old.OKXCOMSection},
-            {"Pixiv",HostsSet_Old.PixivSection},
-            {"Pornhub",HostsSet_Old.PornhubSection},
-            {"Proton",HostsSet_Old.ProtonSection},
-            {"Steam Community",HostsSet_Old.SteamCommunitySection},
-            {"Telegram",HostsSet_Old.TelegramSection},
-            {"The New York Times",HostsSet_Old.TheNewYorkTimesSection},
-            {"Wallhaven",HostsSet_Old.WallhavenSection},
-            {"Wikimedia Foundation",HostsSet_Old.WikimediaFoundationSection},
-            {"YouTube",HostsSet_Old.YoutubeSection},
-            {"Z-Library",HostsSet_Old.ZLibrarySection},
-        };
-
-        public static Dictionary<ToggleButton, string> ToggleButtonToSectionNamedDic = new Dictionary<ToggleButton, string>();
-
-        // 该方法可以在 MainWindow 的 Loaded 事件中调用，用来初始化字典
-        public static void InitializeToggleButtonDictionary(MainWindow mainWindow)
-        {
-            ToggleButtonToSectionNamedDic = new Dictionary<ToggleButton, string>
-            {
-                {mainWindow.amazoncojpTB,"Amazon（日本）"},
-                {mainWindow.archiveofourownTB,"Archive of Our Own"},
-                {mainWindow.apkmirrorTB, "APKMirror" },
-                {mainWindow.bbcTB, "BBC" },
-                {mainWindow.ehentaiTB, "E-Hentai" },
-                {mainWindow.etsyTB, "Etsy" },
-                {mainWindow.fdroidTB, "F-Droid" },
-                {mainWindow.googleTB,"Google" },
-                {mainWindow.nyaaTB, "Nyaa" },
-                {mainWindow.okTB, "OK" },
-                {mainWindow.okxTB, "OKX.COM" },
-                {mainWindow.pixivTB, "Pixiv" },
-                {mainWindow.pornhubTB, "Pornhub" },
-                {mainWindow.protonTB, "Proton" },
-                {mainWindow.steamcommunityTB,"Steam Community" },
-                {mainWindow.telegramTB,"Telegram" },
-                {mainWindow.thenewyorktimesTB, "The New York Times" },
-                {mainWindow.wallhavenTB, "Wallhaven" },
-                {mainWindow.wikimediafoundationTB, "Wikimedia Foundation" },
-                {mainWindow.youtubeTB, "YouTube" },
-                {mainWindow.zlibraryTB, "Z-Library" },
-            };
-        }
-
         public static Dictionary<string, byte[]> PathToResourceDic = new Dictionary<string, byte[]>
         {
             {PathsSet.nginxPath, Properties.Resources.SNIBypass},
@@ -261,7 +161,58 @@ namespace SNIBypassGUI
             {PathsSet.AcrylicConfigurationPath,Properties.Resources.AcrylicConfiguration},
             {PathsSet.HelpVideo_如何寻找活动适配器_Path, Properties.Resources.如何寻找活动适配器 },
             {PathsSet.HelpVideo_如何手动设置适配器_Path, Properties.Resources.如何手动设置适配器 },
-            {PathsSet.HelpVideo_如何手动还原适配器_Path, Properties.Resources.如何手动还原适配器 }
+            {PathsSet.HelpVideo_如何手动还原适配器_Path, Properties.Resources.如何手动还原适配器 },
+            {PathsSet.HelpVideo_自定义背景操作_Path, Properties.Resources.自定义背景操作 }
+        };
+
+        public static Dictionary<string, string> InitialConfigurations = new Dictionary<string, string>
+        {
+            { "程序设置:Background", "Preset" },
+            { "程序设置:ActiveAdapter", "" },
+            { "高级设置:DebugMode", "false" },
+            { "高级设置:GUIDebug", "false" },
+            { "高级设置:DomainNameResolutionMethod", "DnsService" },
+            { "高级设置:AcrylicDebug", "false" },
+            { "暂存数据:PreviousDNS1", "" },
+            { "暂存数据:PreviousDNS2", "" },
+            { "暂存数据:IsPreviousDnsAutomatic", "true" }
+        };
+
+        public class SwitchItem
+        {
+            public string FaviconImageSource { get; set; }
+            public string SwitchTitle { get; set; }
+            public string LinksText { get; set; }
+            public string ToggleButtonName { get; set; }
+            public string SectionName { get; set; }
+            public string[] HostsRecord { get; set; }
+            public string[] OldHostsRecord { get; set; }
+        }
+
+        public static ObservableCollection<SwitchItem> Switchs = new ObservableCollection<SwitchItem>
+        {
+            new SwitchItem {FaviconImageSource = "Resources/favicons/amazoncojp.ico", SwitchTitle = "Amazon（日本）", LinksText = "amazon.co.jp", ToggleButtonName="amazoncojpTB", SectionName = "Amazon（日本）", HostsRecord = HostsSet.AmazoncojpSection, OldHostsRecord = HostsSet_Old.AmazoncojpSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/archiveofourown.ico", SwitchTitle = "Archive of Our Own", LinksText = "archiveofourown.org", ToggleButtonName="archiveofourownTB", SectionName = "Archive of Our Own", HostsRecord = HostsSet.ArchiveofOurOwnSection, OldHostsRecord = HostsSet_Old.ArchiveofOurOwnSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/apkmirror.png", SwitchTitle = "APKMirror", LinksText = "apkmirror.com", ToggleButtonName="apkmirrorTB", SectionName = "APKMirror", HostsRecord = HostsSet.APKMirrorSection, OldHostsRecord = HostsSet_Old.APKMirrorSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/bbc.png", SwitchTitle = "BBC（未完整支持）", LinksText = "bbc.com", ToggleButtonName="bbcTB", SectionName = "BBC", HostsRecord = HostsSet.BBCSection, OldHostsRecord = HostsSet_Old.BBCSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/e-hentai.ico", SwitchTitle = "E-Hentai（含里站）", LinksText = "e-hentai.org|、|exhentai.org", ToggleButtonName="ehentaiTB", SectionName = "E-Hentai", HostsRecord = HostsSet.EHentaiSection, OldHostsRecord = HostsSet_Old.EHentaiSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/etsy.png", SwitchTitle = "Etsy", LinksText = "etsy.com", ToggleButtonName="etsyTB", SectionName = "Etsy", HostsRecord = HostsSet.EtsySection, OldHostsRecord = HostsSet_Old.EtsySection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/fdroid.png", SwitchTitle = "F-Droid（未完整支持）", LinksText = "f-droid.org", ToggleButtonName="fdroidTB", SectionName = "F-Droid", HostsRecord = HostsSet.FDroidSection, OldHostsRecord = HostsSet_Old.FDroidSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/google.png", SwitchTitle = "谷歌搜索", LinksText = "google.com", ToggleButtonName="googleTB", SectionName = "Google", HostsRecord = HostsSet.GoogleSection, OldHostsRecord = HostsSet_Old.GoogleSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/nyaa.png", SwitchTitle = "Nyaa（含里站）", LinksText = "nyaa.si|、|sukebei.nyaa.si", ToggleButtonName="nyaaTB", SectionName = "Nyaa", HostsRecord = HostsSet.NyaaSection, OldHostsRecord = HostsSet_Old.NyaaSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/ok.png", SwitchTitle = "OK", LinksText = "ok.ru", ToggleButtonName="okTB", SectionName = "OK", HostsRecord = HostsSet.OKSection, OldHostsRecord = HostsSet_Old.OKSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/okx.png", SwitchTitle = "OKX.COM", LinksText = "okx.com", ToggleButtonName="okxTB", SectionName = "OKX.COM", HostsRecord = HostsSet.OKXCOMSection, OldHostsRecord = HostsSet_Old.OKXCOMSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/pixiv.ico", SwitchTitle = "Pixiv", LinksText = "pixiv.net", ToggleButtonName="pixivTB", SectionName = "Pixiv", HostsRecord = HostsSet.PixivSection, OldHostsRecord = HostsSet_Old.PixivSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/pixivFANBOX.ico", SwitchTitle = "pixivFANBOX", LinksText = "fanbox.cc", ToggleButtonName="fanboxTB", SectionName = "pixivFANBOX", HostsRecord = HostsSet.pixivFANBOXSection, OldHostsRecord = HostsSet_Old.pixivFANBOXSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/pornhub.ico", SwitchTitle = "Pornhub（不稳定）", LinksText = "pornhub.com", ToggleButtonName="pornhubTB", SectionName = "Pornhub", HostsRecord = HostsSet.PornhubSection, OldHostsRecord = HostsSet_Old.PornhubSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/proton.png", SwitchTitle = "Proton", LinksText = "proton.me", ToggleButtonName="protonTB", SectionName = "Proton", HostsRecord = HostsSet.ProtonSection, OldHostsRecord = HostsSet_Old.ProtonSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/steamcommunity.ico", SwitchTitle = "Steam Community", LinksText = "steamcommunity.com", ToggleButtonName="steamcommunityTB", SectionName = "Steam Community", HostsRecord = HostsSet.SteamCommunitySection, OldHostsRecord = HostsSet_Old.SteamCommunitySection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/telegram.png", SwitchTitle = "Telegram", LinksText = "telegram.org", ToggleButtonName="telegramTB", SectionName = "Telegram", HostsRecord = HostsSet.TelegramSection, OldHostsRecord = HostsSet_Old.TelegramSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/thenewyorktimes.png", SwitchTitle = "The New York Times", LinksText = "nytimes.com", ToggleButtonName="thenewyorktimesTB", SectionName = "The New York Times", HostsRecord = HostsSet.TheNewYorkTimesSection, OldHostsRecord = HostsSet_Old.TheNewYorkTimesSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/wallhaven.ico", SwitchTitle = "Wallhaven（未完整支持）", LinksText = "wallhaven.cc", ToggleButtonName="wallhavenTB", SectionName = "Wallhaven", HostsRecord = HostsSet.WallhavenSection, OldHostsRecord = HostsSet_Old.WallhavenSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/wikimediafoundation.ico", SwitchTitle = "Wikimedia 全项目", LinksText = "wikipedia.org|、|wiktionary.org|等", ToggleButtonName="wikimediafoundationTB", SectionName = "Wikimedia Foundation", HostsRecord = HostsSet.WikimediaFoundationSection, OldHostsRecord = HostsSet_Old.WikimediaFoundationSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/youtube.png", SwitchTitle = "YouTube（未完整支持）", LinksText = "www.youtube.com", ToggleButtonName="youtubeTB", SectionName = "YouTube", HostsRecord = HostsSet.YoutubeSection, OldHostsRecord = HostsSet_Old.YoutubeSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/zlibrary.png", SwitchTitle = "Z-Library", LinksText = "1lib.sk|、|z-lib.fm", ToggleButtonName="zlibraryTB", SectionName = "Z-Library", HostsRecord = HostsSet.ZLibrarySection, OldHostsRecord = HostsSet_Old.ZLibrarySection}
         };
     }
 }

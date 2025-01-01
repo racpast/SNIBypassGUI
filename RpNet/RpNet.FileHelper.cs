@@ -10,31 +10,6 @@ namespace RpNet.FileHelper
 {
     public class FileHelper
     {
-        // 搜索以 "CustomBkg" 开头的文件，并返回第一个找到的文件的路径
-        public static string FindCustomBkg()
-        {
-            WriteLog($"进入FindCustomBkg。", LogLevel.Debug);
-
-            string filePath = null;
-            // 遍历目标目录中的所有文件
-            foreach (var file in Directory.GetFiles(dataDirectory))
-            {
-                // 获取文件名（不包括路径）
-                var fileName = Path.GetFileName(file);
-                // 检查文件名是否以 "CustomBkg" 开头
-                if (fileName.StartsWith("CustomBkg", StringComparison.OrdinalIgnoreCase))
-                {
-                    // 找到符合条件的文件，返回其路径
-                    filePath = file;
-                    break; // 只需要第一个找到的文件，退出循环
-                }
-            }
-
-            WriteLog($"完成FindCustomBkg，返回{filePath}。", LogLevel.Debug);
-
-            return filePath; // 如果没有找到文件，则返回 null
-        }
-
         // 释放资源型的图像调用方法
         public static BitmapImage GetImage(string imagePath)
         {

@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Management.Automation;
+using System.Net;
 
 namespace RpNet.NetworkHelper
 {
@@ -53,10 +54,10 @@ namespace RpNet.NetworkHelper
         private string serviceName; // 服务名
         private OperationalStatus status; // 网络适配器的运行状态
         private NetworkInterfaceType type; // 网络适配器的类型
-        private string[] dns; // DNS 服务器地址
+        private string[] dns; // DNS服务器地址
         private Int32? interFace; // 接口索引
         private string gateway; // 默认网关地址
-        private string ip; // IP 地址
+        private string ip; // IP地址
         private string mask; // 子网掩码
         private string guid;// GUID
 
@@ -233,11 +234,14 @@ namespace RpNet.NetworkHelper
                 IPAddressCollection dnsServers = adapterProperties.DnsAddresses;
                 switch (dnsServers.Count)
                 {
+                    case 0:
+                        adp.dns = new string[0];
+                        break;
                     case 1:
                         adp.dns = new string[1];
                         adp.dns[0] = dnsServers[0].ToString();
                         break;
-                    case 2:
+                    default:
                         adp.dns = new string[2];
                         adp.dns[0] = dnsServers[0].ToString();
                         adp.dns[1] = dnsServers[1].ToString();
@@ -590,9 +594,6 @@ namespace RpNet.NetworkHelper
 
     public class DNS
     {
-        // よしDNS，必要でしたら自分で直してください
-        public static string YoXiDNS = "114.114.114.114";
-
         [DllImport("dnsapi.dll", EntryPoint = "DnsFlushResolverCache")]
         private static extern UInt32 DnsFlushResolverCache();
 
@@ -603,6 +604,38 @@ namespace RpNet.NetworkHelper
             UInt32 result = DnsFlushResolverCache();
 
             WriteLog("完成FlushDNS。", LogLevel.Debug);
+        }
+
+        public static string GetIpAddressFromDomain(string domainName)
+        {
+            WriteLog("进入GetIpAddressFromDomain。", LogLevel.Debug);
+
+            try
+            {
+                // 获取域名解析到的所有IP地址
+                IPAddress[] ipAddresses = Dns.GetHostAddresses(domainName);
+
+                // 如果解析结果不为空，返回第一个IP地址
+                if (ipAddresses.Length > 0)
+                {
+                    WriteLog("完成GetIpAddressFromDomain。", LogLevel.Debug);
+
+                    return ipAddresses[0].ToString();
+                }
+                else
+                {
+                    WriteLog("完成GetIpAddressFromDomain，未找到对应的IP地址。", LogLevel.Debug);
+
+                    return "";
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"遇到异常：{ex}。", LogLevel.Error, ex);
+
+                // 捕获异常并返回错误信息
+                return $"错误: {ex.Message}";
+            }
         }
     }
 
@@ -623,9 +656,9 @@ namespace RpNet.NetworkHelper
                     pingable = true;
                 }
             }
-            catch (PingException pex)
+            catch (Exception ex)
             {
-                WriteLog($"遇到异常：{pex}。", LogLevel.Error, pex);
+                WriteLog($"遇到异常：{ex}。", LogLevel.Error, ex);
             }
 
             WriteLog($"完成PingHost。", LogLevel.Debug);
@@ -820,12 +853,37 @@ namespace RpNet.NetworkHelper
         }
     }
 
-    public class IPv4Validator
+    public class IPValidator
     {
         public static bool IsValidIPv4(string ipAddress)
         {
             // 使用正则表达式验证 IPv4 地址的格式
             string pattern = @"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
+
+            if (!Regex.IsMatch(ipAddress, pattern))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static bool IsValidIPv6(string ipAddress)
+        {
+            // 使用正则表达式验证 IPv6 地址的格式
+            string pattern = @"^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|" +
+                             @"(([0-9a-fA-F]{1,4}:){1,7}:)|" +
+                             @"(([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4})|" +
+                             @"(([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2})|" +
+                             @"(([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3})|" +
+                             @"(([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4})|" +
+                             @"(([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5})|" +
+                             @"([0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6}))|" +
+                             @"(:((:[0-9a-fA-F]{1,4}){1,7}|:))|" +
+                             @"(::(ffff(:0{1,4}){0,1}:){0,1}" +
+                             @"(([0-9]{1,3}\.){3}[0-9]{1,3}))|" +
+                             @"(([0-9a-fA-F]{1,4}:){1,4}:" +
+                             @"([0-9]{1,3}\.){3}[0-9]{1,3}))$";
 
             if (!Regex.IsMatch(ipAddress, pattern))
             {
