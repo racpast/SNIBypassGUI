@@ -57,13 +57,17 @@ namespace SNIBypassGUI
 
             /** 日志信息 **/ WriteLog("进入MainWindow。", LogLevel.Debug);
 
+            // 初始化
+            InitializeComponent();
+
             // 检查是否已经开启程序，如果已开启则退出
             string MName = Process.GetCurrentProcess().MainModule.ModuleName;
             string PName = Path.GetFileNameWithoutExtension(MName);
             Process[] GUIProcess = Process.GetProcessesByName(PName);
             if (GUIProcess.Length > 1)
             {
-                /** 日志信息 **/ WriteLog("检测到程序已经在运行，将退出程序。", LogLevel.Warning);
+                /** 日志信息 **/
+                WriteLog("检测到程序已经在运行，将退出程序。", LogLevel.Warning);
 
                 HandyControl.Controls.MessageBox.Show("SNIBypassGUI 已经在运行！\r\n请检查是否有托盘图标！(((ﾟДﾟ;)))", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Environment.Exit(1);
@@ -73,9 +77,6 @@ namespace SNIBypassGUI
             // 将 MainWindow 作为 DataContext 设置
             this.DataContext = this;
             _TaskbarIconLeftClickCommand = new TaskbarIconLeftClickCommand(this);
-
-            // 初始化
-            InitializeComponent();
 
             // 窗口可拖动
             this.TopBar.MouseLeftButtonDown += (o, e) => { DragMove(); };
@@ -340,15 +341,13 @@ namespace SNIBypassGUI
             if (ConfigINI.INIRead("程序设置", "Background", PathsSet.INIPath) == "Custom")
             {
                 // 程序设置中背景为自定义的情况
-                // 尝试从指定目录寻找背景图片并取得路径
-                var CustomBkgPath = FileHelper.FindCustomBkg();
-                if (CustomBkgPath != null)
+                if (File.Exists(PathsSet.CustomBackground))
                 {
-                    // 如果找到了背景图片的路径
+                    // 如果找到了背景图片
                     // 用资源释放型的读取来获取背景图片
-                    bg.ImageSource = FileHelper.GetImage(CustomBkgPath);
+                    bg.ImageSource = FileHelper.GetImage(PathsSet.CustomBackground);
 
-                    /** 日志信息 **/ WriteLog($"背景图片将设置为自定义：{CustomBkgPath}。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"背景图片将设置为自定义：{PathsSet.CustomBackground}。", LogLevel.Info);
                 }
                 else
                 {
@@ -559,11 +558,11 @@ namespace SNIBypassGUI
 
             if (ConfigINI.INIRead("高级设置", "DomainNameResolutionMethod", PathsSet.INIPath) == "DnsService")
             {
-                SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\nDNS服务";
+                SwitchDomainNameResolutionMethodBtn.Content = "域名解析：\nDNS服务";
             }
             else
             {
-                SwitchDomainNameResolutionMethodBtn.Content = "域名解析模式：\n系统hosts";
+                SwitchDomainNameResolutionMethodBtn.Content = "域名解析：\n系统hosts";
             }
 
             if (StringBoolConverter.StringToBool(ConfigINI.INIRead("高级设置", "AcrylicDebug", PathsSet.INIPath)))
@@ -750,7 +749,7 @@ namespace SNIBypassGUI
                 if (HandyControl.Controls.MessageBox.Show($"无法设置指定的网络适配器！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
                     VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                    videoHelpWindow.Show();
+                    videoHelpWindow.ShowDialog();
                 }
             }
             catch (Exception ex)
@@ -830,7 +829,7 @@ namespace SNIBypassGUI
                 if (HandyControl.Controls.MessageBox.Show($"无法还原指定的网络适配器！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
                     VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
-                    videoHelpWindow.Show();
+                    videoHelpWindow.ShowDialog();
                 }
             }
             catch (Exception ex)
@@ -970,7 +969,7 @@ namespace SNIBypassGUI
                                 if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                                 {
                                     VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                                    videoHelpWindow.Show();
+                                    videoHelpWindow.ShowDialog();
                                 }
                             }
                         }
@@ -985,7 +984,7 @@ namespace SNIBypassGUI
                     if (HandyControl.Controls.MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                     {
                         VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                        videoHelpWindow.Show();
+                        videoHelpWindow.ShowDialog();
                     }
                 }
             }
@@ -1148,7 +1147,7 @@ namespace SNIBypassGUI
                         if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                         {
                             VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
-                            videoHelpWindow.Show();
+                            videoHelpWindow.ShowDialog();
                         }
                     }
                 }
@@ -1165,7 +1164,7 @@ namespace SNIBypassGUI
                     if (HandyControl.Controls.MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动还原。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                     {
                         VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
-                        videoHelpWindow.Show();
+                        videoHelpWindow.ShowDialog();
                     }
                 }
                 // 如果适配器下拉框选中项为空就是没选择，不需要还原适配器
@@ -1480,7 +1479,7 @@ namespace SNIBypassGUI
             {
                 CheckUpdateBtn.IsEnabled = true;
                 // 检查完成后，将按钮内容改回原内容
-                CheckUpdateBtn.Content = "检查 SNIBypassGUI 是否有新版本可用";               
+                CheckUpdateBtn.Content = "检查是否有新版本可用";               
             }
 
             /** 日志信息 **/ WriteLog("完成CheckUpdateBtn_Click。", LogLevel.Debug);
@@ -1756,7 +1755,7 @@ namespace SNIBypassGUI
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
                 Title = "选择图片",
-                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
                 Filter = "图片 (*.jpg; *.jpeg; *.png)|*.jpg;*.jpeg;*.png"
             };
 
@@ -1777,23 +1776,17 @@ namespace SNIBypassGUI
                         Directory.CreateDirectory(PathsSet.dataDirectory);
                     }
 
-                    // 获取文件的后缀名
-                    string extension = Path.GetExtension(sourceFile);
+                    // 进入图像裁剪窗口
+                    bool? finalresult = new ImageClippingWindow(sourceFile).ShowDialog();
 
-                    // 构造新的文件名
-                    string newFileName = "CustomBkg" + extension;
+                    if (finalresult == true)
+                    {
+                        // 写入配置文件
+                        ConfigINI.INIWrite("程序设置", "Background", "Custom", PathsSet.INIPath);
 
-                    // 获取目标文件路径
-                    string destinationFile = Path.Combine(PathsSet.dataDirectory, newFileName);
-
-                    // 复制文件
-                    File.Copy(sourceFile, destinationFile, overwrite: true);
-
-                    // 写入配置文件
-                    ConfigINI.INIWrite("程序设置", "Background", "Custom", PathsSet.INIPath);
-
-                    // 更新背景图片
-                    UpdateBackground();
+                        // 更新背景图片
+                        UpdateBackground();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -2207,7 +2200,7 @@ namespace SNIBypassGUI
         {
             /** 日志信息 **/ WriteLog("进入SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
 
-            if (SwitchDomainNameResolutionMethodBtn.Content.ToString() == "域名解析模式：\nDNS服务")
+            if (SwitchDomainNameResolutionMethodBtn.Content.ToString() == "域名解析：\nDNS服务")
             {
                 if (HandyControl.Controls.MessageBox.Show("在DNS服务无法正常启动的情况下，系统hosts可以作为备选方案使用，\r\n但具有一定局限性（例如pixivFANBOX的作者页面需要手动向系统hosts添加记录）。\r\n是否切换域名解析模式为系统hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
@@ -2355,7 +2348,7 @@ namespace SNIBypassGUI
                 if (HandyControl.Controls.MessageBox.Show($"没有找到活动且可设置的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
                     VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                    videoHelpWindow.Show();
+                    videoHelpWindow.ShowDialog();
                 }
             }
 
@@ -2368,7 +2361,7 @@ namespace SNIBypassGUI
             /** 日志信息 **/ WriteLog("进入HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
 
             VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何寻找活动的网络适配器", PathsSet.HelpVideo_如何寻找活动适配器_Path);
-            videoHelpWindow.Show();
+            videoHelpWindow.ShowDialog();
 
             /** 日志信息 **/ WriteLog("完成HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
         }

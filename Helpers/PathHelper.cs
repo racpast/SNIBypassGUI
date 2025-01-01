@@ -32,12 +32,14 @@ namespace SNIBypassGUI
         public static string HelpVideo_如何寻找活动适配器_Path = Path.Combine(HelpVideoDirectory, "如何寻找活动适配器.mp4");
         public static string HelpVideo_如何手动设置适配器_Path = Path.Combine(HelpVideoDirectory, "如何手动设置适配器.mp4");
         public static string HelpVideo_如何手动还原适配器_Path = Path.Combine(HelpVideoDirectory, "如何手动还原适配器.mp4");
+        public static string HelpVideo_自定义背景操作_Path = Path.Combine(HelpVideoDirectory, "自定义背景操作.mp4");
         public static string dnsDirectory = Path.Combine(dataDirectory, "dns");
         public static string AcrylicServiceExeFilePath = Path.Combine(dnsDirectory, "AcrylicService.exe");
         public static string AcrylicDebugLogFilePath = Path.Combine(dnsDirectory, "AcrylicDebug.txt");
         public static string AcrylicCacheFilePath = Path.Combine(dnsDirectory, "AcrylicCache.dat");
         public static string AcrylicHostsPath = Path.Combine(dnsDirectory, "AcrylicHosts.txt");
         public static string AcrylicConfigurationPath = Path.Combine(dnsDirectory, "AcrylicConfiguration.ini");
+        public static string CustomBackground = Path.Combine(dataDirectory, "CustomBkg.png");
         public static string SNIBypassGUIExeFilePath = System.Windows.Forms.Application.ExecutablePath;
         public static List<string> TempFilesPaths = new List<String> { nginxLogFile_A, nginxLogFile_B, AcrylicCacheFilePath };
         public static List<string> TempFilesPathsIncludingGUILog = new List<String> { nginxLogFile_A, nginxLogFile_B, AcrylicCacheFilePath,GUILogPath };

@@ -161,7 +161,8 @@ namespace SNIBypassGUI
             {PathsSet.AcrylicConfigurationPath,Properties.Resources.AcrylicConfiguration},
             {PathsSet.HelpVideo_如何寻找活动适配器_Path, Properties.Resources.如何寻找活动适配器 },
             {PathsSet.HelpVideo_如何手动设置适配器_Path, Properties.Resources.如何手动设置适配器 },
-            {PathsSet.HelpVideo_如何手动还原适配器_Path, Properties.Resources.如何手动还原适配器 }
+            {PathsSet.HelpVideo_如何手动还原适配器_Path, Properties.Resources.如何手动还原适配器 },
+            {PathsSet.HelpVideo_自定义背景操作_Path, Properties.Resources.自定义背景操作 }
         };
 
         public static Dictionary<string, string> InitialConfigurations = new Dictionary<string, string>

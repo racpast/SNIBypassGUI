@@ -3,8 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
         mc:Ignorable="d"
-        Title="帮助" Height="665" Width="1000" ResizeMode="NoResize" Closing="Window_Closing" Loaded="Window_Loaded" WindowStartupLocation="CenterScreen" WindowStyle="None">
+        Title="帮助" Height="670" Width="1000" ResizeMode="NoResize" Closing="Window_Closing" Loaded="Window_Loaded" WindowStartupLocation="CenterScreen" WindowStyle="None">
     <Grid x:Name="VideoHelp">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -26,6 +27,6 @@
         <Border Grid.Row="1" Margin="20,10,20,5" CornerRadius="5,5,5,5" Background="#70FFFFFF" BorderBrush="White" BorderThickness="1.5,1.5,1.5,1.5">
             <MediaElement x:Name="videoView" MediaEnded="videoView_MediaEnded" Loaded="videoView_Loaded" Unloaded="videoView_Unloaded" MouseLeftButtonDown="videoView_MouseLeftButtonDown" Margin="10,10,10,10" Height="528" LoadedBehavior="Manual"/>
         </Border>
-        <Button x:Name="OKBtn" Grid.Row="2" Click="OKBtn_Click" Height="30" Margin="20,0,20,10" HorizontalAlignment="Stretch" Content="完成" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
+        <Button x:Name="OKBtn" hc:IconElement.Geometry="{StaticResource HomeGeometry}" Grid.Row="2" Click="OKBtn_Click" Height="30" Margin="20,10,20,10" HorizontalAlignment="Stretch" Content="完成" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
     </Grid>
 </Window>
