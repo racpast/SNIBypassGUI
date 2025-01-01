@@ -79,8 +79,9 @@
     <Reference Include="Hardcodet.NotifyIcon.Wpf, Version=2.0.0.0, Culture=neutral, PublicKeyToken=682384a853a08aad, processorArchitecture=MSIL">
       <HintPath>packages\Hardcodet.NotifyIcon.Wpf.2.0.1\lib\net472\Hardcodet.NotifyIcon.Wpf.dll</HintPath>
     </Reference>
-    <Reference Include="ImageCropper">
-      <HintPath>F:\迅雷下载\ImageCropper.WPF-master\ImageCropper\bin\Release\net472\ImageCropper.dll</HintPath>
+    <Reference Include="ImageCropper, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>.\ImageCropper.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Win32.TaskScheduler, Version=2.11.0.0, Culture=neutral, PublicKeyToken=e25603a88b3aa7da, processorArchitecture=MSIL">
       <HintPath>packages\TaskScheduler.2.11.0\lib\net45\Microsoft.Win32.TaskScheduler.dll</HintPath>
@@ -262,6 +263,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\自定义背景操作.mp4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\libs\ImageCropper.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
