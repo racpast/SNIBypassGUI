@@ -462,7 +462,10 @@ namespace SNIBypassGUI
 
             // 根据域名解析模式获取应该添加的条目数据
             string CorrespondingHosts = IsDnsService ? "HostsRecord" : "OldHostsRecord";
-            
+
+            // 移除所有条目部分，防止重复添加
+            RemoveHosts();
+
             // 遍历条目部分名称
             foreach (SwitchItem pair in Switchs)
             {
@@ -474,15 +477,6 @@ namespace SNIBypassGUI
 
                     // 添加该条目部分
                     FileHelper.WriteLinesToFileEnd((string[])pair.GetType().GetProperty(CorrespondingHosts).GetValue(pair), FileShouldUpdate);
-                }
-                else
-                {
-                    // 条目部分名称对应的开关是关闭的情况
-
-                    /** 日志信息 **/ WriteLog($"{pair.SectionName}的代理开关为关闭，将移除记录。", LogLevel.Info);
-
-                    // 从文件中移除该条目部分
-                    FileHelper.RemoveSection(FileShouldUpdate, pair.SectionName);
                 }
             }
 
