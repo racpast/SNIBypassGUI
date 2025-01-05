@@ -5,10 +5,7 @@ using static SNIBypassGUI.LogHelper;
 using System.Security.Cryptography.X509Certificates;
 using RpNet.FileHelper;
 using System.Collections.Generic;
-using System.Windows.Controls.Primitives;
 using System.Collections.ObjectModel;
-using System.Windows.Documents;
-
 
 namespace SNIBypassGUI
 {
@@ -23,7 +20,7 @@ namespace SNIBypassGUI
         public static FilesINI ConfigINI = new FilesINI();
 
         // 既定版本号，更新时需要修改
-        public const string PresetGUIVersion = "V3.4";
+        public const string PresetGUIVersion = "V3.5";
 
         // 用于判断是否需要禁用适配器IPv6的域名
         public const string DomainForIPv6DisableDecision = "pixiv.net";
@@ -31,6 +28,20 @@ namespace SNIBypassGUI
         // 默认一言
         public const string PresetYiyan = "行远自迩，登高自卑。";
         public const string PresetYiyanForm = "—— 戴圣「礼记」";
+
+        // s.pximg.net
+        public static string[] pximgIP = new string[]
+        {
+            "210.140.139.135",
+            "210.140.139.132",
+            "210.140.139.137",
+            "210.140.139.134",
+            "210.140.139.131",
+            "210.140.139.133",
+            "210.140.139.130",
+            "210.140.139.129",
+            "210.140.139.136"
+        };
 
         // 字符串转换为布尔值的类
         public class StringBoolConverter
@@ -169,6 +180,7 @@ namespace SNIBypassGUI
         {
             { "程序设置:Background", "Preset" },
             { "程序设置:ActiveAdapter", "" },
+            { "程序设置:PixivIPPreference", "false" },
             { "高级设置:DebugMode", "false" },
             { "高级设置:GUIDebug", "false" },
             { "高级设置:DomainNameResolutionMethod", "DnsService" },
@@ -198,7 +210,10 @@ namespace SNIBypassGUI
             new SwitchItem {FaviconImageSource = "Resources/favicons/e-hentai.ico", SwitchTitle = "E-Hentai（含里站）", LinksText = "e-hentai.org|、|exhentai.org", ToggleButtonName="ehentaiTB", SectionName = "E-Hentai", HostsRecord = HostsSet.EHentaiSection, OldHostsRecord = HostsSet_Old.EHentaiSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/etsy.png", SwitchTitle = "Etsy", LinksText = "etsy.com", ToggleButtonName="etsyTB", SectionName = "Etsy", HostsRecord = HostsSet.EtsySection, OldHostsRecord = HostsSet_Old.EtsySection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/fdroid.png", SwitchTitle = "F-Droid（未完整支持）", LinksText = "f-droid.org", ToggleButtonName="fdroidTB", SectionName = "F-Droid", HostsRecord = HostsSet.FDroidSection, OldHostsRecord = HostsSet_Old.FDroidSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/gelbooru.png", SwitchTitle = "Gelbooru（纯看运气）", LinksText = "gelbooru.com", ToggleButtonName="gelbooruTB", SectionName = "Gelbooru", HostsRecord = HostsSet.GelbooruSection, OldHostsRecord = HostsSet_Old.GelbooruSection },
+            new SwitchItem {FaviconImageSource = "Resources/favicons/github.png", SwitchTitle = "Github", LinksText = "github.com", ToggleButtonName="githubTB", SectionName = "Github", HostsRecord = HostsSet.GithubSection, OldHostsRecord = HostsSet_Old.GithubSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/google.png", SwitchTitle = "谷歌搜索", LinksText = "google.com", ToggleButtonName="googleTB", SectionName = "Google", HostsRecord = HostsSet.GoogleSection, OldHostsRecord = HostsSet_Old.GoogleSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/iwara.png", SwitchTitle = "Iwara", LinksText = "iwara.tv", ToggleButtonName= "iwaraTB", SectionName = "Iwara", HostsRecord = HostsSet.IwaraSection, OldHostsRecord = HostsSet_Old.IwaraSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/nyaa.png", SwitchTitle = "Nyaa（含里站）", LinksText = "nyaa.si|、|sukebei.nyaa.si", ToggleButtonName="nyaaTB", SectionName = "Nyaa", HostsRecord = HostsSet.NyaaSection, OldHostsRecord = HostsSet_Old.NyaaSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/ok.png", SwitchTitle = "OK", LinksText = "ok.ru", ToggleButtonName="okTB", SectionName = "OK", HostsRecord = HostsSet.OKSection, OldHostsRecord = HostsSet_Old.OKSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/okx.png", SwitchTitle = "OKX.COM", LinksText = "okx.com", ToggleButtonName="okxTB", SectionName = "OKX.COM", HostsRecord = HostsSet.OKXCOMSection, OldHostsRecord = HostsSet_Old.OKXCOMSection},
@@ -206,6 +221,7 @@ namespace SNIBypassGUI
             new SwitchItem {FaviconImageSource = "Resources/favicons/pixivFANBOX.ico", SwitchTitle = "pixivFANBOX", LinksText = "fanbox.cc", ToggleButtonName="fanboxTB", SectionName = "pixivFANBOX", HostsRecord = HostsSet.pixivFANBOXSection, OldHostsRecord = HostsSet_Old.pixivFANBOXSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/pornhub.ico", SwitchTitle = "Pornhub（不稳定）", LinksText = "pornhub.com", ToggleButtonName="pornhubTB", SectionName = "Pornhub", HostsRecord = HostsSet.PornhubSection, OldHostsRecord = HostsSet_Old.PornhubSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/proton.png", SwitchTitle = "Proton", LinksText = "proton.me", ToggleButtonName="protonTB", SectionName = "Proton", HostsRecord = HostsSet.ProtonSection, OldHostsRecord = HostsSet_Old.ProtonSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/sankakucomplex.ico", SwitchTitle = "Sankaku Complex", LinksText = "sankakucomplex.com", ToggleButtonName="sankakucomplexTB", SectionName = "Sankaku Complex", HostsRecord = HostsSet.SankakuComplexSection, OldHostsRecord = HostsSet_Old.SankakuComplexSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/steamcommunity.ico", SwitchTitle = "Steam Community", LinksText = "steamcommunity.com", ToggleButtonName="steamcommunityTB", SectionName = "Steam Community", HostsRecord = HostsSet.SteamCommunitySection, OldHostsRecord = HostsSet_Old.SteamCommunitySection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/telegram.png", SwitchTitle = "Telegram", LinksText = "telegram.org", ToggleButtonName="telegramTB", SectionName = "Telegram", HostsRecord = HostsSet.TelegramSection, OldHostsRecord = HostsSet_Old.TelegramSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/thenewyorktimes.png", SwitchTitle = "The New York Times", LinksText = "nytimes.com", ToggleButtonName="thenewyorktimesTB", SectionName = "The New York Times", HostsRecord = HostsSet.TheNewYorkTimesSection, OldHostsRecord = HostsSet_Old.TheNewYorkTimesSection},

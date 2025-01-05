@@ -15,7 +15,7 @@
             <RowDefinition />
         </Grid.RowDefinitions>
         <Grid.Background>
-            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
+            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.jpg"/>
         </Grid.Background>
         <tb:TaskbarIcon x:Name="TaskbarIcon" LeftClickCommand="{Binding _TaskbarIconLeftClickCommand}" DoubleClickCommand="{Binding _TaskbarIconLeftClickCommand}" IconSource="/Resources/icon.ico" ToolTipText="SNIBypassGUI">
             <tb:TaskbarIcon.TrayToolTip>
@@ -39,7 +39,7 @@
                     <MenuItem Foreground="White" x:Name="MenuItem_ShowMainWin" Header="显示主窗口" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ShowMainWin_Click" FontWeight="Bold">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
-                                <Path Data="M997.3 456.4l-419-428.5c-36.4-37.3-96.1-37.3-132.5 0l-419 428.5c-57 58.3-16.6 158 64 158h62.9v307.2c0 56.6 45.8 102.4 102.4 102.4h153.6V768c0-28.3 22.9-51.2 51.2-51.2h102.4c28.3 0 51.2 22.9 51.2 51.2v256H768c56.6 0 102.4-45.8 102.4-102.4V614.4h62.9c80.6 0 121-99.7 64-158z" Stretch="Uniform" Fill="#00a2ff" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
+                                <Path Data="{StaticResource HomeGeometry}" Stretch="Uniform" Fill="#00a2ff" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
                                     <Path.RenderTransform>
                                         <TransformGroup>
                                             <TransformGroup.Children>
@@ -55,7 +55,7 @@
                     <MenuItem Foreground="White" x:Name="MenuItem_StartService" Header="启动服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StartService_Click" FontWeight="Bold">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
-                                <Path Data="M510.3 98.2c-229.2 0-415.1 185.8-415.1 415S281 928.3 510.3 928.3s415.1-185.8 415.1-415.1c0-229.2-185.9-415-415.1-415z m163.8 448.1L446.5 679.1c-3.3 1.9-6.7 2.8-10.1 2.8-10.5 0-20.1-8.4-20.1-20.1V396.2c0-11.7 9.6-20.1 20.1-20.1 3.4 0 6.8 0.9 10.1 2.8l227.6 132.8c13.3 7.7 13.3 26.9 0 34.6z" Stretch="Uniform" Fill="#FF2BFF00" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
+                                <Path Data="{StaticResource StartGeometry}" Stretch="Uniform" Fill="#FF2BFF00" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
                                     <Path.RenderTransform>
                                         <TransformGroup>
                                             <TransformGroup.Children>
@@ -71,7 +71,7 @@
                     <MenuItem Foreground="White" x:Name="MenuItem_StopService" Header="停止服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StopService_Click" FontWeight="Bold">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
-                                <Path Data="M512 0C229.2 0 0 229.2 0 512s229.2 512 512 512 512-229.2 512-512S794.8 0 512 0z m208 716c0 2.2-1.8 4-4 4H308c-2.2 0-4-1.8-4-4V308c0-2.2 1.8-4 4-4h408c2.2 0 4 1.8 4 4v408z" Stretch="Uniform" Fill="Red" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
+                                <Path Data="{StaticResource StopGeometry}" Stretch="Uniform" Fill="Red" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
                                     <Path.RenderTransform>
                                         <TransformGroup>
                                             <TransformGroup.Children>
@@ -87,7 +87,7 @@
                     <MenuItem Foreground="White" x:Name="MenuItem_ExitTool" Header="退出工具" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ExitTool_Click" FontWeight="Bold">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
-                                <Path Data="M581.632 697.344l126.976 0 0 194.56q0 33.792-10.24 58.88t-27.136 40.96-39.424 23.552-48.128 7.68l-452.608 0q-24.576 0-48.128-9.728t-41.472-27.136-29.184-40.96-11.264-52.224l0-706.56q0-24.576 11.776-47.104t30.208-39.936 40.96-28.16 45.056-10.752l449.536 0q26.624 0 50.176 11.776t41.472 29.696 28.16 40.448 10.24 44.032l0 188.416-126.976 0 1.024-195.584-452.608 0-1.024 713.728 452.608 0 0-195.584zM1021.952 505.856q37.888 30.72 2.048 60.416-20.48 15.36-44.544 37.888t-50.176 46.592-51.712 47.616-47.104 40.96q-23.552 18.432-40.448 18.432t-16.896-24.576q2.048-14.336 0.512-35.84t-1.536-36.864q0-17.408-12.288-21.504t-29.696-4.096l-40.96 0-62.464 0q-34.816 0-73.216-0.512t-73.216-0.512l-62.464 0-41.984 0q-8.192 0-17.92-1.536t-17.408-6.656-12.288-14.336-4.608-23.552q0-19.456-0.512-46.08t0.512-47.104q0-27.648 13.312-37.888t43.008-9.216l33.792 0 59.392 0q32.768 0 70.144 0.512t71.168 0.512l61.44 0 38.912 0q25.6 1.024 43.52-4.096t17.92-22.528q0-14.336 1.024-32.256t1.024-32.256q0-23.552 12.8-29.696t32.256 9.216q19.456 16.384 45.568 38.4t52.736 45.056 52.736 45.568 47.616 39.936z" Stretch="Uniform" Fill="#FFFF00C7" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
+                                <Path Data="{StaticResource ExitGeometry}" Stretch="Uniform" Fill="#FFFF00C7" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
                                     <Path.RenderTransform>
                                         <TransformGroup>
                                             <TransformGroup.Children>
@@ -126,7 +126,7 @@
                 <RichTextBox ScrollViewer.VerticalScrollBarVisibility="Visible" Margin="20,10,10,20" Background="#70FFFFFF" BorderBrush="White" IsReadOnly="True" FontFamily="{StaticResource AaManYuShouXieTi}">
                     <FlowDocument>
                         <Paragraph TextAlignment="Center">
-                            <Span FontSize="30" Foreground="#FF00FF4A">
+                            <Span FontSize="30" Foreground="#FF00AD8A">
                                 <Run Text="说 明" FontWeight="Bold" />
                             </Span>
                             <LineBreak/>
@@ -142,32 +142,383 @@
                             </Span>
                         </Paragraph>
                         <Paragraph TextAlignment="Left">
-                            <Span FontSize="18" Foreground="#FF8738FF">
-                                <Run Text="服务器名称指示（英语：Server Name Indication，缩写：SNI）是TLS的一个扩展协议，在该协议下，在握手过程开始时客户端告诉它正在连接的服务器要连接的主机名称。" />
-                            </Span>
-                        </Paragraph>
-                        <Paragraph TextAlignment="Left">
-                            <Span FontSize="18" Foreground="#FFFF38DC">
-                                <Run Text="域前置(Domain Fronting)技术，就是利用有的服务器不验证SNI的这一特点，给GFW和服务器一个假的SNI。因为GFW没有私钥，只能通过SNI和IP判断你要访问的网站，而假的SNI就能欺骗GFW。" />
-                            </Span>
-                        </Paragraph>
-                        <Paragraph TextAlignment="Left" FontSize="18">
-                            <Run Cursor="Hand" PreviewMouseDown="LinkText_PreviewMouseDown" FontFamily="Microsoft Ya Hei UI" Foreground="#FF3C75FF" TextDecorations="Underline">https://github.com/mashirozx/Pixiv-Nginx</Run>
-                            <Span Foreground="#FFC74DE4">
-                                <Run Text="就是一个通过这种方式恢复国内访问Pixiv的已经完整实现的开源项目，利用了Nginx反向代理时不支持SNI达到目的。"/>
+                            <Span>
+                                <Run Text="➲ DNS（Domain Name System）是什么？" FontSize="24" Foreground="#FF00D88E" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     DNS可以理解为互联网中的“电话簿”。它的作用是将我们常用的域名（例如：www.example.com）转换成计算机可以理解的IP地址（例如：192.0.2.1），因为计算机是通过IP地址来进行通信的。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="-220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFF74D73"/>
+                                            <GradientStop Color="#FF7A0EC8" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     假设你想给一个朋友打电话，但你手上只有朋友的名字（比如“李华”），而没有电话号码。你去查找电话簿，输入“李明”的名字，电话簿会告诉你李明的电话号码。然后你就可以拨打这个电话号码，打通电话。“李华”就像是一个网站的域名（比如：www.example.com），电话号码就是网站的IP地址，而电话簿就是DNS，它负责将域名转换成IP地址。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFC81F84"/>
+                                            <GradientStop Color="#FF7A0EC8" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     当你在浏览器中输入网址时，DNS会帮助你找到对应的IP地址，然后你的计算机就能连接到正确的网站。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="-220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FF7D08E2"/>
+                                            <GradientStop Color="#FF1705F3" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="➲ SNI（Server Name Indication）是什么？" FontSize="24" Foreground="#FF00BCFB" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     SNI是TLS/SSL协议的一部分，用于在建立加密连接之前，客户端向服务器说明自己想连接哪个具体网站。简而言之，SNI就像是你在酒店登记时告诉前台你要去哪个房间，这样前台才能为你提供正确的房间钥匙。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFB700FF"/>
+                                            <GradientStop Color="#FF234CF3" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="➲ GFW（Great Firewall，简称“防火长城”）是什么？" FontSize="24" Foreground="#FF8738FF" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     GFW是中国的一个网络审查和过滤系统，旨在限制和监控从中国境内访问全球互联网的流量。它的主要功能是阻止或限制中国用户访问某些外国网站和服务，同时监控、审查互联网上的信息流动。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFB700FF"/>
+                                            <GradientStop Color="#FF234CF3" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     GFW通过多种技术手段工作，如DNS劫持、IP封锁、深度包检测（DPI）、URL过滤等。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FF6F24F9"/>
+                                            <GradientStop Color="#FF00BCFB" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="➲ DNS劫持是什么？" FontSize="24" Foreground="#FF00D88E" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     DNS劫持就像是你给别人发了一条短信，里面有一个地址（比如：“去www.example.com”）。但是，在你发出去之前，短信被某人篡改了，发给了一个假地址。结果你到达的地方并不是你想去的地方，而是一个假的或被封锁的地方。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FF6F24F9"/>
+                                            <GradientStop Color="#FF00BCFB" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     DNS污染是一种类似于DNS劫持的技术网络审查技术，它通过篡改或“污染”DNS查询结果，阻止用户访问特定的网站。但污染的方式更为普遍且持续，可以影响大量的DNS请求。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFB700FF"/>
+                                            <GradientStop Color="#FF234CF3" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="➲ SNI阻断是什么？" FontSize="24" Foreground="#FF7E38FF" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     当用户访问一个使用HTTPS的网站，客户端在发起SSL/TLS握手时，会将目标网站的域名发送给服务器。中间的网络设备可以读取这些SNI信息。根据SNI信息，网络服务提供商可能选择阻止与特定域名的连接请求。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFF74D73"/>
+                                            <GradientStop Color="#FF7A0EC8" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="➲ SNI明文传输，是否安全？" FontSize="24" Foreground="#FFF74D73" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     由于SNI信息并未加密，审查者可以识别出用户访问的网站域名。现已被部分国家用于互联网审查，如GFW和韩国的KCSC。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFF74D73"/>
+                                            <GradientStop Color="#FF7A0EC8" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     为了解决这个问题，一种旨在解决主机名称泄漏问题的TLS扩充协议 —— ESNI（Encrypted Server Name Indication）出现了。但自2020年7月下旬起，GFW开始封锁所有ESNI的TLS通信。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFA04DF7"/>
+                                            <GradientStop Color="#FF0E11C8" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="➲ 本软件如何绕过GFW对部分站点的封锁？" FontSize="24" Foreground="#FF38C4FF" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     通过本地DNS服务或系统hosts文件将被封锁的域名及子域名指向127.0.0.1，有关请求会先到达Nginx代理服务器。Nginx代理服务器会与目标服务器建立加密连接，并将实际的SNI信息传递给目标服务器。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FF6F24F9"/>
+                                            <GradientStop Color="#FF00BCFB" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     这时，GFW只能看到加密流量，而无法直接看到真实的SNI信息，因为握手已经发生在Nginx和目标服务器之间，而不是直接在浏览器和目标服务器之间。因此，GFW不会基于SNI阻止请求，即域前置。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FF6F24F9"/>
+                                            <GradientStop Color="#FF00BCFB" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     域前置通过SNI中使用虚假无害的域名信息，已经被TLS加密的应用层才使用真实的域名信息，将真实流量隐藏在看似无害的流量中，从而使审查者无法区别出来。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFB700FF"/>
+                                            <GradientStop Color="#FF234CF3" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="➲ CDN（Content Delivery Network）是什么？" FontSize="24" Foreground="#FFFBCF00" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     CDN是一种通过将网站内容缓存到多个分布在不同地区的服务器上，以提高用户访问速度的技术。简单来说，CDN的作用就是让网站的数据更快、更稳定地传递到用户。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FF6F24F9"/>
+                                            <GradientStop Color="#FF00BCFB" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     就像你去一家图书馆借书。如果这本书只有一个库存在美国，你必须跨大洋才能借到。但是，如果这本书在世界各地的图书馆都有了，那么你只需要去最近的图书馆就能借到，节省了时间，效率更高。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FF6F24F9"/>
+                                            <GradientStop Color="#FF00BCFB" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="➲ 为什么无法支持部分站点？" FontSize="24" Foreground="#FFFFCA38" FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="     一些较大型的网站为了降低带宽成本和提升全球范围的访问速度与安全性，采用了像Amazon CloudFront、Cloudflare这样的大型CDN业务。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="-220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFF97224"/>
+                                            <GradientStop Color="#FFFBCF00" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     但不幸的是，并非所有CDN都支持域前置技术。Cloudflare在2016年的一些修改让基于其CDN的域前置不再工作。Google于2018年4月宣布将在Google应用服务引擎禁用域前置，称这从未是Google有意支持的一项功能。亚马逊公司也在不久后决定停用CloudFront上的域前置兼容，表示这已被视为违反亚马逊网络服务系统（AWS）服务条款。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="-220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFF9E724"/>
+                                            <GradientStop Color="#FFCBFB00" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     不完全统计，目前兼容域前置的CDN有Automattic、CDN77、Fastly、StackPath和Incapsula、Microsoft Azure。若被封锁站点使用了不兼容域前置技术的CDN，则需要找到未被封锁的源站IP，这在大多数情况下是困难的。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="-220" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FFBDF924"/>
+                                            <GradientStop Color="#FFFBCF00" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
+                                <LineBreak/>
+                                <Run Text="     鉴于此，我们十分欢迎您在该方面上做出有关贡献。您可以直接发送邮件给我们，或通过在Github上提交Issue。" FontSize="18">
+                                    <Run.Foreground>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <LinearGradientBrush.RelativeTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                                    <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                                    <RotateTransform Angle="130" CenterX="0.5" CenterY="0.5"/>
+                                                    <TranslateTransform/>
+                                                </TransformGroup>
+                                            </LinearGradientBrush.RelativeTransform>
+                                            <GradientStop Color="#FF2B24F9"/>
+                                            <GradientStop Color="#FFBD01D2" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Run.Foreground>
+                                </Run>
                             </Span>
                         </Paragraph>
                         <Paragraph TextAlignment="Left" FontSize="18">
                             <Span Foreground="#FF31EF83">
-                                <Run Text="本程序的前身Pixiv-Nginx-GUI，旨在为没有相关基础但需要使用该项目的人士提供一个更易于使用的方案。" FontWeight="Bold"/>
+                                <Run Text="     本程序的前身Pixiv-Nginx-GUI，旨在为没有相关基础但需要使用该项目的人士提供一个更易于使用的方案。" FontWeight="Bold"/>
                             </Span>
-                        </Paragraph>
-                        <Paragraph TextAlignment="Left" FontSize="18">
+                            <LineBreak/>
                             <Span Foreground="#FF3C75FF">
-                                <Run Text="为了更好地适应程序的发展与版本的更迭，更名为SNIBypassGUI继续开发，以提供更好的使用体验与更广的适用范围。" FontWeight="Bold"/>
+                                <Run Text="     为了更好地适应程序的发展与版本的更迭，迁移到SNIBypassGUI继续开发，以提供更好的使用体验与更广的适用范围。" FontWeight="Bold"/>
                             </Span>
-                        </Paragraph>
-                        <Paragraph TextAlignment="Left" FontSize="18">
+                            <LineBreak/>
                             <Span Foreground="#FFC74DE4">
                                 <Run Text="项目地址："/>
                             </Span>
@@ -288,6 +639,7 @@
                                     <Button x:Name="CustomBkgBtn" hc:IconElement.Geometry="{StaticResource CustomGeometry}" Click="CustomBkgBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="自定义背景"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF21C500" BorderBrush="#FF21C500" VerticalContentAlignment="Center"/>
                                     <Button x:Name="DefaultBkgBtn" hc:IconElement.Geometry="{StaticResource DefaultGeometry}" Grid.Column="1" Click="DefaultBkgBtn_Click" Height="30" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="恢复默认背景"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
                                 </Grid>
+                                <Button x:Name="PixivIPPreferenceBtn" hc:IconElement.Geometry="{StaticResource ExperimentGeometry}" Click="PixivIPPreferenceBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="Pixiv IP优选：关"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition/>

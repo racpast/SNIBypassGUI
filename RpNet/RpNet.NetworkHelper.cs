@@ -16,459 +16,755 @@ using System.Net;
 
 namespace RpNet.NetworkHelper
 {
-    // --------------------------------------------------------------------------
-    //
-    //  NetAdp 类
-    //  该类用于管理和操作系统中的网络适配器，提供了一系列与网络配置相关的功能。
-    //  包括获取网络适配器信息、设置静态 IP 和子网掩码、配置网关与 DNS，以及生成网络适配器的详细报告。
-    //  通过该类，用户可以灵活管理网络适配器的各种属性和设置。
-    //
-    //  功能：
-    //  - 获取所有网络适配器的信息，包括名称、描述、类型、运行状态、IP 地址、子网掩码、网关、DNS 等。
-    //  - 设置网络适配器的静态 IP、子网掩码、网关和 DNS。
-    //  - 刷新指定网络适配器的信息。
-    //  - 生成网络适配器的详细报告。
-    //  - 提供只读属性访问适配器的各种基本信息。
-    //
-    //  注意：
-    //  - 使用本类的方法时，请确保应用程序具有足够的权限来执行网络配置操作。
-    //  - 在更改网络配置时，可能需要管理员权限或重启网络适配器。
-    //  - 请确保参数设置的合法性，例如有效的 IP 地址、子网掩码和网关等，以避免配置失败或产生不可预期的行为。
-    //
-    //  示例：
-    //  ```csharp
-    //  List<NetAdp> adapters = NetAdp.GetAdapters();
-    //  foreach (var adapter in adapters)
-    //  {
-    //      Console.WriteLine(adapter.Name);
-    //      Console.WriteLine(adapter.IP);
-    //  }
-    //  ```
-    //
-    // --------------------------------------------------------------------------
-    public class NetAdp
+    /// <summary>
+    /// 表示一个网络适配器，提供获取和设置网络适配器的配置信息，包括IP地址、子网掩码、默认网关、DNS服务器等。 
+    /// 支持启用和禁用IPv4与IPv6协议，配置DHCP，获取网络适配器的信息报告，以及与网络适配器相关的其他操作。
+    /// 通过WMI (Windows Management Instrumentation) 实现与系统的交互，支持网络适配器的动态配置和管理。
+    /// 信息的获取基于 Win32_NetworkAdapterConfiguration 类与 Win32_NetworkAdapter 类实现，通过共有的 InterfaceIndex 属性来连接，此属性中的值与表示路由表中网络接口的 Win32_IP4RouteTable 实例中的 InterfaceIndex 属性中的值相同。
+    /// 但 Win32_IP4RouteTable 类只适用于IPv4，不返回IPX或IPv6数据。因此应该避免对仅IPv6协议启用的适配器进行操作。本类仅提供部分通过 Powershell 实现的IPv6协议支持。
+    /// </summary>
+    public class NetworkAdapter
     {
-        // 私有字段，存储网络适配器的属性
-        private string name; // 网络适配器名称
-        private string description; // 网络适配器描述
-        private string serviceName; // 服务名
-        private OperationalStatus status; // 网络适配器的运行状态
-        private NetworkInterfaceType type; // 网络适配器的类型
-        private string[] dns; // DNS服务器地址
-        private Int32? interFace; // 接口索引
-        private string gateway; // 默认网关地址
-        private string ip; // IP地址
-        private string mask; // 子网掩码
-        private string guid;// GUID
-
-        // 只读属性，用于访问私有字段
+        /// <summary>
+        /// 网络适配器的硬件名称，从 Win32_NetworkAdapter 类获取。
+        /// </summary>
         public string Name { get { return name; } }
+        /// <summary>
+        /// 网络适配器在控制面板中所显示的接口名称，从 Win32_NetworkAdapter 类获取。
+        /// </summary>
+        public string Caption { get { return caption; } }
+        /// <summary>
+        /// 网络适配器的描述，可以从 Win32_NetworkAdapter 或 Win32_NetworkAdapterConfiguration 类获取。
+        /// </summary>
         public string Description { get { return description; } }
-        public string GUID { get { return guid; } }
+        /// <summary>
+        /// 网络适配器服务名称，可以从 Win32_NetworkAdapter 或 Win32_NetworkAdapterConfiguration 类获取。
+        /// </summary>
         public string ServiceName { get { return serviceName; } }
-        public OperationalStatus Status { get { return status; } }
-        public NetworkInterfaceType Type { get { return type; } }
+        /// <summary>
+        /// DNS服务器地址。从 Win32_NetworkAdapterConfiguration 类获取。可设置为一个字符串数组，但其中不应包含IPv6地址。设置为null时将重置DNS服务器地址。
+        /// </summary>
         public string[] DNS
         {
-            get
-            {
-                return dns;
-            }
+            get { return dNS == null ? [] : dNS; }
             set
             {
-                // 使用 WMI 设置 DNS 服务器
                 ManagementClass wmi = new ManagementClass("Win32_NetworkAdapterConfiguration");
                 ManagementObjectCollection moc = wmi.GetInstances();
-                ManagementBaseObject i = null;
                 ManagementBaseObject o = null;
                 foreach (ManagementObject mo in moc)
                 {
-                    // 匹配接口索引
-                    if ((UInt32)mo["InterfaceIndex"] == Interface)
+                    if ((uint)mo["InterfaceIndex"] == InterfaceIndex)
                     {
-                        // 如果 value 为空，重置 DNS 设置
                         if (value == null)
                         {
-                            UInt32 t;
-                            t = (UInt32)mo.InvokeMethod("SetDNSServerSearchOrder", null);
+                            uint t = (uint)mo.InvokeMethod("SetDNSServerSearchOrder", null);
                             if (t != 0)
-                                throw new NetAdpSetException((UInt32)o["returnValue"]);
+                                throw new NetworkAdapterSetException((uint)o["returnValue"]);
                             break;
                         }
                         else
                         {
-                            // 设置新的 DNS 服务器地址
-                            i = mo.GetMethodParameters("SetDNSServerSearchOrder");
+                            ManagementBaseObject i = mo.GetMethodParameters("SetDNSServerSearchOrder");
                             i["DNSServerSearchOrder"] = value;
                             o = mo.InvokeMethod("SetDNSServerSearchOrder", i, null);
-                            if ((UInt32)o["returnValue"] != 0)
-                                throw new NetAdpSetException((UInt32)o["returnValue"]);
+                            if ((uint)o["returnValue"] != 0)
+                                throw new NetworkAdapterSetException((uint)o["returnValue"]);
                             break;
                         }
                     }
                 }
             }
         }
-
-        public Int32? Interface { get { return interFace; } }
-        public string Gateway
+        /// <summary>
+        /// 网络接口唯一标识索引。从 Win32_NetworkAdapter 或 Win32_NetworkAdapterConfiguration 类获取。
+        /// </summary>
+        public uint InterfaceIndex { get { return interfaceIndex; } }
+        /// <summary>
+        /// 默认网关地址。从 Win32_NetworkAdapterConfiguration 类获取。可设置为一个字符串数组，但其中不应包含IPv6地址。设置为null时将启用DHCP。也可以通过 SetStatic 方法设置。
+        /// </summary>
+        public string[] Gateway
         {
-            get
-            {
-                return gateway;
-            }
+            get { return gateway; }
             set
             {
-                // 使用 WMI 设置网关地址
                 ManagementClass wmi = new ManagementClass("Win32_NetworkAdapterConfiguration");
                 ManagementObjectCollection moc = wmi.GetInstances();
                 ManagementBaseObject i = null;
                 ManagementBaseObject o = null;
                 foreach (ManagementObject mo in moc)
                 {
-                    if ((UInt32)mo["InterfaceIndex"] == Interface)
+                    if ((uint)mo["InterfaceIndex"] == InterfaceIndex)
                     {
-                        // 如果 value 为空，启用 DHCP
                         if (value == null)
                         {
                             i = mo.GetMethodParameters("EnableDHCP");
                             o = mo.InvokeMethod("EnableDHCP", i, null);
-                            if ((UInt32)o["returnValue"] != 0)
-                                throw new NetAdpSetException((UInt32)o["returnValue"]);
+                            if ((uint)o["returnValue"] != 0)
+                                throw new NetworkAdapterSetException((uint)o["returnValue"]);
                             break;
                         }
                         else
                         {
-                            // 设置新的网关地址
                             i = mo.GetMethodParameters("SetGateways");
-                            i["DefaultIPGateway"] = new string[] { value };
+                            i["DefaultIPGateway"] = value;
                             o = mo.InvokeMethod("SetGateways", i, null);
-                            if ((UInt32)o["returnValue"] != 0)
-                                throw new NetAdpSetException((UInt32)o["returnValue"]);
+                            if ((uint)o["returnValue"] != 0)
+                                throw new NetworkAdapterSetException((uint)o["returnValue"]);
                             break;
                         }
                     }
                 }
             }
         }
+        /// <summary>
+        /// IP地址。从 Win32_NetworkAdapterConfiguration 类获取。欲设置该值，请使用 SetStatic 方法。
+        /// </summary>
+        public string[] IP { get { return ip; } }
+        /// <summary>
+        /// 子网掩码。从 Win32_NetworkAdapterConfiguration 类获取。欲设置该值，请使用 SetStatic 方法。
+        /// </summary>
+        public string[] Mask { get { return mask; } }
+        /// <summary>
+        /// GUID。从 Win32_NetworkAdapter 类获取。
+        /// </summary>
+        public string GUID { get { return gUID; } }
+        /// <summary>
+        /// 是否启用IP。从 Win32_NetworkAdapterConfiguration 类获取。
+        /// </summary>
+        public bool IPEnabled { get { return iPEnabled; } }
+        /// <summary>
+        /// 网络适配器连接到网络的状态。从 Win32_NetworkAdapter 类获取。详情见：https://learn.microsoft.com/zh-cn/windows/win32/cimwin32prov/win32-networkadapter
+        /// </summary>
+        public ushort? NetConnectionStatus { get { return netConnectionStatus; } }
+        /// <summary>
+        /// 指示适配器是否已启用（经测试，该值未必准确）。从 Win32_NetworkAdapter 类获取。
+        /// </summary>
+        public bool? NetEnabled { get { return netEnabled; } }
+        /// <summary>
+        /// DHCP是否启用。从 Win32_NetworkAdapterConfiguration 类获取。
+        /// </summary>
+        public bool? DHCPEnabled { get { return dHCPEnabled; } }
+        /// <summary>
+        /// DHCP服务器地址。从 Win32_NetworkAdapterConfiguration 类获取。
+        /// </summary>
+        public string DHCPServer { get { return dHCPServer; } }
+        /// <summary>
+        /// 网络适配器的MAC地址。从 Win32_NetworkAdapterConfiguration 类获取。
+        /// </summary>
+        public string MACAddress { get { return mACAddress; } }
+        /// <summary>
+        /// 网络适配器的制造商的名称（经测试，该值未必准确）。从 Win32_NetworkAdapter 类获取。
+        /// </summary>
+        public string Manufacturer { get { return manufacturer; } }
+        /// <summary>
+        /// 指示适配器是物理适配器还是逻辑适配器。从 Win32_NetworkAdapter 类获取。
+        /// </summary>
+        public bool IsPhysicalAdapter { get { return isPhysicalAdapter; } }
+        /// <summary>
+        /// 指示网络适配器是否为自动获取DNS服务器。从注册表判断。
+        /// </summary>
+        public bool? IsDnsAutomatic { get { return isDnsAutomatic; } }
 
-        public string IP { get { return ip; } }
-        public string Mask { get { return mask; } }
+        private string caption;
+        private string name;
+        private string description;
+        private string serviceName;
+        private string[] dNS;
+        private uint interfaceIndex;
+        private string[] gateway;
+        private string[] ip;
+        private string[] mask;
+        private string gUID;
+        private bool iPEnabled;
+        private ushort? netConnectionStatus;
+        private bool? netEnabled;
+        private string mACAddress;
+        private string manufacturer;
+        private bool isPhysicalAdapter;
+        private bool? dHCPEnabled;
+        private string dHCPServer;
+        private bool? isDnsAutomatic;
 
-        // 设置网络配置的方法，包括 IP、子网掩码、网关和 DNS
-        void SetNetwork(string[] ip, string[] submask, string[] getway, string[] dns)
+        /// <summary>
+        /// 需要查找的适配器范围
+        /// </summary>
+        public enum ScopeNeeded
+        {
+            All,
+            EnabledOnly,
+            ConnectedOnly,
+            PhysicalOnly,
+            NetConnectIDNotNullOnly
+        }
+
+        /// <summary>
+        /// 设置当前网络适配器的静态IP配置。
+        /// </summary>
+        /// <param name="ip">IP地址数组。</param>
+        /// <param name="submask">子网掩码数组。</param>
+        /// <param name="gateway">默认网关地址数组。</param>
+        /// <param name="dns">DNS服务器地址数组。</param>
+        public void SetStatic(string[] ip, string[] submask, string[] gateway, string[] dns)
+        {
+            SetStatic(this, ip, submask, gateway, dns);
+        }
+
+        /// <summary>
+        /// 设置网络适配器的静态IP配置。
+        /// </summary>
+        /// <param name="adapter">指定的网络适配器。</param>
+        /// <param name="ip">IP地址数组。</param>
+        /// <param name="submask">子网掩码数组。</param>
+        /// <param name="gateway">默认网关地址数组。</param>
+        /// <param name="dns">DNS服务器地址数组。</param>
+        public static void SetStatic(NetworkAdapter adapter, string[] ip, string[] submask, string[] gateway, string[] dns)
         {
             ManagementClass wmi = new ManagementClass("Win32_NetworkAdapterConfiguration");
             ManagementObjectCollection moc = wmi.GetInstances();
-            ManagementBaseObject inPar = null;
-            ManagementBaseObject outPar = null;
+            ManagementBaseObject inPar;
+            ManagementBaseObject outPar;
             foreach (ManagementObject mo in moc)
             {
-                if (!(bool)mo["IPEnabled"]) // 检查是否启用 IP
-                    continue;
-
-                // 设置 IP 地址和子网掩码
-                if (ip != null && submask != null)
+                if ((uint)mo["InterfaceIndex"] == adapter.interfaceIndex)
                 {
-                    inPar = mo.GetMethodParameters("EnableStatic");
-                    inPar["IPAddress"] = ip;
-                    inPar["SubnetMask"] = submask;
-                    outPar = mo.InvokeMethod("EnableStatic", inPar, null);
-                }
+                    if (!(bool)mo["IPEnabled"])
+                        continue;
 
-                // 设置网关
-                if (getway != null)
-                {
-                    inPar = mo.GetMethodParameters("SetGateways");
-                    inPar["DefaultIPGateway"] = getway;
-                    outPar = mo.InvokeMethod("SetGateways", inPar, null);
-                }
-
-                // 设置 DNS
-                if (dns != null)
-                {
-                    inPar = mo.GetMethodParameters("SetDNSServerSearchOrder");
-                    inPar["DNSServerSearchOrder"] = dns;
-                    outPar = mo.InvokeMethod("SetDNSServerSearchOrder", inPar, null);
-                }
-                else if (dns[0] == "back")
-                {
-                    mo.InvokeMethod("SetDNSServerSearchOrder", null);
-                }
-            }
-        }
-
-        // 获取所有网络适配器的信息
-        public static List<NetAdp> GetAdapters()
-        {
-            List<NetAdp> back = new List<NetAdp>();
-            NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
-            ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_NetworkAdapter");
-            ManagementObjectCollection wmiadps = searcher.Get();
-
-            foreach (NetworkInterface adapter in adapters)
-            {
-                NetAdp adp = new NetAdp();
-                adp.name = adapter.Name;
-                adp.description = adapter.Description;
-                adp.status = adapter.OperationalStatus;
-                adp.type = adapter.NetworkInterfaceType;
-
-                IPInterfaceProperties adapterProperties = adapter.GetIPProperties();
-                UnicastIPAddressInformationCollection uniCast = adapterProperties.UnicastAddresses;
-                IPv4InterfaceProperties p = adapterProperties.GetIPv4Properties();
-                if (uniCast.Count > 1)
-                {
-                    if (uniCast[1].IPv4Mask != null)
+                    if (ip != null && submask != null)
                     {
-                        adp.ip = uniCast[1].Address.ToString();
-                        adp.mask = uniCast[1].IPv4Mask.ToString();
-                    }
+                        inPar = mo.GetMethodParameters("EnableStatic");
+                        inPar["IPAddress"] = ip;
+                        inPar["SubnetMask"] = submask;
+                        outPar = mo.InvokeMethod("EnableStatic", inPar, null);
 
-                }
-                GatewayIPAddressInformationCollection addresses = adapterProperties.GatewayAddresses;
-                if (addresses.Count > 0)
-                {
-                    adp.gateway = addresses[0].Address.ToString();
-                }
-                IPAddressCollection dnsServers = adapterProperties.DnsAddresses;
-                switch (dnsServers.Count)
-                {
-                    case 0:
-                        adp.dns = new string[0];
-                        break;
-                    case 1:
-                        adp.dns = new string[1];
-                        adp.dns[0] = dnsServers[0].ToString();
-                        break;
-                    default:
-                        adp.dns = new string[2];
-                        adp.dns[0] = dnsServers[0].ToString();
-                        adp.dns[1] = dnsServers[1].ToString();
-                        break;
-                }
-                if (p != null)
-                {
-                    adp.interFace = p.Index;
-                }
-                foreach (ManagementObject mo in wmiadps)
-                {
-                    if ((string)mo.GetPropertyValue("NetConnectionID") == adp.name)
-                    {
-                        adp.guid = (string)mo.GetPropertyValue("GUID");
-                        adp.serviceName = (string)mo.GetPropertyValue("ServiceName");
-                    }
-                }
-                back.Add(adp);
-            }
-            return back;
-        }
-
-        // 返回所有适配器的信息报告
-        public static string GetAdaptersReport()
-        {
-            List<NetAdp> adps = GetAdapters();
-            string back = "";
-            foreach (NetAdp adp in adps)
-            {
-                back += "==================================================\r\n";
-                back += "名称:" + adp.Name + "\r\n";
-                back += "描述:" + adp.Description + "\r\n";
-                back += "类型:" + adp.Type.ToString() + "\r\n";
-                back += "GUID:" + adp.guid + "\r\n";
-                back += "状态:" + adp.Status.ToString() + "\r\n";
-                back += "网关:" + adp.Gateway + "\r\n";
-                back += "是否自动获取DNS：" + adp.IsDnsAutomatic + "\r\n";
-                if (adp.DNS != null)
-                {
-                    foreach (string d in adp.DNS)
-                    {
-                        back += "DNS:" + d + "\r\n";
-                    }
-                }
-                back += "接口:" + adp.Interface + "\r\n";
-                back += "服务名:" + adp.ServiceName + "\r\n";
-                back += "IP：" + adp.IP + "\r\n";
-                back += "子网掩码：" + adp.Mask + "\r\n";
-            }
-            return back;
-        }
-
-        // 刷新当前适配器的信息
-        public void Fresh()
-        {
-            NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
-            ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_NetworkAdapter");
-            ManagementObjectCollection wmiadps = searcher.Get();
-
-            foreach (NetworkInterface adapter in adapters)
-            {
-                if (adapter.Name == name)
-                {
-                    status = adapter.OperationalStatus;
-                    type = adapter.NetworkInterfaceType;
-
-                    IPInterfaceProperties adapterProperties = adapter.GetIPProperties();
-                    UnicastIPAddressInformationCollection uniCast = adapterProperties.UnicastAddresses;
-                    IPv4InterfaceProperties p = adapterProperties.GetIPv4Properties();
-                    if (uniCast.Count > 1)
-                    {
-                        if (uniCast[1].IPv4Mask != null)
+                        uint returnValue = (uint)outPar["returnValue"];
+                        if (returnValue != 0)
                         {
-                            ip = uniCast[1].Address.ToString();
-                            mask = uniCast[1].IPv4Mask.ToString();
-                        }
-
-                    }
-                    GatewayIPAddressInformationCollection addresses = adapterProperties.GatewayAddresses;
-                    if (addresses.Count > 0)
-                    {
-                        gateway = addresses[0].Address.ToString();
-                    }
-
-                    IPAddressCollection dnsServers = adapterProperties.DnsAddresses;
-                    switch (dnsServers.Count)
-                    {
-                        case 1:
-                            dns = new string[1];
-                            dns[0] = dnsServers[0].ToString();
-                            break;
-                        case 2:
-                            dns = new string[2];
-                            dns[0] = dnsServers[0].ToString();
-                            dns[1] = dnsServers[1].ToString();
-                            break;
-                    }
-                    if (p != null)
-                    {
-                        interFace = p.Index;
-                    }
-
-                    foreach (ManagementObject mo in wmiadps)
-                    {
-                        if ((string)mo.GetPropertyValue("NetConnectionID") == name)
-                        {
-                            serviceName = (string)mo.GetPropertyValue("ServiceName");
+                            throw new NetworkAdapterSetException(returnValue);
                         }
                     }
 
-                    break;
-                }
-            }
-        }
-
-        // 设置静态 IP 和子网掩码
-        public void SetStatic(string ip, string mask)
-        {
-            ManagementClass wmi = new ManagementClass("Win32_NetworkAdapterConfiguration");
-            ManagementObjectCollection moc = wmi.GetInstances();
-            ManagementBaseObject i = null;
-            ManagementBaseObject o = null;
-            foreach (ManagementObject mo in moc)
-            {
-                if ((UInt32)mo["InterfaceIndex"] == Interface)
-                {
-                    if ((ip == null) || (mask == null))
+                    if (gateway != null)
                     {
-                        i = mo.GetMethodParameters("EnableDHCP");
-                        o = mo.InvokeMethod("EnableDHCP", i, null);
-                        if ((UInt32)o["returnValue"] != 0)
-                            throw new NetAdpSetException((UInt32)o["returnValue"]);
-                        break;
+                        inPar = mo.GetMethodParameters("SetGateways");
+                        inPar["DefaultIPGateway"] = gateway;
+                        outPar = mo.InvokeMethod("SetGateways", inPar, null);
+
+                        uint returnValue = (uint)outPar["returnValue"];
+                        if (returnValue != 0)
+                        {
+                            throw new NetworkAdapterSetException(returnValue);
+                        }
+                    }
+
+                    if (dns != null)
+                    {
+                        inPar = mo.GetMethodParameters("SetDNSServerSearchOrder");
+                        inPar["DNSServerSearchOrder"] = dns;
+                        outPar = mo.InvokeMethod("SetDNSServerSearchOrder", inPar, null);
+
+                        uint returnValue = (uint)outPar["returnValue"];
+                        if (returnValue != 0)
+                        {
+                            throw new NetworkAdapterSetException(returnValue);
+                        }
                     }
                     else
                     {
-                        i = mo.GetMethodParameters("EnableStatic");
-                        i["IPAddress"] = new string[] { ip };
-                        i["SubnetMask"] = new string[] { mask };
-                        o = mo.InvokeMethod("EnableStatic", i, null);
-                        if ((UInt32)o["returnValue"] != 0)
-                            throw new NetAdpSetException((UInt32)o["returnValue"]);
-                        break;
+                        inPar = mo.GetMethodParameters("SetDNSServerSearchOrder");
+                        inPar["DNSServerSearchOrder"] = new string[0];
+                        outPar = mo.InvokeMethod("SetDNSServerSearchOrder", inPar, null);
+
+                        uint returnValue = (uint)outPar["returnValue"];
+                        if (returnValue != 0)
+                        {
+                            throw new NetworkAdapterSetException(returnValue);
+                        }
                     }
                 }
+                break;
             }
         }
 
-        // 禁用网络适配器的 IPv6
-        public bool DisableIPv6()
+        /// <summary>
+        /// 获取符合指定范围条件的所有网络适配器。
+        /// </summary>
+        /// <param name="scope">查询范围，默认为全部。</param>
+        /// <returns>网络适配器列表。</returns>
+        public static List<NetworkAdapter> GetNetworkAdapters(ScopeNeeded scope = ScopeNeeded.All)
         {
-            if (!string.IsNullOrEmpty(name))
+            /*
+            //使用 C# 8.0 中的“递归模式”：https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-version-history#c-version-80
+            string query = scope switch
             {
-                using (var powerShell = PowerShell.Create())
-                {
-                    powerShell.AddScript($"Disable-NetAdapterBinding -Name '{name}' -ComponentID ms_tcpip6");
-                    powerShell.Invoke();
-                    if (powerShell.HadErrors)
-                    {
-                        return false;
-                    }
-                    return true;
-                }
+                ScopeNeeded.All => "SELECT * FROM Win32_NetworkAdapter",
+                ScopeNeeded.EnabledOnly => "SELECT * FROM Win32_NetworkAdapter WHERE NetEnabled=True",
+                ScopeNeeded.ConnectedOnly => "SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionStatus=2",
+                ScopeNeeded.PhysicalOnly => "SELECT * FROM Win32_NetworkAdapter WHERE PhysicalAdapter=True",
+                ScopeNeeded.NetConnectIDNotNullOnly => "SELECT * FROM Win32_NetworkAdapter WHERE (NetConnectionID IS NOT NULL)",
+                _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, null)
+            };
+            */
+
+            string query = null;
+            switch (scope)
+            {
+                case ScopeNeeded.All:
+                    query = "SELECT * FROM Win32_NetworkAdapter";
+                    break;
+                case ScopeNeeded.EnabledOnly:
+                    query = "SELECT * FROM Win32_NetworkAdapter WHERE NetEnabled=True";
+                    break;
+                case ScopeNeeded.ConnectedOnly:
+                    query = "SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionStatus=2";
+                    break;
+                case ScopeNeeded.PhysicalOnly:
+                    query = "SELECT * FROM Win32_NetworkAdapter WHERE PhysicalAdapter=True";
+                    break;
+                case ScopeNeeded.NetConnectIDNotNullOnly:
+                    query = "SELECT * FROM Win32_NetworkAdapter WHERE (NetConnectionID IS NOT NULL)";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(scope), scope, "无效的查询范围。");
             }
-            return false;
-        }
 
-        // 启用网络适配器的 IPv6
-        public bool EnableIPv6()
-        {
-            if (!string.IsNullOrEmpty(name))
+            Dictionary<uint, NetworkAdapter> InterfaceIndexToNetworkAdapter = new Dictionary<uint, NetworkAdapter>();
+            ObjectQuery oquery = new ObjectQuery(query);
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher(oquery);
+            ManagementObjectCollection queryCollection = searcher.Get();
+            foreach (ManagementObject m in queryCollection)
             {
-                using (var powerShell = PowerShell.Create())
+                NetworkAdapter networkAdapter = new NetworkAdapter();
+                networkAdapter.interfaceIndex = (uint)m["InterfaceIndex"];
+                networkAdapter.serviceName = (string)m["ServiceName"];
+                networkAdapter.gUID = (string)m["GUID"];
+                networkAdapter.caption = (string)m["NetConnectionID"];
+                networkAdapter.description = (string)m["Description"];
+                networkAdapter.name = (string)m["Name"];
+                networkAdapter.mACAddress = (string)m["MACAddress"];
+                networkAdapter.manufacturer = (string)m["Manufacturer"];
+                networkAdapter.netEnabled = (bool?)m["NetEnabled"];
+                networkAdapter.isPhysicalAdapter = (bool)m["PhysicalAdapter"];
+                networkAdapter.netConnectionStatus = (ushort?)m["NetConnectionStatus"];
+                if (!string.IsNullOrEmpty(networkAdapter.gUID))
                 {
-                    powerShell.AddScript($"Enable-NetAdapterBinding -Name '{name}' -ComponentID ms_tcpip6");
-                    powerShell.Invoke();
-                    if (powerShell.HadErrors)
-                    {
-                        return false;
-                    }
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // 检查 DNS 是否为自动获取
-        public bool IsDnsAutomatic
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(GUID))
-                    return false;
-
-                string path = "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\" + GUID;
-                string ns = (string)Registry.GetValue(path, "NameServer", null);
-                if (String.IsNullOrEmpty(ns))
-                {
-                    return true;
+                    string path = "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\" + (string)m["GUID"];
+                    string ns = (string)Registry.GetValue(path, "NameServer", null);
+                    networkAdapter.isDnsAutomatic = string.IsNullOrEmpty(ns);
                 }
                 else
                 {
-                    return false;
+                    networkAdapter.isDnsAutomatic = null;
+                }
+                InterfaceIndexToNetworkAdapter.Add(networkAdapter.interfaceIndex, networkAdapter);
+            }
+
+            oquery = new ObjectQuery("SELECT * FROM Win32_NetworkAdapterConfiguration");
+            searcher = new ManagementObjectSearcher(oquery);
+            queryCollection = searcher.Get();
+            foreach (ManagementObject m in queryCollection)
+            {
+                uint interfaceIndex = (uint)m["InterfaceIndex"];
+                if (InterfaceIndexToNetworkAdapter.ContainsKey(interfaceIndex))
+                {
+                    var networkAdapter = InterfaceIndexToNetworkAdapter[interfaceIndex];
+                    networkAdapter.dNS = (string[])m["DNSServerSearchOrder"];
+                    networkAdapter.gateway = (string[])m["DefaultIPGateway"];
+                    networkAdapter.ip = (string[])m["IPAddress"];
+                    networkAdapter.mask = (string[])m["IPSubnet"];
+                    networkAdapter.iPEnabled = (bool)m["IPEnabled"];
+                    networkAdapter.dHCPEnabled = (bool?)m["DHCPEnabled"];
+                    networkAdapter.dHCPServer = (string)m["DHCPServer"];
+                }
+            }
+
+            return new List<NetworkAdapter>(InterfaceIndexToNetworkAdapter.Values);
+        }
+
+        /// <summary>
+        /// 获取当前网络适配器的配置信息。
+        /// </summary>
+        /// <returns>网络适配器配置信息数组。</returns>
+        public string[] NetworkAdaptersInfo()
+        {
+            return NetworkAdaptersInfo(this);
+        }
+
+        /// <summary>
+        /// 获取指定网络适配器的配置信息。
+        /// </summary>
+        /// <param name="adapter">指定的网络适配器。</param>
+        /// <returns>网络适配器配置信息数组。</returns>
+        public static string[] NetworkAdaptersInfo(NetworkAdapter adapter)
+        {
+            List<string> report = new List<string>();
+            if (adapter != null)
+            {
+                report.Add("==========START==========");
+                report.Add($"适配器名称：{adapter.Name}");
+                report.Add($"网络连接名称：{adapter.Caption}");
+                report.Add($"描述：{adapter.Description}");
+                report.Add($"制造商：{adapter.Name}");
+                report.Add($"服务名称：{adapter.ServiceName}");
+                AddIfNotNullOrEmpty(report, "网络连接状态", GetNetConnectionStatusText(adapter.NetConnectionStatus));
+                AddIfNotNullOrEmpty(report, "物理适配器", BoolToYesNo(adapter.IsPhysicalAdapter));
+                AddIfNotNullOrEmpty(report, "适配器启用", BoolToYesNo(adapter.NetEnabled));
+                AddIfNotNullOrEmpty(report, "IP地址启用", BoolToYesNo(adapter.IPEnabled));
+                AddIfNotNullOrEmpty(report, "IP地址", adapter.IP);
+                AddIfNotNullOrEmpty(report, "DHCP启用", BoolToYesNo(adapter.DHCPEnabled));
+                AddIfNotNullOrEmpty(report, "DHCP服务器IP", adapter.DHCPServer);
+                AddIfNotNullOrEmpty(report, "自动获取DNS", BoolToYesNo(adapter.IsDnsAutomatic));
+                AddIfNotNullOrEmpty(report, "DNS服务器", adapter.DNS);
+                AddIfNotNullOrEmpty(report, "默认网关", adapter.Gateway);
+                AddIfNotNullOrEmpty(report, "MAC地址", adapter.MACAddress);
+                AddIfNotNullOrEmpty(report, "GUID", adapter.GUID);
+                report.Add("==========END==========");
+            }
+            return report.ToArray();
+        }
+
+        /// <summary>
+        /// 将布尔值转换为"是"或"否"的字符串。
+        /// </summary>
+        /// <param name="value">布尔值。</param>
+        /// <returns>"是"、"否"或null。</returns>
+        static string BoolToYesNo(bool? value)
+        {
+            if (value != null)
+            {
+                if (value == true)
+                {
+                    return "是";
+                }
+                else
+                {
+                    return "否";
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取网络连接状态的文本描述。
+        /// </summary>
+        /// <param name="status">连接状态值。</param>
+        /// <returns>连接状态的文本描述。</returns>
+        static string GetNetConnectionStatusText(ushort? status)
+        {
+            if (status != null)
+            {
+                switch (status)
+                {
+                    case 0:
+                        return "连接断开";
+                    case 1:
+                        return "连接中";
+                    case 2:
+                        return "已连接";
+                    case 3:
+                        return "断开连接中";
+                    case 4:
+                        return "硬件不存在";
+                    case 5:
+                        return "硬件禁用";
+                    case 6:
+                        return "硬件故障";
+                    case 7:
+                        return "媒体断开";
+                    case 8:
+                        return "验证中";
+                    case 9:
+                        return "验证成功";
+                    case 10:
+                        return "验证失败";
+                    case 11:
+                        return "无效地址";
+                    case 12:
+                        return "需要证书";
+                    default:
+                        return "其他";
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 启用当前网络适配器的IPv4协议。
+        /// </summary>
+        /// <returns>异步任务。</returns>
+        public async Task EnableIPv4()
+        {
+            await EnableIPv4(this.caption);
+        }
+
+        /// <summary>
+        /// 启用指定网络适配器的IPv4协议。
+        /// </summary>
+        /// <param name="caption">网络适配器的名称。</param>
+        /// <returns>异步任务。</returns>
+        public static async Task EnableIPv4(string caption)
+        {
+            if (caption != null)
+            {
+                await RunPowerShell($"Enable-NetAdapterBinding -Name '{caption}' -ComponentID ms_tcpip");
+            }
+        }
+
+        /// <summary>
+        /// 启用当前网络适配器的IPv6协议。
+        /// </summary>
+        /// <returns>异步任务。</returns>
+        public async Task EnableIPv6()
+        {
+            await EnableIPv6(this.caption);
+        }
+
+        /// <summary>
+        /// 启用指定网络适配器的IPv6协议。
+        /// </summary>
+        /// <param name="caption">网络适配器的名称。</param>
+        /// <returns>异步任务。</returns>
+        public static async Task EnableIPv6(string caption)
+        {
+            if (caption != null)
+            {
+                await RunPowerShell($"Enable-NetAdapterBinding -Name '{caption}' -ComponentID ms_tcpip6");
+            }
+        }
+
+        /// <summary>
+        /// 禁用当前网络适配器的IPv4协议。
+        /// </summary>
+        /// <returns>异步任务。</returns>
+        public async Task DisableIPv4()
+        {
+            await DisableIPv4(this.caption);
+        }
+
+        /// <summary>
+        /// 禁用指定网络适配器的IPv4协议。
+        /// </summary>
+        /// <param name="caption">网络适配器的名称。</param>
+        /// <returns>异步任务。</returns>
+        public static async Task DisableIPv4(string caption)
+        {
+            if (caption != null)
+            {
+                await RunPowerShell($"Disable-NetAdapterBinding -Name '{caption}' -ComponentID ms_tcpip");
+            }
+        }
+
+        /// <summary>
+        /// 禁用当前网络适配器的IPv6协议。
+        /// </summary>
+        /// <returns>异步任务。</returns>
+        public async Task DisableIPv6()
+        {
+            await DisableIPv6(this.caption);
+        }
+
+        /// <summary>
+        /// 禁用指定网络适配器的IPv6协议。
+        /// </summary>
+        /// <param name="caption">网络适配器的名称。</param>
+        /// <returns>异步任务。</returns>
+        public static async Task DisableIPv6(string caption)
+        {
+            if (caption != null)
+            {
+                await RunPowerShell($"Disable-NetAdapterBinding -Name '{caption}' -ComponentID ms_tcpip6");
+            }
+        }
+
+        /// <summary>
+        /// 设置当前网络适配器的DNS服务器地址，此方法支持同时包含IPv4地址与IPv6地址的数组。当设置为null则重置DNS服务器地址。通过Powershell实现，不应作为首选方案。
+        /// </summary>
+        /// <param name="dns">DNS服务器地址数组，默认为null。</param>
+        /// <returns>异步任务。</returns>
+        public async Task SetDNSServer(string[] dns = null)
+        {
+            await SetDNSServer(this.caption, dns);
+        }
+
+        /// <summary>
+        /// 设置指定网络适配器的DNS服务器地址，此方法支持同时包含IPv4地址与IPv6地址的数组。当设置为null则重置DNS服务器地址。通过Powershell实现，不应作为首选方案。
+        /// </summary>
+        /// <param name="caption">网络适配器的名称。</param>
+        /// <param name="dns">DNS服务器地址数组，默认为null。</param>
+        /// <returns>异步任务。</returns>
+        public static async Task SetDNSServer(string caption, string[] dns = null)
+        {
+            if (!string.IsNullOrEmpty(caption))
+            {
+                await RunPowerShell($"Set-DnsClientServerAddress -InterfaceAlias \"{caption}\" -ResetServerAddresses");
+                if (dns?.Length > 0)
+                {
+                    string input = FormatStringArray(dns);
+                    await RunPowerShell($"Set-DnsClientServerAddress -InterfaceAlias \"{caption}\" -ServerAddresses {input}");
                 }
             }
         }
 
-        // 重写 ToString 方法，返回适配器名称
-        public override string ToString()
+        /// <summary>
+        /// 刷新当前网络适配器的信息。
+        /// </summary>
+        public void Fresh()
         {
-            return this.name;
+            Fresh(this);
         }
 
+        /// <summary>
+        /// 刷新指定网络适配器的信息。
+        /// </summary>
+        /// <param name="adapter">指定的网络适配器。</param>
+        /// <returns>刷新后的网络适配器。</returns>
+        public static NetworkAdapter Fresh(NetworkAdapter adapter)
+        {
+            ObjectQuery oquery = new ObjectQuery("SELECT * FROM Win32_NetworkAdapter WHERE InterfaceIndex=" + adapter.interfaceIndex);
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher(oquery);
+            ManagementObjectCollection queryCollection = searcher.Get();
+            foreach (ManagementObject m in queryCollection)
+            {
+                adapter.interfaceIndex = (uint)m["InterfaceIndex"];
+                adapter.serviceName = (string)m["ServiceName"];
+                adapter.gUID = (string)m["GUID"];
+                adapter.caption = (string)m["NetConnectionID"];
+                adapter.description = (string)m["Description"];
+                adapter.name = (string)m["Name"];
+                adapter.mACAddress = (string)m["MACAddress"];
+                adapter.manufacturer = (string)m["Manufacturer"];
+                adapter.netEnabled = (bool?)m["NetEnabled"];
+                adapter.isPhysicalAdapter = (bool)m["PhysicalAdapter"];
+                adapter.netConnectionStatus = (ushort?)m["NetConnectionStatus"];
+                if (!string.IsNullOrEmpty(adapter.gUID))
+                {
+                    string path = "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\" + (string)m["GUID"];
+                    string ns = (string)Registry.GetValue(path, "NameServer", null);
+                    adapter.isDnsAutomatic = string.IsNullOrEmpty(ns);
+                }
+                else
+                {
+                    adapter.isDnsAutomatic = null;
+                }
+            }
+
+            oquery = new ObjectQuery("SELECT * FROM Win32_NetworkAdapterConfiguration WHERE InterfaceIndex=" + adapter.interfaceIndex);
+            searcher = new ManagementObjectSearcher(oquery);
+            queryCollection = searcher.Get();
+            foreach (ManagementObject m in queryCollection)
+            {
+                adapter.dNS = (string[])m["DNSServerSearchOrder"];
+                adapter.gateway = (string[])m["DefaultIPGateway"];
+                adapter.ip = (string[])m["IPAddress"];
+                adapter.mask = (string[])m["IPSubnet"];
+                adapter.iPEnabled = (bool)m["IPEnabled"];
+                adapter.dHCPEnabled = (bool?)m["DHCPEnabled"];
+                adapter.dHCPServer = (string)m["DHCPServer"];
+            }
+            return adapter;
+        }
+
+        /// <summary>
+        /// 执行指定的PowerShell命令。
+        /// </summary>
+        /// <param name="command">PowerShell命令。</param>
+        /// <returns>异步任务。</returns>
+        static async Task RunPowerShell(string command)
+        {
+            try
+            {
+                await Task.Run(() =>
+                {
+                    using (var powerShell = PowerShell.Create())
+                    {
+                        powerShell.AddScript(command);
+                        var result = powerShell.Invoke();
+                        if (powerShell.HadErrors)
+                        {
+                            var errorMessages = powerShell.Streams.Error.Select(e => e.ToString()).ToList();
+                            throw new InvalidOperationException($"PowerShell执行失败：{string.Join(Environment.NewLine, errorMessages)}");
+                        }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 格式化字符串数组为PowerShell所需的字符串格式。
+        /// </summary>
+        /// <param name="inputArray">输入的字符串数组。</param>
+        /// <returns>格式化后的字符串。</returns>
+        static string FormatStringArray(string[] inputArray)
+        {
+            if (inputArray == null) return null;
+            return "(" + string.Join(",", Array.ConvertAll(inputArray, s => "\"" + s + "\"")) + ")";
+        }
+
+        /// <summary>
+        /// 如果值不为空或null，添加到报告列表中。
+        /// </summary>
+        /// <typeparam name="T">值的类型。</typeparam>
+        /// <param name="report">报告列表。</param>
+        /// <param name="label">标签。</param>
+        /// <param name="value">值。</param>
+        static void AddIfNotNullOrEmpty<T>(List<string> report, string label, T value)
+        {
+            if (value is string str && !string.IsNullOrEmpty(str))
+            {
+                report.Add($"{label}：{str}");
+            }
+            else if (value is IEnumerable<string> enumerable && enumerable.Any())
+            {
+                report.Add($"{label}：");
+                foreach (var item in enumerable)
+                {
+                    report.Add($"  {item}");
+                }
+            }
+            else if (value != null)
+            {
+                report.Add($"{label}：{value}");
+            }
+        }
+
+        /// <summary>
+        /// 返回网络适配器的硬件名称。
+        /// </summary>
+        /// <returns>网络适配器的名称。</returns>
+        public override string ToString()
+        {
+            return name;
+        }
     }
 
-    // 自定义异常类，用于表示网络适配器设置错误
-    public class NetAdpSetException : Exception
+    /// <summary>
+    /// 自定义异常类，用于处理网络适配器设置时发生的错误。
+    /// 提供一个错误码和描述错误源的详细信息，能够帮助诊断和调试与配置网络适配器相关的问题。
+    /// </summary>
+    public class NetworkAdapterSetException : Exception
     {
-        private UInt32 code; // 错误码
-
-        public UInt32 Code { get { return code; } }
-        new public string Source { get; protected set; } // 错误来源
-
-        public NetAdpSetException(UInt32 c) : base("设置时发生错误！错误码：" + c.ToString())
+        private uint code;
+        /// <summary>
+        /// 获取错误码。
+        /// </summary>
+        public uint Code { get { return code; } }
+        /// <summary>
+        /// 获取或设置异常来源的详细描述信息。
+        /// </summary>
+        new public string Source { get; protected set; }
+        /// <summary>
+        /// 使用指定的错误码初始化网络适配器设置异常。
+        /// 根据不同的错误码，生成相应的错误描述。
+        /// </summary>
+        /// <param name="c">错误码。</param>
+        public NetworkAdapterSetException(uint c) : base("设置时发生错误！错误码：" + c.ToString())
         {
             code = c;
-            // 根据错误码设置错误来源描述
             switch (code)
             {
                 case 1:
@@ -642,30 +938,65 @@ namespace RpNet.NetworkHelper
     public class SendPing
     {
         // 检测是否可以 Ping 通的方法
-        public static bool PingHost(string host)
+        public static bool IsReachable(string host)
         {
-            WriteLog($"进入PingHost。", LogLevel.Debug);
+            WriteLog($"进入IsReachable。", LogLevel.Debug);
 
-            bool pingable = false;
+            bool IsReachable = false;
             Ping pingSender = new Ping();
             try
             {
                 PingReply reply = pingSender.Send(host);
                 if (reply.Status == IPStatus.Success)
                 {
-                    pingable = true;
+                    IsReachable = true;
                 }
             }
             catch (Exception ex)
             {
-                WriteLog($"遇到异常：{ex}。", LogLevel.Error, ex);
+                WriteLog($"遇到异常。", LogLevel.Error, ex);
             }
 
-            WriteLog($"完成PingHost。", LogLevel.Debug);
+            WriteLog($"完成IsReachable。", LogLevel.Debug);
 
-            return pingable;
+            return IsReachable;
         }
 
+        public static string FindFastetsIP(string[] IP)
+        {
+            WriteLog($"进入FindFastetsIP。", LogLevel.Debug);
+
+            Dictionary<string, long> PingResults = new Dictionary<string, long>();
+            PingReply reply;
+            Ping pingSender = new Ping();
+            foreach (string ip in IP)
+            {
+                try
+                {
+                    reply = pingSender.Send(ip);
+                    if (reply.Status == IPStatus.Success)
+                    {
+                        PingResults.Add(ip, reply.RoundtripTime);
+
+                        WriteLog($"{ip}测试完成，时间：{reply.RoundtripTime}ms。", LogLevel.Info);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WriteLog($"遇到异常。", LogLevel.Error, ex);
+                }
+            }
+            if (PingResults.Count == 0)
+            {
+                return null;
+            }
+
+            var fastestIP = PingResults.OrderBy(kv => kv.Value).FirstOrDefault();
+
+            WriteLog($"完成FindFastetsIP。", LogLevel.Debug);
+
+            return fastestIP.Key;
+        }
     }
 
     public class Github
@@ -677,31 +1008,27 @@ namespace RpNet.NetworkHelper
             WriteLog($"进入EnsureGithubAPI。", LogLevel.Debug);
 
             // api.github.com DNS A记录 IPv4 列表
-            List<string> APIIPAddress = new List<string>
+            string[] APIIPAddress = new string[]
             {
                 "20.205.243.168",
                 "140.82.113.5",
                 "140.82.116.6",
                 "4.237.22.34"
             };
-            foreach (string IPAddress in APIIPAddress)
+
+            string IPAddress = SendPing.FindFastetsIP(APIIPAddress);
+
+            if (IPAddress == null)
             {
-                bool isReachable = SendPing.PingHost(IPAddress);
-
-                WriteLog($"{IPAddress}测试完成，Ping结果：{isReachable}。", LogLevel.Info);
-
-                if (isReachable)
+                string[] NewAPIRecord = new string[]
                 {
-                    string[] NewAPIRecord =
-                    {
-                        "#\tapi.github.com Start",
-                        $"{IPAddress}\tapi.github.com",
-                        "#\tapi.github.com End"
-                    };
-                    FileHelper.FileHelper.WriteLinesToFile(NewAPIRecord, SystemHosts);
-                    break;
-                }
+                    "#\tapi.github.com Start",
+                    $"{IPAddress}\tapi.github.com",
+                    "#\tapi.github.com End"
+                };
+                FileHelper.FileHelper.WriteLinesToFileTop(NewAPIRecord, SystemHosts);
             }
+
             WriteLog($"完成EnsureGithubAPI。", LogLevel.Debug);
         }
 

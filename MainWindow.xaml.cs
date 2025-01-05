@@ -66,8 +66,7 @@ namespace SNIBypassGUI
             Process[] GUIProcess = Process.GetProcessesByName(PName);
             if (GUIProcess.Length > 1)
             {
-                /** 日志信息 **/
-                WriteLog("检测到程序已经在运行，将退出程序。", LogLevel.Warning);
+                /** 日志信息 **/ WriteLog("检测到程序已经在运行，将退出程序。", LogLevel.Warning);
 
                 HandyControl.Controls.MessageBox.Show("SNIBypassGUI 已经在运行！\r\n请检查是否有托盘图标！(((ﾟДﾟ;)))", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Environment.Exit(1);
@@ -229,8 +228,8 @@ namespace SNIBypassGUI
             // 记录先前选中的适配器，以便在更新下拉框之后重新选中
             string PreviousSelectedAdapter = AdaptersCombo.SelectedItem?.ToString();
 
-            // 获取所有适配器
-            List<NetAdp> adapters = NetAdp.GetAdapters();
+            // 获取已经连接的适配器
+            List<NetworkAdapter> adapters = NetworkAdapter.GetNetworkAdapters(NetworkAdapter.ScopeNeeded.ConnectedOnly);
 
             // 清空下拉框避免重复添加
             AdaptersCombo.Items.Clear();
@@ -238,11 +237,11 @@ namespace SNIBypassGUI
             // 将名字不为空的适配器逐个添加到下拉框
             foreach (var adapter in adapters)
             {
-                if (!string.IsNullOrEmpty(adapter.Name))
+                if (!string.IsNullOrEmpty(adapter.Caption))
                 {
-                    /** 日志信息 **/ WriteLog($"向适配器列表添加{adapter.Name}。", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"向适配器列表添加{adapter.Caption}。", LogLevel.Info);
 
-                    AdaptersCombo.Items.Add(adapter.Name);
+                    AdaptersCombo.Items.Add(adapter.Caption);
                 }
             }
 
@@ -335,7 +334,7 @@ namespace SNIBypassGUI
 
             // 设置图片源为默认背景图片并设置图片的拉伸模式为均匀填充，以适应背景区域
             ImageBrush bg = new ImageBrush();
-            bg.ImageSource = new BitmapImage(new Uri("pack://application:,,,/SNIBypassGUI;component/Resources/DefaultBkg.png"));
+            bg.ImageSource = new BitmapImage(new Uri("pack://application:,,,/SNIBypassGUI;component/Resources/DefaultBkg.jpg"));
             bg.Stretch = Stretch.UniformToFill;
 
             if (ConfigINI.INIRead("程序设置", "Background", PathsSet.INIPath) == "Custom")
@@ -474,7 +473,7 @@ namespace SNIBypassGUI
                     /** 日志信息 **/ WriteLog($"{pair.SectionName}的代理开关为开启，将添加记录。", LogLevel.Info);
 
                     // 添加该条目部分
-                    FileHelper.WriteLinesToFile((string[])pair.GetType().GetProperty(CorrespondingHosts).GetValue(pair), FileShouldUpdate);
+                    FileHelper.WriteLinesToFileEnd((string[])pair.GetType().GetProperty(CorrespondingHosts).GetValue(pair), FileShouldUpdate);
                 }
                 else
                 {
@@ -576,6 +575,18 @@ namespace SNIBypassGUI
                 AcrylicService.RemoveAcrylicServiceDebugLog();
             }
 
+            /// <summary>
+            /// 实验性功能：Pixiv IP优选
+            /// </summary>
+            if (StringBoolConverter.StringToBool(ConfigINI.INIRead("程序设置", "PixivIPPreference", PathsSet.INIPath)))
+            {
+                PixivIPPreferenceBtn.Content = "Pixiv IP优选：开";
+            }
+            else
+            {
+                PixivIPPreferenceBtn.Content = "Pixiv IP优选：关";
+            }
+
             // 获取配置中记录的适配器
             string activeAdapter = ConfigINI.INIRead("程序设置", "ActiveAdapter", PathsSet.INIPath);
 
@@ -630,21 +641,21 @@ namespace SNIBypassGUI
         }
 
         // 将指定网络适配器首选DNS设置为127.0.0.1，并记录先前的是有效IPv4地址且非127.0.0.1的DNS服务器地址到配置文件中并优先记录到 PreviousDNS1 的方法
-        public bool SetLocalDNS(NetAdp Adapter)
+        public bool SetLocalDNS(NetworkAdapter Adapter)
         {
             /** 日志信息 **/ WriteLog("进入SetLocalDNS。", LogLevel.Debug);
 
             try
             {
-                /** 日志信息 **/ WriteLog($"开始配置网络适配器：{Adapter.Name}。", LogLevel.Info);
+                /** 日志信息 **/ WriteLog($"开始配置网络适配器：{Adapter.Caption}。", LogLevel.Info);
 
                 // 应该在设置DNS之前记录DNS服务器是否为自动获取
-                bool IsDnsAutomatic = Adapter.IsDnsAutomatic;
+                bool? IsDnsAutomatic = Adapter.IsDnsAutomatic;
 
                 string PreviousDNS1 = null;
                 string PreviousDNS2 = null;
 
-                if (Adapter.DNS[0]?.ToString() != "127.0.0.1")
+                if (Adapter.DNS.Length > 0 ? Adapter.DNS[0].ToString() != "127.0.0.1" : true)
                 {
                     // 指定适配器的DNS服务器设置为空，或者首选DNS服务器不为127.0.0.1的情况
                     if (Adapter.DNS.Length == 0)
@@ -711,7 +722,7 @@ namespace SNIBypassGUI
                                 else
                                 {
                                     // 备用DNS服务器是有效IPv4地址且不为127.0.0.1的情况
-                                    PreviousDNS1 = Adapter.DNS[1];
+                                    PreviousDNS1 = Adapter.DNS?[1];
                                 }
                             }
                             else
@@ -742,7 +753,7 @@ namespace SNIBypassGUI
 
                 return true;
             }
-            catch (NetAdpSetException ex)
+            catch (NetworkAdapterSetException ex)
             {
                 /** 日志信息 **/ WriteLog($"无法设置指定的网络适配器！", LogLevel.Error, ex);
 
@@ -765,54 +776,50 @@ namespace SNIBypassGUI
         }
 
         // 从配置文件还原适配器的方法
-        public bool RestoreAdapterDNS(NetAdp Adapter)
+        public bool RestoreAdapterDNS(NetworkAdapter Adapter)
         {
             /** 日志信息 **/ WriteLog("进入RestoreAdapterDNS。", LogLevel.Debug);
 
             try
             {
-                if (Adapter.DNS.Length > 0)
+                if (Adapter.DNS.Length > 0 ? Adapter.DNS[0] == "127.0.0.1" : false)
                 {
-                    // 指定适配器的DNS长度大于0的情况
-                    if (Adapter.DNS[0] == "127.0.0.1")
+                    // 指定适配器的首选DNS为127.0.0.1的情况，需要从配置文件还原回去
+                    if (StringBoolConverter.StringToBool(ConfigINI.INIRead("暂存数据", "IsPreviousDnsAutomatic", PathsSet.INIPath)))
                     {
-                        // 指定适配器的首选DNS为127.0.0.1的情况，需要从配置文件还原回去
-                        if (StringBoolConverter.StringToBool(ConfigINI.INIRead("暂存数据", "IsPreviousDnsAutomatic", PathsSet.INIPath)))
+                        // 指定适配器DNS服务器之前是自动获取的情况
+                        // 设置指定适配器DNS服务器为自动获取
+                        Adapter.DNS = null;
+
+                        /** 日志信息 **/ WriteLog($"活动网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
+                    }
+                    else
+                    {
+                        // 指定适配器DNS服务器之前不是自动获取的情况，需要按照暂存数据设置回去
+                        if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)))
                         {
-                            // 指定适配器DNS服务器之前是自动获取的情况
+                            // 没有暂存地址存在的情况
                             // 设置指定适配器DNS服务器为自动获取
                             Adapter.DNS = null;
 
-                            /** 日志信息 **/ WriteLog($"活动网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
+                            /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
                         }
                         else
                         {
-                            // 指定适配器DNS服务器之前不是自动获取的情况，需要按照暂存数据设置回去
-                            if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)))
+                            // 暂存地址一存在的情况
+                            if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)))
                             {
-                                // 没有暂存地址存在的情况
-                                // 设置指定适配器DNS服务器为自动获取
-                                Adapter.DNS = null;
+                                // 暂存地址二不存在的情况
+                                Adapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath) };
 
-                                /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为自动获取。", LogLevel.Info);
+                                /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}。", LogLevel.Info);
                             }
                             else
                             {
-                                // 暂存地址一存在的情况
-                                if (string.IsNullOrEmpty(ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)))
-                                {
-                                    // 暂存地址二不存在的情况
-                                    Adapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath) };
+                                // 暂存地址二存在的情况
+                                Adapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath), ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath) };
 
-                                    /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}。", LogLevel.Info);
-                                }
-                                else
-                                {
-                                    // 暂存地址二存在的情况
-                                    Adapter.DNS = new string[] { ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath), ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath) };
-
-                                    /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}，备用{ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)}。", LogLevel.Info);
-                                }
+                                /** 日志信息 **/ WriteLog($"指定网络适配器的DNS成功设置为首选{ConfigINI.INIRead("暂存数据", "PreviousDNS1", PathsSet.INIPath)}，备用{ConfigINI.INIRead("暂存数据", "PreviousDNS2", PathsSet.INIPath)}。", LogLevel.Info);
                             }
                         }
                     }
@@ -822,7 +829,7 @@ namespace SNIBypassGUI
 
                 return true;
             }
-            catch(NetAdpSetException ex)
+            catch(NetworkAdapterSetException ex)
             {
                 /** 日志信息 **/ WriteLog($"无法还原指定的网络适配器！", LogLevel.Error, ex);
 
@@ -924,12 +931,12 @@ namespace SNIBypassGUI
                 UpdateServiceStatus();
 
                 // 获取所有适配器
-                List<NetAdp> adapters = NetAdp.GetAdapters();
-                NetAdp activeAdapter = null;
+                List<NetworkAdapter> adapters = NetworkAdapter.GetNetworkAdapters();
+                NetworkAdapter activeAdapter = null;
                 // 遍历所有适配器
                 foreach (var adapter in adapters)
                 {
-                    if (adapter.Name == AdaptersCombo.SelectedItem?.ToString())
+                    if (adapter.Caption == AdaptersCombo.SelectedItem?.ToString())
                     {
                         // 如果适配器的名称和下拉框选中的适配器相同，就记录下来备用并退出循环
                         activeAdapter = adapter;
@@ -939,14 +946,14 @@ namespace SNIBypassGUI
                 if (activeAdapter != null)
                 {
                     // 获取到选中的适配器的情况
-                    /** 日志信息 **/ WriteLog($"指定网络适配器为：{activeAdapter.Name}", LogLevel.Info);
+                    /** 日志信息 **/ WriteLog($"指定网络适配器为：{activeAdapter.Caption}", LogLevel.Info);
 
                     // 获取到的适配器不为空的情况
                     if (SetLocalDNS(activeAdapter))
                     {
                         // 成功设置指定适配器DNS服务器的情况
                         // 如果设置成功，说明该适配器可用，则记录到配置文件中来为自动选中做准备
-                        ConfigINI.INIWrite("程序设置", "ActiveAdapter", activeAdapter.Name, PathsSet.INIPath);
+                        ConfigINI.INIWrite("程序设置", "ActiveAdapter", activeAdapter.Caption, PathsSet.INIPath);
 
                         // 刷新DNS缓存
                         DNS.FlushDNS();
@@ -960,11 +967,15 @@ namespace SNIBypassGUI
                         {
                             // 如果解析的IP是IPv6，说明当前系统IPv6 DNS优先，需要禁用指定适配器的IPv6
 
-                            if (!activeAdapter.DisableIPv6())
+                            try
+                            {
+                                await activeAdapter.DisableIPv6();
+                            }
+                            catch(Exception ex)
                             {
                                 // 未能禁用指定适配器IPv6的情况
 
-                                /** 日志信息 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！", LogLevel.Warning);
+                                /** 日志信息 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！", LogLevel.Error, ex);
 
                                 if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                                 {
@@ -1119,13 +1130,13 @@ namespace SNIBypassGUI
             UpdateServiceStatus();
 
             // 获取所有网络适配器
-            List<NetAdp> adapters = NetAdp.GetAdapters();
-            NetAdp activeAdapter = null;
+            List<NetworkAdapter> adapters = NetworkAdapter.GetNetworkAdapters();
+            NetworkAdapter activeAdapter = null;
 
             // 遍历所有适配器
             foreach (var adapter in adapters)
             {
-                if (adapter.Name == AdaptersCombo.SelectedItem?.ToString())
+                if (adapter.Caption == AdaptersCombo.SelectedItem?.ToString())
                 {
                     // 如果适配器的名称和下拉框选中的适配器相同，就记录下来备用并退出循环
                     activeAdapter = adapter;
@@ -1137,12 +1148,13 @@ namespace SNIBypassGUI
                 // 获取到选中的适配器的情况
                 if (RestoreAdapterDNS(activeAdapter))
                 {
-                    // 指定适配器成功从配置文件还原的情况
-                    if (!activeAdapter.EnableIPv6())
+                    try
                     {
-                        // 未能重新启用指定适配器IPv6的情况
-
-                        /** 日志信息 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！", LogLevel.Warning);
+                        await activeAdapter.EnableIPv6();
+                    }
+                    catch(Exception ex)
+                    {
+                        /** 日志信息 **/ WriteLog($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！", LogLevel.Error, ex);
 
                         if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                         {
@@ -1213,6 +1225,20 @@ namespace SNIBypassGUI
                 // 启动服务
                 await StartService();
 
+                /// <summary>
+                /// 实验性功能：Pixiv IP优选
+                /// </summary>
+                if (StringBoolConverter.StringToBool(ConfigINI.INIRead("程序设置", "PixivIPPreference", PathsSet.INIPath)))
+                {
+                    PixivIPPreferenceBtn.Content = "Pixiv IP优选：开";
+                    PixivIPPreference();
+                }
+                else
+                {
+                    PixivIPPreferenceBtn.Content = "Pixiv IP优选：关";
+                    FileHelper.RemoveSection(PathsSet.SystemHosts, "s.pximg.net");
+                }
+
                 // 刷新DNS缓存
                 DNS.FlushDNS();
             }
@@ -1238,6 +1264,11 @@ namespace SNIBypassGUI
 
             // 停止服务
             await StopService();
+
+            /// <summary>
+            /// 实验性功能：Pixiv IP优选
+            /// </summary>
+            FileHelper.RemoveSection(PathsSet.SystemHosts, "s.pximg.net");
 
             // 刷新DNS缓存
             DNS.FlushDNS();
@@ -1372,6 +1403,11 @@ namespace SNIBypassGUI
 
             // 停止服务
             await StopService();
+
+            /// <summary>
+            /// 实验性功能：Pixiv IP优选
+            /// </summary>
+            FileHelper.RemoveSection(PathsSet.SystemHosts, "s.pximg.net");
 
             // 刷新DNS缓存
             DNS.FlushDNS();
@@ -2313,15 +2349,15 @@ namespace SNIBypassGUI
             UpdateAdaptersCombo();
 
             // 获取所有适配器
-            List<NetAdp> adapters = NetAdp.GetAdapters();
-            NetAdp activeAdapter = null;
+            List<NetworkAdapter> adapters = NetworkAdapter.GetNetworkAdapters();
+            NetworkAdapter activeAdapter = null;
 
             // 遍历所有适配器
             foreach (var adapter in adapters)
             {
-                if (adapter.Status == System.Net.NetworkInformation.OperationalStatus.Up)
+                if (adapter.NetConnectionStatus == 2)
                 {
-                    // 如果适配器已经启用且适配器DNS不为null，记录备用并跳出循环
+                    // 找到已经连接的适配器，记录备用并跳出循环
                     activeAdapter = adapter;
                     break;
                 }
@@ -2329,14 +2365,13 @@ namespace SNIBypassGUI
             if (activeAdapter != null)
             {
                 // 找到符合条件的适配器的情况
-
                 // Cast<string>() 假定 AdaptersCombo.Items 中的所有项都是 string 类型。如果不是，可能会遇到运行时错误。
                 // 使用 OfType<string>() 来安全地处理不同类型的项。OfType<string>() 会自动跳过非字符串类型的项。
-                if (AdaptersCombo.Items.OfType<string>().Contains(activeAdapter.Name))
+                if (AdaptersCombo.Items.OfType<string>().Contains(activeAdapter.Caption))
                 {
                     // SelectedItem 会确保 AdaptersCombo 正确选中与 PreviousSelectedAdapter 匹配的项。
                     // 使用 Text 设置文本会导致 AdaptersCombo 显示 PreviousSelectedAdapter，但它并不意味着该项被选中了（特别是当该项不在 Items 中时）。
-                    AdaptersCombo.SelectedItem = activeAdapter.Name;                   
+                    AdaptersCombo.SelectedItem = activeAdapter.Caption;                   
                 }
             }
             else
@@ -2364,6 +2399,58 @@ namespace SNIBypassGUI
             videoHelpWindow.ShowDialog();
 
             /** 日志信息 **/ WriteLog("完成HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
+        }
+
+        // 为s.pximg.net设置优选IP的方法
+        private void PixivIPPreference()
+        {
+            /** 日志信息 **/ WriteLog("进入PixivIPPreference。", LogLevel.Debug);
+            FileHelper.RemoveSection(PathsSet.SystemHosts, "s.pximg.net");
+            string ip = SendPing.FindFastetsIP(pximgIP);
+            if (ip != null)
+            {
+                string[] NewAPIRecord = new string[]
+                {
+                    "#\ts.pximg.net Start",
+                    $"{ip}\ts.pximg.net",
+                    "#\ts.pximg.net End",
+                };
+                FileHelper.WriteLinesToFileTop(NewAPIRecord, PathsSet.SystemHosts);
+                // 刷新DNS缓存
+                DNS.FlushDNS();
+            }
+            else
+            {
+                /** 日志信息 **/ WriteLog("Pixiv IP优选失败，没有找到最优IP。", LogLevel.Warning);
+            }
+
+            /** 日志信息 **/ WriteLog("完成PixivIPPreference。", LogLevel.Debug);
+        }
+
+        // Pixiv IP优选按钮的点击事件
+        private void PixivIPPreferenceBtn_Click(object sender, RoutedEventArgs e)
+        {
+            /** 日志信息 **/ WriteLog("进入PixivIPPreferenceBtn_Click。", LogLevel.Debug);
+
+            PixivIPPreferenceBtn.IsEnabled = false;
+
+            if (!StringBoolConverter.StringToBool(ConfigINI.INIRead("程序设置", "PixivIPPreference", PathsSet.INIPath)))
+            {
+                if (HandyControl.Controls.MessageBox.Show("Pixiv IP优选是实验性功能。\r\n当您遇到服务正常运行，但打开Pixiv白屏时可以尝试使用此功能。\r\n您要打开该功能吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    ConfigINI.INIWrite("程序设置", "PixivIPPreference", "true", PathsSet.INIPath);
+                    PixivIPPreference();
+                }
+            }
+            else
+            {
+                ConfigINI.INIWrite("程序设置", "PixivIPPreference", "false", PathsSet.INIPath);
+                FileHelper.RemoveSection(PathsSet.SystemHosts, "s.pximg.net");
+            }
+
+            PixivIPPreferenceBtn.IsEnabled = true;
+
+            /** 日志信息 **/ WriteLog("完成PixivIPPreferenceBtn_Click。", LogLevel.Debug);
         }
 
         // 托盘图标点击命令

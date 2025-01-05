@@ -1,4 +1,6 @@
-﻿namespace SNIBypassGUI
+﻿using RpNet.NetworkHelper;
+
+namespace SNIBypassGUI
 {
     public class HostsSet
     {
@@ -173,12 +175,13 @@
         public static string[] GoogleSection =
         {
             "#\tGoogle Start",
-            "127.0.0.1		google.com",
-            "127.0.0.1		*.google.com",
+            "127.0.0.1		google.*",
             "127.0.0.1		*.google",
             "127.0.0.1		*.google.*",
             "127.0.0.1		*.*.google",
             "127.0.0.1		*.*.google.*",
+            "127.0.0.1      googleapis.com",
+            "127.0.0.1      *.googleapis.com",
             "#\tGoogle End"
         };
 
@@ -253,6 +256,56 @@
             "127.0.0.1		z-lib.fm",
             "127.0.0.1		*.z-lib.fm",
             "#\tZ-Library End"
+        };
+
+        public static string[] GelbooruSection =
+        {
+            "#\tGelbooru Start",
+            "127.0.0.1 gelbooru.com",
+            "127.0.0.1 *.gelbooru.com",
+            "127.0.0.1 rmzsglng.com",
+            "127.0.0.1 *.rmzsglng.com",
+            "#\tGelbooru End"
+        };
+
+        public static string[] SankakuComplexSection =
+        {
+            "#\tSankaku Complex Start",
+            "208.100.24.247 sankakucomplex.com",
+            "208.100.24.254 s.sankakucomplex.com",
+            "143.244.50.86 v.sankakucomplex.com",
+            "208.100.24.244 chan.sankakucomplex.com",
+            "208.100.24.244 legacy.sankakucomplex.com",
+            "208.100.24.247 login.sankakucomplex.com",
+            "208.100.24.252 news.sankakucomplex.com",
+            "208.100.24.252 forum.sankakucomplex.com",
+            "208.100.24.247 legal.sankakucomplex.com",
+            "192.169.120.162 static.sankakucomplex.com",
+            "208.100.24.247 *.sankakucomplex.com",
+            "#\tSankaku Complex End"
+        };
+
+        public static string[] IwaraSection =
+        {
+            "#\tIwara Start",
+            "104.26.12.96 iwara.tv",
+            "104.26.12.96 *.iwara.tv",
+            "104.26.12.96 *.*.iwara.tv",
+            "#\tIwara End"
+        };
+
+        public static string[] GithubSection =
+        {
+            "#\tGithub Start",
+            "127.0.0.1 github.com",
+            "127.0.0.1 *.github.com",
+            "127.0.0.1 githubusercontent.com",
+            "127.0.0.1 *.githubusercontent.com",
+            "127.0.0.1 githubassets.com",
+            "127.0.0.1 *.githubassets.com",
+            "127.0.0.1 github.io",
+            "127.0.0.1 *.github.io",
+             "#\tGithub End"
         };
     }
     public class HostsSet_Old
@@ -335,6 +388,7 @@
             "127.0.0.1       www.fanbox.cc",
             "127.0.0.1       downloads.fanbox.cc",
             "104.18.41.140       api.fanbox.cc",
+            "#\tFull support is not possible.",
             "#\tpixivFANBOX End"
         };
 
@@ -922,6 +976,7 @@
             "127.0.0.1       wikifunctions.org",
             "127.0.0.1       www.wikifunctions.org",
             "127.0.0.1       m.wikifunctions.org",
+            "#\tFull support is possible, but I'm lazy.",
             "#\tWikimedia Foundation End"
         };
 
@@ -1009,10 +1064,14 @@
             "#\tGoogle Start",
             "127.0.0.1		google.com",
             "127.0.0.1		www.google.com",
-            "127.0.0.1		google.md",
-            "127.0.0.1		www.google.md",
+            "127.0.0.1		google.cn",
+            "127.0.0.1		www.google.cn",
+            "127.0.0.1		google.com.hk",
+            "127.0.0.1		www.google.com.hk",
             "127.0.0.1		play.google.com",
             "127.0.0.1		accounts.google.com",
+            "127.0.0.1      googleapis.com",
+            "127.0.0.1      ajax.googleapis.com",
             "#\tGoogle End"
         };
 
@@ -1106,6 +1165,93 @@
             "127.0.0.1		z-lib.fm",
             "127.0.0.1		www.z-lib.fm",
             "#\tZ-Library End"
+        };
+
+        public static string[] GelbooruSection =
+{
+            "#\tGelbooru Start",
+            "127.0.0.1 gelbooru.com",
+            "127.0.0.1 video-cdn1.gelbooru.com",
+            "127.0.0.1 video-cdn2.gelbooru.com",
+            "127.0.0.1 video-cdn3.gelbooru.com",
+            "127.0.0.1 img1.gelbooru.com",
+            "127.0.0.1 img2.gelbooru.com",
+            "127.0.0.1 img3.gelbooru.com",
+            "127.0.0.1 creative.rmzsglng.com",
+            "#\tGelbooru End"
+        };
+
+        public static string[] SankakuComplexSection =
+        {
+            "#\tSankaku Complex Start",
+            "208.100.24.247 sankakucomplex.com",
+            "208.100.24.254 s.sankakucomplex.com",
+            "143.244.50.86 v.sankakucomplex.com",
+            "208.100.24.244 chan.sankakucomplex.com",
+            "208.100.24.244 legacy.sankakucomplex.com",
+            "208.100.24.247 login.sankakucomplex.com",
+            "208.100.24.252 news.sankakucomplex.com",
+            "208.100.24.252 forum.sankakucomplex.com",
+            "208.100.24.247 legal.sankakucomplex.com",
+            "192.169.120.162 static.sankakucomplex.com",
+            "208.100.24.247 www.sankakucomplex.com",
+            "#\tSankaku Complex End"
+        };
+
+        public static string[] IwaraSection =
+        {
+            "#\tIwara Start",
+            "104.26.12.96 iwara.tv",
+            "104.26.12.96 api.iwara.tv",
+            "104.26.12.96 service.iwara.tv",
+            "104.26.12.96 blade.iwara.tv",
+            "104.26.12.96 i.iwara.tv",
+            "104.26.12.96 www.iwara.tv",
+            "104.26.12.96 silverwolf.iwara.tv",
+            "104.26.12.96 bronya.iwara.tv",
+            "104.26.12.96 mikoto.iwara.tv",
+            "104.26.12.96 files.iwara.tv",
+            "104.26.12.96 himeko.iwara.tv",
+            "104.26.12.96 robin.iwara.tv",
+            "104.26.12.96 firefly.iwara.tv",
+            "#\tFull support is not possible.",
+            "#\tIwara End"
+        };
+
+        public static string[] GithubSection =
+        {
+            "#\tGithub Start",
+            "127.0.0.1 github.com",
+            "127.0.0.1 www.github.com",
+            "127.0.0.1 gist.github.com",
+            "127.0.0.1 codeload.github.com",
+            "127.0.0.1 api.github.com",
+            "127.0.0.1 redirect.github.com",
+            "127.0.0.1 copilot.github.com",
+            "127.0.0.1 services.github.com",
+            "127.0.0.1 community.github.com",
+            "127.0.0.1 education.github.com",
+            "127.0.0.1 enterprise.github.com",
+            "127.0.0.1 classroom.github.com",
+            "127.0.0.1 central.github.com",
+            "127.0.0.1 collector.github.com",
+            "127.0.0.1 lab.github.com",
+            "127.0.0.1 pages.github.com",
+            "127.0.0.1 resources.github.com",
+            "127.0.0.1 developer.github.com",
+            "127.0.0.1 partner.github.com",
+            "127.0.0.1 desktop.github.com",
+            "127.0.0.1 guides.github.com",
+            "127.0.0.1 support.github.com",
+            "127.0.0.1 docs.github.com",
+            "127.0.0.1 githubusercontent.com",
+            "127.0.0.1 analytics.githubusercontent.com",
+            "127.0.0.1 assets-cdn.githubusercontent.com",
+            "127.0.0.1 githubassets.com",
+            "127.0.0.1 www.githubassets.com",
+            "127.0.0.1 github.io",
+            "127.0.0.1 www.github.io",
+             "#\tGithub End"
         };
     }
 }

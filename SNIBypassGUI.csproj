@@ -244,9 +244,6 @@
     <Resource Include="Resources\favicons\google.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\DefaultBkg.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\MenuBkg.png" />
   </ItemGroup>
   <ItemGroup>
@@ -265,6 +262,11 @@
     <None Include="Resources\自定义背景操作.mp4" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Resources\favicons\gelbooru.png" />
+    <Resource Include="Resources\favicons\iwara.png" />
+    <Resource Include="Resources\favicons\sankakucomplex.ico" />
+    <Resource Include="Resources\DefaultBkg.jpg" />
+    <Resource Include="Resources\favicons\github.png" />
     <Content Include="Resources\libs\ImageCropper.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

@@ -66,10 +66,10 @@ namespace RpNet.FileHelper
             WriteLog($"完成RemoveSection。", LogLevel.Debug);
         }
 
-        // 用于把string[] linesToWrite写入一个文件的方法
-        public static void WriteLinesToFile(string[] linesToWrite, string filePath)
+        // 用于把string[] linesToWrite写入一个文件尾部的方法
+        public static void WriteLinesToFileEnd(string[] linesToWrite, string filePath)
         {
-            WriteLog($"进入WriteLinesToFile。", LogLevel.Debug);
+            WriteLog($"进入WriteLinesToFileEnd。", LogLevel.Debug);
 
             if (!File.Exists(filePath))
             {
@@ -86,7 +86,33 @@ namespace RpNet.FileHelper
                 }
             }
 
-            WriteLog($"完成WriteLinesToFile。", LogLevel.Debug);
+            WriteLog($"完成WriteLinesToFileEnd。", LogLevel.Debug);
+        }
+
+        // 用于把string[] linesToWrite写入一个文件顶部的方法
+        public static void WriteLinesToFileTop(string[] linesToAdd, string filePath)
+        {
+            WriteLog($"进入WriteLinesToFileTop。", LogLevel.Debug);
+
+            // 如果文件不存在，直接创建它
+            if (!File.Exists(filePath))
+            {
+                File.WriteAllLines(filePath, linesToAdd);
+                return;
+            }
+
+            // 读取现有文件的内容
+            string[] existingLines = File.ReadAllLines(filePath);
+
+            // 将新的内容（linesToAdd）和现有内容拼接
+            var allLines = new string[linesToAdd.Length + existingLines.Length];
+            linesToAdd.CopyTo(allLines, 0);
+            existingLines.CopyTo(allLines, linesToAdd.Length);
+
+            // 将合并后的内容写回文件
+            File.WriteAllLines(filePath, allLines);
+
+            WriteLog($"完成WriteLinesToFileTop。", LogLevel.Debug);
         }
 
         /// <summary>
