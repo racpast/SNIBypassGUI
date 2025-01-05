@@ -15,9 +15,9 @@ https://github.com/user-attachments/assets/0d6671c0-39b1-4281-a500-09e183bc5b6a
 ### 🧩 一键清理及自定义背景 _`被撅力`_ 功能
 ![image](https://github.com/user-attachments/assets/bf31a328-50bc-42fc-80e2-bdd3791f2e07)
 ### 📋 详细原理见软件内左侧`说明`栏目
-## 🌸 感谢所有对本项目有贡献的人
-### 🏆️ 特别感谢@[mashirozx](https://github.com/mashirozx)还有@[c15412](https://github.com/c15412)大佬
-### 📌 不论是提出了优化建议，还是让我发现了潜在问题的，一律视为贡献者
+## 🌸 贡献者名单
+### 🏆️ 特别感谢@[mashirozx](https://github.com/mashirozx)大佬还有@[c15412](https://github.com/c15412)大佬
+🌹 我们非常感谢所有为该项目做出贡献的人！无论是通过**提出宝贵的优化建议**，还是帮助我们**发现了潜在的问题**，你们的贡献都对项目的改进和完善起到了**至关重要的作用**。在这里，我们向所有贡献者致以**最诚挚的感谢**！🌹
 <table>
   <tr>
         <td>
