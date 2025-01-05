@@ -1,18 +1,145 @@
-# SNIBypassGUI
+![social_compressed](https://github.com/user-attachments/assets/2cefa9c4-413f-4a61-91ee-891f3896b9d3)
 ## 📝 简介
-一个**通过 Nginx 反向代理实现绕过 SNI 阻断** 的工具，为适应程序的发展而由 [Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI) 迁移开发。
+一个**通过 Nginx 反向代理实现绕过 SNI 阻断** 的工具，由 [Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI) 迁移开发。
 ## ☕ 使用演示（ 10 秒内完成 Pixiv、Wikipedia 与 Steam Community 等的直连 ）
 
 
-https://github.com/user-attachments/assets/d209dc2e-2fe3-4658-9586-f4292f69d1a4
+https://github.com/user-attachments/assets/0d6671c0-39b1-4281-a500-09e183bc5b6a
 
 
 ## ✨ 功能预览
-### 💻 可开关代理
-![image](https://github.com/user-attachments/assets/069876e9-9b18-4b55-8d6a-2a5df16c7c76)
-### 💡 可视化管理
-![image](https://github.com/user-attachments/assets/1a498b74-7a1f-4d9b-b816-d9ce9ee598eb)
-### 🧩 Nginx 日志清理及 自定义背景 _`（被骂惨了）`_
-![image](https://github.com/user-attachments/assets/bdc3c177-95b5-46d1-ad0f-32a1210c616a)
+### 💻 多站点可开关支持
+![image](https://github.com/user-attachments/assets/896f89af-3ef3-4658-9328-a6f94baf2576)
+### 📰 可视化管理
+![image](https://github.com/user-attachments/assets/8c2c43da-8166-4624-a661-aabb5d9b9599)
+### 🧩 一键清理及自定义背景 _`被撅力`_ 功能
+![image](https://github.com/user-attachments/assets/bf31a328-50bc-42fc-80e2-bdd3791f2e07)
+### 📋 详细原理见软件内左侧`说明`栏目
+## 🌸 感谢所有对本项目有贡献的人
+### 🏆️ 特别感谢@[mashirozx](https://github.com/mashirozx)还有@[c15412](https://github.com/c15412)大佬
+### 📌 不论是提出了优化建议，还是让我发现了潜在问题的，一律视为贡献者
+<table>
+  <tr>
+        <td>
+          <img src="https://avatars.githubusercontent.com/u/16148054" width="100" height="100" alt="mashirozx"/>
+        </td> 
+        <td>
+          <img src="https://github.com/user-attachments/assets/27332879-6733-4f4e-ac66-103f98899ca2" width="100" height="100" alt="玛修·基列莱特"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/b4cc9c73-42d4-4dc9-9dc2-7c61e59badb8" width="100" height="100" alt="八云"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/d549992e-dfa8-4a1f-a2c8-a1697c2f7aee" width="100" height="100" alt="菜控"/>
+        </td> 
+        <td>
+          <img src="https://github.com/user-attachments/assets/9fdb5820-8a05-49fc-9fab-1d61342ae1ab" width="100" height="100" alt="≮憧憬ㄨ祈祷"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/9395886f-111b-4a87-8e25-0e030d3914c3" width="100" height="100" alt="冲浪的鬼魂魄"/>
+        </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://github.com/mashirozx">
+        <b>Mashiro</b>
+      </a>
+    </td>
+    <td>玛修·基列莱特</td> 
+    <td>八云</td>
+    <td>菜控</td> 
+    <td>≮憧憬ㄨ祈祷</td> 
+    <td>冲浪的鬼魂魄</td> 
+  </tr>
+    <tr>
+        <td>
+          <img src="https://github.com/user-attachments/assets/b706eb01-b9e6-4ef3-97a6-1bc0f5feffc5" width="100" height="100" alt="酒开路"/>
+        </td> 
+        <td>
+          <img src="https://github.com/user-attachments/assets/809829a6-be84-43fd-914c-abd172820078" width="100" height="100" alt="青岛导管之神"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/8344b5ae-75dd-4fce-a4d3-360f1cb99045" width="100" height="100" alt="xuxinyua"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/55e35a2b-6c91-44d0-93d6-8fedb6da0e1a" width="100" height="100" alt="大眼老刺猬"/>
+        </td> 
+        <td>
+          <img src="https://github.com/user-attachments/assets/55a4634b-ec24-4dcb-8ec8-3d1331de1a6c" width="100" height="100" alt="千与千寻"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/7c5f94e8-81f5-4813-ad30-ca2f4191a0c8" width="100" height="100" alt="当萝莉爱上猫"/>
+        </td>
+  </tr>
+  <tr>
+    <td>酒开路</td>
+    <td>青岛导管之神</td> 
+    <td>xuxinyua</td>
+    <td>大眼老刺猬</td> 
+    <td>千与千寻</td> 
+    <td>当萝莉爱上猫</td> 
+  </tr>
+      <tr>
+        <td>
+          <img src="https://github.com/user-attachments/assets/e93db7ec-d28c-4939-a194-b47af750d21a" width="100" height="100" alt="天上人间"/>
+        </td> 
+        <td>
+          <img src="https://github.com/user-attachments/assets/4dbad91b-0dae-4d25-ab37-1670e07e3f39" width="100" height="100" alt="可可提亚"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/f974074c-625c-488b-a214-8ab3daf31f53" width="100" height="100" alt="阿音"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/049328ae-b70d-451a-9d6b-f0cb6c403de9" width="100" height="100" alt="阿瓦隆剑圣梅林"/>
+        </td> 
+        <td>
+          <img src="https://github.com/user-attachments/assets/9a3a4847-18ae-45e2-8735-4522ebabaabc" width="100" height="100" alt="泰拉在逃蒂蒂"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/1a8110f9-9194-490e-b43a-01c052a89c46" width="100" height="100" alt="轻2assa"/>
+        </td>
+  </tr>
+  <tr>
+    <td>天上人间</td>
+    <td>可可提亚</td> 
+    <td>阿音</td>
+    <td>阿瓦隆剑圣梅林</td> 
+    <td>泰拉在逃蒂蒂</td>
+    <td>轻2assa</td> 
+  </tr>
+        <tr>
+        <td>
+          <img src="https://github.com/user-attachments/assets/e818438d-797b-4859-8e30-be1aede9ca51" width="100" height="100" alt="周长奕"/>
+        </td> 
+        <td>
+          <img src="https://github.com/user-attachments/assets/3014faf9-910e-4f0b-8003-c69e630f5f70" width="100" height="100" alt="刺客大师康纳"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/b587087f-6cea-4264-89c0-b735f5c20418" width="100" height="100" alt="小彳亍⭐"/>
+        </td>
+        <td>
+          <img src="https://github.com/user-attachments/assets/78c65d85-5d9c-43e5-b6a5-546ad891ecad" width="100" height="100" alt="云层之上"/>
+        </td> 
+        <td>
+          <img src="https://github.com/user-attachments/assets/de2cb17d-d6c6-4062-bcf5-b7190d47d88b" width="100" height="100" alt="缪"/>
+        </td>
+        <td>
+          <img src="https://avatars.githubusercontent.com/u/70379135" width="100" height="100" alt="c15412"/>
+        </td>
+  </tr>
+  <tr>
+    <td>周长奕</td>
+    <td>刺客大师康纳</td> 
+    <td>小彳亍⭐</td>
+    <td>云层之上</td> 
+    <td>缪</td>
+    <td>
+      <a href="https://github.com/c15412">
+        <b>c15412</b>
+      </a>  
+    </td> 
+  </tr>
+</table>
+
 ## 🧪 任何 Bug 或建议请提交至 issue 或发送邮件至 yaojun.mail@qq.com 。
 ## 👥 QQ 交流群：94681320 ( [SNIBypassGUI](https://github.com/racpast/SNIBypassGUI) 兼 _[Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI)_ 交流群)。
