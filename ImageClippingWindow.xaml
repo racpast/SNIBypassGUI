@@ -15,7 +15,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.Background>
-            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.jpg"/>
+            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
         </Grid.Background>
         <Border x:Name="TopBar" Grid.Row="0" Margin="20,10,20,0"  Background="#70FFFFFF" BorderThickness="1.5,1.5,1.5,1.5" CornerRadius="5,5,5,5">
             <Border.BorderBrush>

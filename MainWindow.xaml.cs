@@ -334,7 +334,7 @@ namespace SNIBypassGUI
 
             // 设置图片源为默认背景图片并设置图片的拉伸模式为均匀填充，以适应背景区域
             ImageBrush bg = new ImageBrush();
-            bg.ImageSource = new BitmapImage(new Uri("pack://application:,,,/SNIBypassGUI;component/Resources/DefaultBkg.jpg"));
+            bg.ImageSource = new BitmapImage(new Uri("pack://application:,,,/SNIBypassGUI;component/Resources/DefaultBkg.png"));
             bg.Stretch = Stretch.UniformToFill;
 
             if (ConfigINI.INIRead("程序设置", "Background", PathsSet.INIPath) == "Custom")
@@ -753,8 +753,7 @@ namespace SNIBypassGUI
 
                 if (HandyControl.Controls.MessageBox.Show($"无法设置指定的网络适配器！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                    videoHelpWindow.ShowDialog();
+                    Process.Start(new ProcessStartInfo(LinksSet.当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时) { UseShellExecute = true });
                 }
             }
             catch (Exception ex)
@@ -829,8 +828,7 @@ namespace SNIBypassGUI
 
                 if (HandyControl.Controls.MessageBox.Show($"无法还原指定的网络适配器！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
-                    videoHelpWindow.ShowDialog();
+                    Process.Start(new ProcessStartInfo(LinksSet.当您在停止时遇到适配器设置失败或不确定该软件是否对适配器造成影响时) { UseShellExecute = true });
                 }
             }
             catch (Exception ex)
@@ -973,8 +971,7 @@ namespace SNIBypassGUI
 
                                 if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)禁用失败！请手动设置！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                                 {
-                                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                                    videoHelpWindow.ShowDialog();
+                                    Process.Start(new ProcessStartInfo(LinksSet.当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时) { UseShellExecute = true });
                                 }
                             }
                         }
@@ -988,8 +985,7 @@ namespace SNIBypassGUI
 
                     if (HandyControl.Controls.MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                     {
-                        VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                        videoHelpWindow.ShowDialog();
+                        Process.Start(new ProcessStartInfo(LinksSet.当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时) { UseShellExecute = true });
                     }
                 }
             }
@@ -1152,8 +1148,7 @@ namespace SNIBypassGUI
 
                         if (HandyControl.Controls.MessageBox.Show($"指定网络适配器的Internet 协议版本 6(TCP/IPv6)启用失败！请手动还原！\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                         {
-                            VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
-                            videoHelpWindow.ShowDialog();
+                            Process.Start(new ProcessStartInfo(LinksSet.当您在停止时遇到适配器设置失败或不确定该软件是否对适配器造成影响时) { UseShellExecute = true });
                         }
                     }
                 }
@@ -1169,8 +1164,7 @@ namespace SNIBypassGUI
 
                     if (HandyControl.Controls.MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动还原。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                     {
-                        VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动还原适配器", PathsSet.HelpVideo_如何手动还原适配器_Path);
-                        videoHelpWindow.ShowDialog();
+                        Process.Start(new ProcessStartInfo(LinksSet.当您在停止时遇到适配器设置失败或不确定该软件是否对适配器造成影响时) { UseShellExecute = true });
                     }
                 }
                 // 如果适配器下拉框选中项为空就是没选择，不需要还原适配器
@@ -2376,8 +2370,7 @@ namespace SNIBypassGUI
 
                 if (HandyControl.Controls.MessageBox.Show($"没有找到活动且可设置的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何手动设置适配器", PathsSet.HelpVideo_如何手动设置适配器_Path);
-                    videoHelpWindow.ShowDialog();
+                    Process.Start(new ProcessStartInfo(LinksSet.当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时) { UseShellExecute = true });
                 }
             }
 
@@ -2389,10 +2382,10 @@ namespace SNIBypassGUI
         {
             /** 日志信息 **/ WriteLog("进入HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
 
-            VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何寻找活动的网络适配器", PathsSet.HelpVideo_如何寻找活动适配器_Path);
-            videoHelpWindow.ShowDialog();
+            Process.Start(new ProcessStartInfo(LinksSet.当您无法确定当前正在使用的适配器时) { UseShellExecute = true });
 
-            /** 日志信息 **/ WriteLog("完成HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
+            /** 日志信息 **/
+            WriteLog("完成HelpBtn_HowToFindActiveAdapter_Click。", LogLevel.Debug);
         }
 
         // 为s.pximg.net设置优选IP的方法

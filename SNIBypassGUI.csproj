@@ -117,8 +117,11 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Helpers\HostsRecordHelper.cs" />
-    <Compile Include="ImageClippingWindow.xaml.cs">
-      <DependentUpon>ImageClippingWindow.xaml</DependentUpon>
+    <Compile Include="ImageClippingWindow.xaml.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="RpNet\RpNet.AcrylicServiceHelper.cs" />
     <Compile Include="RpNet\RpNet.CMDHelper.cs" />
@@ -127,12 +130,9 @@
     <Compile Include="RpNet\RpNet.NetworkHelper.cs" />
     <Compile Include="Helpers\PathHelper.cs" />
     <Compile Include="Helpers\PublicHelper.cs" />
-    <Compile Include="VideoHelpWindow.xaml.cs">
-      <DependentUpon>VideoHelpWindow.xaml</DependentUpon>
-    </Compile>
     <Page Include="ImageClippingWindow.xaml">
-      <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -146,19 +146,10 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="VideoHelpWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -247,26 +238,14 @@
     <Resource Include="Resources\MenuBkg.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\如何寻找活动适配器.mp4" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\如何手动设置适配器.mp4" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\如何手动还原适配器.mp4" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\favicons\pixivFANBOX.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\自定义背景操作.mp4" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\favicons\gelbooru.png" />
     <Resource Include="Resources\favicons\iwara.png" />
     <Resource Include="Resources\favicons\sankakucomplex.ico" />
-    <Resource Include="Resources\DefaultBkg.jpg" />
     <Resource Include="Resources\favicons\github.png" />
+    <Resource Include="Resources\DefaultBkg.png" />
     <Content Include="Resources\libs\ImageCropper.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

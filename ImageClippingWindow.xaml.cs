@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Windows;
 
@@ -66,9 +67,7 @@ namespace SNIBypassGUI
         private void HelpBtn_Click(object sender, RoutedEventArgs e)
         {
             HelpBadge.Visibility = Visibility.Collapsed;
-
-            VideoHelpWindow videoHelpWindow = new VideoHelpWindow("如何自定义背景图片", PathsSet.HelpVideo_自定义背景操作_Path);
-            videoHelpWindow.ShowDialog();
+            Process.Start(new ProcessStartInfo(LinksSet.如何使用自定义背景功能) { UseShellExecute = true });
         }
     }
 

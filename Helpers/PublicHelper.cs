@@ -20,7 +20,7 @@ namespace SNIBypassGUI
         public static FilesINI ConfigINI = new FilesINI();
 
         // 既定版本号，更新时需要修改
-        public const string PresetGUIVersion = "V3.5";
+        public const string PresetGUIVersion = "V3.5.1";
 
         // 用于判断是否需要禁用适配器IPv6的域名
         public const string DomainForIPv6DisableDecision = "pixiv.net";
@@ -169,11 +169,7 @@ namespace SNIBypassGUI
             {PathsSet.KeyFile,Properties.Resources.SNIBypassKey},
             {PathsSet.AcrylicServiceExeFilePath,Properties.Resources.AcrylicService},
             {PathsSet.AcrylicHostsPath,Properties.Resources.AcrylicHosts},
-            {PathsSet.AcrylicConfigurationPath,Properties.Resources.AcrylicConfiguration},
-            {PathsSet.HelpVideo_如何寻找活动适配器_Path, Properties.Resources.如何寻找活动适配器 },
-            {PathsSet.HelpVideo_如何手动设置适配器_Path, Properties.Resources.如何手动设置适配器 },
-            {PathsSet.HelpVideo_如何手动还原适配器_Path, Properties.Resources.如何手动还原适配器 },
-            {PathsSet.HelpVideo_自定义背景操作_Path, Properties.Resources.自定义背景操作 }
+            {PathsSet.AcrylicConfigurationPath,Properties.Resources.AcrylicConfiguration}
         };
 
         public static Dictionary<string, string> InitialConfigurations = new Dictionary<string, string>

@@ -15,7 +15,7 @@
             <RowDefinition />
         </Grid.RowDefinitions>
         <Grid.Background>
-            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.jpg"/>
+            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
         </Grid.Background>
         <tb:TaskbarIcon x:Name="TaskbarIcon" LeftClickCommand="{Binding _TaskbarIconLeftClickCommand}" DoubleClickCommand="{Binding _TaskbarIconLeftClickCommand}" IconSource="/Resources/icon.ico" ToolTipText="SNIBypassGUI">
             <tb:TaskbarIcon.TrayToolTip>
