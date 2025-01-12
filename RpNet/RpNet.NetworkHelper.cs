@@ -13,6 +13,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Management.Automation;
 using System.Net;
+using System.Net.Sockets;
 
 namespace RpNet.NetworkHelper
 {
@@ -1218,6 +1219,25 @@ namespace RpNet.NetworkHelper
             }
 
             return true;
+        }
+    }
+
+    public class PortHelper
+    {
+        public static bool IsPortInUse(int port)
+        {
+            bool inUse = false;
+            IPGlobalProperties ipProperties = IPGlobalProperties.GetIPGlobalProperties();
+            IPEndPoint[] ipEndPoints = ipProperties.GetActiveTcpListeners();
+            foreach (IPEndPoint endPoint in ipEndPoints)
+            {
+                if (endPoint.Port == port)
+                {
+                    inUse = true;
+                    break;
+                }
+            }
+            return inUse;
         }
     }
 }

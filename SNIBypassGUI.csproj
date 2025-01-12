@@ -246,6 +246,8 @@
     <Resource Include="Resources\favicons\sankakucomplex.ico" />
     <Resource Include="Resources\favicons\github.png" />
     <Resource Include="Resources\DefaultBkg.png" />
+    <Resource Include="Resources\favicons\duckduckgo.ico" />
+    <Resource Include="Resources\favicons\rule34video.png" />
     <Content Include="Resources\libs\ImageCropper.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
