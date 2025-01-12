@@ -1,6 +1,4 @@
-﻿using RpNet.NetworkHelper;
-
-namespace SNIBypassGUI
+﻿namespace SNIBypassGUI
 {
     public class HostsSet
     {
@@ -306,6 +304,22 @@ namespace SNIBypassGUI
             "127.0.0.1 github.io",
             "127.0.0.1 *.github.io",
              "#\tGithub End"
+        };
+
+        public static string[] DuckDuckGoSection =
+        {
+            "#\tDuckDuckGo Start",
+            "127.0.0.1 duckduckgo.com",
+            "127.0.0.1 *.duckduckgo.com",
+            "#\tDuckDuckGo End"
+        };
+
+        public static string[] Rule34VideoSection =
+        {
+            "#\tRule34Video Start",
+            "190.115.31.243 rule34video.com",
+            "190.115.31.243 *.rule34video.com",
+            "#\tRule34Video End"
         };
     }
     public class HostsSet_Old
@@ -1252,6 +1266,23 @@ namespace SNIBypassGUI
             "127.0.0.1 github.io",
             "127.0.0.1 www.github.io",
              "#\tGithub End"
+        };
+
+        public static string[] DuckDuckGoSection =
+        {
+            "#\tDuckDuckGo Start",
+            "127.0.0.1 duckduckgo.com",
+            "127.0.0.1 www.duckduckgo.com",
+            "127.0.0.1 start.duckduckgo.com",
+            "#\tDuckDuckGo End"
+        };
+
+        public static string[] Rule34VideoSection =
+        {
+            "#\tRule34Video Start",
+            "190.115.31.243 rule34video.com",
+            "190.115.31.243 www.rule34video.com",
+            "#\tRule34Video End"
         };
     }
 }

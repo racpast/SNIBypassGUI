@@ -3,7 +3,6 @@ using System.IO;
 using static SNIBypassGUI.LogHelper;
 using System.Windows.Media.Imaging;
 using System.Text;
-using static SNIBypassGUI.PathsSet;
 using System.Collections.Generic;
 
 namespace RpNet.FileHelper

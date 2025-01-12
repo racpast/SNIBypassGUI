@@ -189,45 +189,5 @@ namespace SNIBypassGUI.Properties {
                 return ((byte[])(obj));
             }
         }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
-        internal static byte[] 如何寻找活动适配器 {
-            get {
-                object obj = ResourceManager.GetObject("如何寻找活动适配器", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
-        internal static byte[] 如何手动设置适配器 {
-            get {
-                object obj = ResourceManager.GetObject("如何手动设置适配器", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
-        internal static byte[] 如何手动还原适配器 {
-            get {
-                object obj = ResourceManager.GetObject("如何手动还原适配器", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
-        internal static byte[] 自定义背景操作 {
-            get {
-                object obj = ResourceManager.GetObject("自定义背景操作", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
     }
 }

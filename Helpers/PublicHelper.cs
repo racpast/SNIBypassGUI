@@ -20,7 +20,7 @@ namespace SNIBypassGUI
         public static FilesINI ConfigINI = new FilesINI();
 
         // 既定版本号，更新时需要修改
-        public const string PresetGUIVersion = "V3.5";
+        public const string PresetGUIVersion = "V3.5.1";
 
         // 用于判断是否需要禁用适配器IPv6的域名
         public const string DomainForIPv6DisableDecision = "pixiv.net";
@@ -169,17 +169,13 @@ namespace SNIBypassGUI
             {PathsSet.KeyFile,Properties.Resources.SNIBypassKey},
             {PathsSet.AcrylicServiceExeFilePath,Properties.Resources.AcrylicService},
             {PathsSet.AcrylicHostsPath,Properties.Resources.AcrylicHosts},
-            {PathsSet.AcrylicConfigurationPath,Properties.Resources.AcrylicConfiguration},
-            {PathsSet.HelpVideo_如何寻找活动适配器_Path, Properties.Resources.如何寻找活动适配器 },
-            {PathsSet.HelpVideo_如何手动设置适配器_Path, Properties.Resources.如何手动设置适配器 },
-            {PathsSet.HelpVideo_如何手动还原适配器_Path, Properties.Resources.如何手动还原适配器 },
-            {PathsSet.HelpVideo_自定义背景操作_Path, Properties.Resources.自定义背景操作 }
+            {PathsSet.AcrylicConfigurationPath,Properties.Resources.AcrylicConfiguration}
         };
 
         public static Dictionary<string, string> InitialConfigurations = new Dictionary<string, string>
         {
             { "程序设置:Background", "Preset" },
-            { "程序设置:ActiveAdapter", "" },
+            { "程序设置:SpecifiedAdapter", "" },
             { "程序设置:PixivIPPreference", "false" },
             { "高级设置:DebugMode", "false" },
             { "高级设置:GUIDebug", "false" },
@@ -207,6 +203,7 @@ namespace SNIBypassGUI
             new SwitchItem {FaviconImageSource = "Resources/favicons/archiveofourown.ico", SwitchTitle = "Archive of Our Own", LinksText = "archiveofourown.org", ToggleButtonName="archiveofourownTB", SectionName = "Archive of Our Own", HostsRecord = HostsSet.ArchiveofOurOwnSection, OldHostsRecord = HostsSet_Old.ArchiveofOurOwnSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/apkmirror.png", SwitchTitle = "APKMirror", LinksText = "apkmirror.com", ToggleButtonName="apkmirrorTB", SectionName = "APKMirror", HostsRecord = HostsSet.APKMirrorSection, OldHostsRecord = HostsSet_Old.APKMirrorSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/bbc.png", SwitchTitle = "BBC（未完整支持）", LinksText = "bbc.com", ToggleButtonName="bbcTB", SectionName = "BBC", HostsRecord = HostsSet.BBCSection, OldHostsRecord = HostsSet_Old.BBCSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/duckduckgo.ico", SwitchTitle = "DuckDuckGo", LinksText = "duckduckgo.com", ToggleButtonName="duckduckgoTB", SectionName = "DuckDuckGo", HostsRecord = HostsSet.DuckDuckGoSection, OldHostsRecord = HostsSet_Old.DuckDuckGoSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/e-hentai.ico", SwitchTitle = "E-Hentai（含里站）", LinksText = "e-hentai.org|、|exhentai.org", ToggleButtonName="ehentaiTB", SectionName = "E-Hentai", HostsRecord = HostsSet.EHentaiSection, OldHostsRecord = HostsSet_Old.EHentaiSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/etsy.png", SwitchTitle = "Etsy", LinksText = "etsy.com", ToggleButtonName="etsyTB", SectionName = "Etsy", HostsRecord = HostsSet.EtsySection, OldHostsRecord = HostsSet_Old.EtsySection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/fdroid.png", SwitchTitle = "F-Droid（未完整支持）", LinksText = "f-droid.org", ToggleButtonName="fdroidTB", SectionName = "F-Droid", HostsRecord = HostsSet.FDroidSection, OldHostsRecord = HostsSet_Old.FDroidSection},
@@ -221,6 +218,7 @@ namespace SNIBypassGUI
             new SwitchItem {FaviconImageSource = "Resources/favicons/pixivFANBOX.ico", SwitchTitle = "pixivFANBOX", LinksText = "fanbox.cc", ToggleButtonName="fanboxTB", SectionName = "pixivFANBOX", HostsRecord = HostsSet.pixivFANBOXSection, OldHostsRecord = HostsSet_Old.pixivFANBOXSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/pornhub.ico", SwitchTitle = "Pornhub（不稳定）", LinksText = "pornhub.com", ToggleButtonName="pornhubTB", SectionName = "Pornhub", HostsRecord = HostsSet.PornhubSection, OldHostsRecord = HostsSet_Old.PornhubSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/proton.png", SwitchTitle = "Proton", LinksText = "proton.me", ToggleButtonName="protonTB", SectionName = "Proton", HostsRecord = HostsSet.ProtonSection, OldHostsRecord = HostsSet_Old.ProtonSection},
+            new SwitchItem {FaviconImageSource = "Resources/favicons/rule34video.png", SwitchTitle = "Rule34Video", LinksText = "rule34video.com", ToggleButtonName="rule34videoTB", SectionName = "Rule34Video", HostsRecord = HostsSet.Rule34VideoSection, OldHostsRecord = HostsSet_Old.Rule34VideoSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/sankakucomplex.ico", SwitchTitle = "Sankaku Complex", LinksText = "sankakucomplex.com", ToggleButtonName="sankakucomplexTB", SectionName = "Sankaku Complex", HostsRecord = HostsSet.SankakuComplexSection, OldHostsRecord = HostsSet_Old.SankakuComplexSection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/steamcommunity.ico", SwitchTitle = "Steam Community", LinksText = "steamcommunity.com", ToggleButtonName="steamcommunityTB", SectionName = "Steam Community", HostsRecord = HostsSet.SteamCommunitySection, OldHostsRecord = HostsSet_Old.SteamCommunitySection},
             new SwitchItem {FaviconImageSource = "Resources/favicons/telegram.png", SwitchTitle = "Telegram", LinksText = "telegram.org", ToggleButtonName="telegramTB", SectionName = "Telegram", HostsRecord = HostsSet.TelegramSection, OldHostsRecord = HostsSet_Old.TelegramSection},

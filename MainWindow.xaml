@@ -15,7 +15,7 @@
             <RowDefinition />
         </Grid.RowDefinitions>
         <Grid.Background>
-            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.jpg"/>
+            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
         </Grid.Background>
         <tb:TaskbarIcon x:Name="TaskbarIcon" LeftClickCommand="{Binding _TaskbarIconLeftClickCommand}" DoubleClickCommand="{Binding _TaskbarIconLeftClickCommand}" IconSource="/Resources/icon.ico" ToolTipText="SNIBypassGUI">
             <tb:TaskbarIcon.TrayToolTip>
@@ -139,6 +139,12 @@
                                 <Run Text="请关闭所有杀毒软件，" />
                                 <LineBreak/>
                                 <Run Text="否则程序可能会出现闪退等异常情况！" FontSize="20"/>
+                            </Span>
+                            <LineBreak/>
+                            <Span FontSize="19" Foreground="#FFFF3434">
+                                <Run Text="请退出并停止使用 Steamcommunity 302 等类似软件，" />
+                                <LineBreak/>
+                                <Run Text="否则可能会出现无法访问网页等异常情况！" FontSize="20"/>
                             </Span>
                         </Paragraph>
                         <Paragraph TextAlignment="Left">
@@ -549,7 +555,7 @@
                                         <ColumnDefinition/>
                                         <ColumnDefinition Width="auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="AdaptersCombo" Margin="10,0,10,10" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="#70FFFFFF" FontWeight="Bold" FontSize="16"/>
+                                    <ComboBox x:Name="AdaptersCombo" Margin="10,0,10,10" SelectionChanged="AdaptersCombo_SelectionChanged" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="#70FFFFFF" FontWeight="Bold" FontSize="16"/>
                                     <Button x:Name="GetActiveAdapterBtn" hc:IconElement.Geometry="{StaticResource FindGeometry}" Grid.Column="1" Click="GetActiveAdapterBtn_Click" Height="30" Margin="0,0,10,10" HorizontalAlignment="Stretch" Content="自动获取"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center" Width="auto"/>
                                 </Grid>
                                 <Grid>
