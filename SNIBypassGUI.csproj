@@ -27,6 +27,7 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
+    <SatelliteResourceLanguages>XXX</SatelliteResourceLanguages>
     <TargetCulture>zh-Hans</TargetCulture>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
@@ -46,16 +47,21 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
+    <DebugType>embedded</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <UseWinFormsOutOfProcDesigner>False</UseWinFormsOutOfProcDesigner>
+    <DebugSymbols>true</DebugSymbols>
+    <AllowedReferenceRelatedFileExtensions>
+      <!-- Prevent default XML and PDB files copied to output in RELEASE. 
+           Only *.fuck files will be included, which doesn't exist in my case.
+       -->
+      .fuck
+    </AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
-  <PropertyGroup />
-  <PropertyGroup />
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
@@ -166,20 +172,7 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-    <None Include="Resources\AcrylicConfiguration.ini" />
     <Compile Include="RpNet\RpNet.TaskbarHelper.cs" />
-    <Resource Include="Resources\bypass.conf" />
-    <Resource Include="Resources\cert.conf" />
-    <Resource Include="Resources\nginx.conf" />
-    <Resource Include="Resources\shared-proxy-params-1.conf" />
-    <Resource Include="Resources\shared-proxy-params-2.conf" />
-    <Resource Include="Resources\SNIBypassCrt.crt" />
-    <Resource Include="Resources\SNIBypassKey.key" />
-    <Resource Include="Resources\ca.cer" />
-    <Resource Include="Resources\AaManYuShouXieTi%28JianFan%29-2.ttf" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
@@ -194,12 +187,17 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Resources\bypass.conf" />
+    <Resource Include="Resources\cert.conf" />
+    <Resource Include="Resources\nginx.conf" />
+    <Resource Include="Resources\shared-proxy-params-1.conf" />
+    <Resource Include="Resources\shared-proxy-params-2.conf" />
+    <Resource Include="Resources\SNIBypassCrt.crt" />
+    <Resource Include="Resources\SNIBypassKey.key" />
+    <Resource Include="Resources\ca.cer" />
+    <Resource Include="Resources\AaManYuShouXieTi%28JianFan%29-2.ttf" />
     <Resource Include="Resources\icon.ico" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\SNIBypass.exe" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\favicons\archiveofourown.ico" />
     <Resource Include="Resources\favicons\e-hentai.ico" />
     <Resource Include="Resources\favicons\nyaa.png" />
@@ -208,14 +206,8 @@
     <Resource Include="Resources\favicons\steamcommunity.ico" />
     <Resource Include="Resources\favicons\wallhaven.ico" />
     <Resource Include="Resources\favicons\wikimediafoundation.ico" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\AcrylicService.exe" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\AcrylicHosts.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\favicons\amazoncojp.ico" />
     <Resource Include="Resources\favicons\apkmirror.png" />
     <Resource Include="Resources\favicons\bbc.png" />
@@ -227,20 +219,10 @@
     <Resource Include="Resources\favicons\telegram.png" />
     <Resource Include="Resources\favicons\thenewyorktimes.png" />
     <Resource Include="Resources\favicons\zlibrary.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\favicons\youtube.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\favicons\google.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\MenuBkg.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\favicons\pixivFANBOX.ico" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\favicons\gelbooru.png" />
     <Resource Include="Resources\favicons\iwara.png" />
     <Resource Include="Resources\favicons\sankakucomplex.ico" />
@@ -248,9 +230,8 @@
     <Resource Include="Resources\DefaultBkg.png" />
     <Resource Include="Resources\favicons\duckduckgo.ico" />
     <Resource Include="Resources\favicons\rule34video.png" />
-    <Content Include="Resources\libs\ImageCropper.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <None Include="Resources\AcrylicConfiguration.ini" />
+    <Content Include="Resources\libs\ImageCropper.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
