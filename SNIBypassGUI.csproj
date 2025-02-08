@@ -122,20 +122,36 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Helpers\HostsRecordHelper.cs" />
-    <Compile Include="ImageClippingWindow.xaml.cs" />
+    <Compile Include="Consts\AcrylicHostsConsts.cs" />
+    <Compile Include="Consts\AppConsts.cs" />
+    <Compile Include="Consts\CollectionConsts.cs" />
+    <Compile Include="Consts\GitHubConsts.cs" />
+    <Compile Include="Consts\LinksConsts.cs" />
+    <Compile Include="Consts\PathConsts.cs" />
+    <Compile Include="Consts\SystemHostsConsts.cs" />
+    <Compile Include="ImageClippingWindow.xaml.cs">
+      <DependentUpon>ImageClippingWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Models\NetworkAdapter.cs" />
+    <Compile Include="Models\SwitchItem.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="RpNet\RpNet.AcrylicServiceHelper.cs" />
-    <Compile Include="RpNet\RpNet.CMDHelper.cs" />
-    <Compile Include="RpNet\RpNet.FileHelper.cs" />
-    <Compile Include="Helpers\LogHelper.cs" />
-    <Compile Include="RpNet\RpNet.NetworkHelper.cs" />
-    <Compile Include="Helpers\PathHelper.cs" />
-    <Compile Include="Helpers\PublicHelper.cs" />
+    <Compile Include="Utils\AcrylicServiceUtils.cs" />
+    <Compile Include="Utils\CertificateUtils.cs" />
+    <Compile Include="Utils\CommandUtils.cs" />
+    <Compile Include="Utils\ConvertUtils.cs" />
+    <Compile Include="Utils\FileUtils.cs" />
+    <Compile Include="Utils\GitHubUtils.cs" />
+    <Compile Include="Utils\IniFileUtils.cs" />
+    <Compile Include="Utils\LogManager.cs" />
+    <Compile Include="Utils\NetworkAdapterUtils.cs" />
+    <Compile Include="Utils\NetworkUtils.cs" />
+    <Compile Include="Utils\ProcessUtils.cs" />
+    <Compile Include="Utils\ServiceUtils.cs" />
+    <Compile Include="Utils\WinApiUtils.cs" />
     <Page Include="ImageClippingWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -164,6 +180,7 @@
     </Compile>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <None Include="app.manifest" />
@@ -172,7 +189,10 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-    <Compile Include="RpNet\RpNet.TaskbarHelper.cs" />
+    <None Include="Resources\ca.cer" />
+    <None Include="Resources\SNIBypassCrt.crt" />
+    <None Include="Resources\SNIBypassKey.key" />
+    <Resource Include="Resources\fonts\腾祥沁圆简-W2.ttf" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
@@ -187,15 +207,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\bypass.conf" />
-    <Resource Include="Resources\cert.conf" />
     <Resource Include="Resources\nginx.conf" />
-    <Resource Include="Resources\shared-proxy-params-1.conf" />
-    <Resource Include="Resources\shared-proxy-params-2.conf" />
-    <Resource Include="Resources\SNIBypassCrt.crt" />
-    <Resource Include="Resources\SNIBypassKey.key" />
-    <Resource Include="Resources\ca.cer" />
-    <Resource Include="Resources\AaManYuShouXieTi%28JianFan%29-2.ttf" />
     <Resource Include="Resources\icon.ico" />
     <Resource Include="Resources\SNIBypass.exe" />
     <Resource Include="Resources\favicons\archiveofourown.ico" />
@@ -231,7 +243,9 @@
     <Resource Include="Resources\favicons\duckduckgo.ico" />
     <Resource Include="Resources\favicons\rule34video.png" />
     <None Include="Resources\AcrylicConfiguration.ini" />
+    <Resource Include="Resources\favicons\greasyfork.png" />
     <Content Include="Resources\libs\ImageCropper.dll" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

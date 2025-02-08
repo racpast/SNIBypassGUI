@@ -118,9 +118,6 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="AaManYuShouXieTi_JianFan__2" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\AaManYuShouXieTi(JianFan)-2.ttf;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
   <data name="AcrylicConfiguration" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\AcrylicConfiguration.ini;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -130,23 +127,11 @@
   <data name="AcrylicService" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\AcrylicService.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="bypass" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\bypass.conf;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
   <data name="ca" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ca.cer;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="cert" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\cert.conf;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
   <data name="nginx" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\nginx.conf;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="shared_proxy_params_1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\shared-proxy-params-1.conf;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="shared_proxy_params_2" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\shared-proxy-params-2.conf;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="SNIBypass" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\SNIBypass.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>

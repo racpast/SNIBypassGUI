@@ -17,12 +17,12 @@
         <Grid.Background>
             <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
         </Grid.Background>
-        <tb:TaskbarIcon x:Name="TaskbarIcon" LeftClickCommand="{Binding _TaskbarIconLeftClickCommand}" DoubleClickCommand="{Binding _TaskbarIconLeftClickCommand}" IconSource="/Resources/icon.ico" ToolTipText="SNIBypassGUI">
+        <tb:TaskbarIcon x:Name="TaskbarIcon" LeftClickCommand="{Binding TaskbarIconLeftClickCommand}" DoubleClickCommand="{Binding _TaskbarIconLeftClickCommand}" IconSource="/Resources/icon.ico" ToolTipText="SNIBypassGUI">
             <tb:TaskbarIcon.TrayToolTip>
                 <Border BorderBrush="#FF46FFD0" Background="White" BorderThickness="1" CornerRadius="4" Opacity="0.8" Width="250" Height="auto">
                     <StackPanel>
-                        <TextBlock Foreground="#FF2BFF00" Text="SNIBypassGUI" Margin="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="16"/>
-                        <TextBlock x:Name="ReferenceTextBlock" Margin="5,0,5,5" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
+                        <TextBlock Foreground="#FF2BFF00" Text="SNIBypassGUI" Margin="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+                        <TextBlock x:Name="ReferenceTextBlock" Margin="5,0,5,5" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="14">
 			                <Run Foreground="#FF00FFED" Text="服务状态："/>
 			                <Run x:Name="TaskbarIconServiceST"  Text="主服务和DNS服务未运行" Foreground="Red"/>
                         </TextBlock>
@@ -36,7 +36,7 @@
                     <ContextMenu.Background>
                         <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/MenuBkg.png"/>
                     </ContextMenu.Background>
-                    <MenuItem Foreground="White" x:Name="MenuItem_ShowMainWin" Header="显示主窗口" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ShowMainWin_Click" FontWeight="Bold">
+                    <MenuItem Foreground="White" x:Name="MenuItem_ShowMainWin" Header="显示主窗口" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ShowMainWin_Click">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Path Data="{StaticResource HomeGeometry}" Stretch="Uniform" Fill="#00a2ff" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -52,7 +52,7 @@
                             </Viewbox>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Foreground="White" x:Name="MenuItem_StartService" Header="启动服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StartService_Click" FontWeight="Bold">
+                    <MenuItem Foreground="White" x:Name="MenuItem_StartService" Header="启动服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StartService_Click">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Path Data="{StaticResource StartGeometry}" Stretch="Uniform" Fill="#FF2BFF00" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -68,7 +68,7 @@
                             </Viewbox>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Foreground="White" x:Name="MenuItem_StopService" Header="停止服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StopService_Click" FontWeight="Bold">
+                    <MenuItem Foreground="White" x:Name="MenuItem_StopService" Header="停止服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StopService_Click">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Path Data="{StaticResource StopGeometry}" Stretch="Uniform" Fill="Red" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -84,7 +84,7 @@
                             </Viewbox>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Foreground="White" x:Name="MenuItem_ExitTool" Header="退出工具" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ExitTool_Click" FontWeight="Bold">
+                    <MenuItem Foreground="White" x:Name="MenuItem_ExitTool" Header="退出工具" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ExitTool_Click">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Path Data="{StaticResource ExitGeometry}" Stretch="Uniform" Fill="#FFFF00C7" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -111,7 +111,7 @@
                         <GradientStop Color="#FF0057CC" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.BorderBrush>
-                <TextBlock Margin="5" x:Name="WindowTitle" TextWrapping="Wrap" Text="SNIBypassGUI" FontSize="21" Foreground="#FFEC3FFF" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold" TextAlignment="Center"/>
+                <TextBlock Margin="5" x:Name="WindowTitle" TextWrapping="Wrap" Text="SNIBypassGUI" FontSize="21" Foreground="#FFEC3FFF" FontFamily="{StaticResource 腾祥沁圆简-W2}" TextAlignment="Center"/>
             </Border>
         </hc:TransitioningContentControl>
         <Grid Grid.Row="1">
@@ -123,11 +123,11 @@
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <hc:TransitioningContentControl TransitionMode="Top2BottomWithFade" Grid.Column="0">
-                <RichTextBox ScrollViewer.VerticalScrollBarVisibility="Visible" Margin="20,10,10,20" Background="#70FFFFFF" BorderBrush="White" IsReadOnly="True" FontFamily="{StaticResource AaManYuShouXieTi}">
+                <RichTextBox ScrollViewer.VerticalScrollBarVisibility="Visible" Margin="20,10,10,20" Background="#70FFFFFF" BorderBrush="White" IsReadOnly="True" FontFamily="{StaticResource 腾祥沁圆简-W2}">
                     <FlowDocument>
                         <Paragraph TextAlignment="Center">
                             <Span FontSize="30" Foreground="#FF00AD8A">
-                                <Run Text="说 明" FontWeight="Bold" />
+                                <Run Text="说 明" />
                             </Span>
                             <LineBreak/>
                             <Span FontSize="18" Foreground="#FF1C65DC">
@@ -136,20 +136,23 @@
                             </Span>
                             <LineBreak/>
                             <Span FontSize="19" Foreground="#FFFF3434">
-                                <Run Text="请关闭所有杀毒软件，" />
+                                <Run Text="现在非常推荐使用 Serv00 自建节点！" />
                                 <LineBreak/>
-                                <Run Text="否则程序可能会出现闪退等异常情况！" FontSize="20"/>
+                                <Run Text="教程项目地址：" FontSize="20"/>
+                                <LineBreak/>
+                                <Run Cursor="Hand" PreviewMouseDown="LinkText_PreviewMouseDown" FontFamily="Microsoft Ya Hei UI" Foreground="#FF3C75FF" TextDecorations="Underline" Text="https://github.com/racpast/serv00-node"/>
                             </Span>
                             <LineBreak/>
-                            <Span FontSize="19" Foreground="#FFFF3434">
-                                <Run Text="请退出并停止使用 Steamcommunity 302 等类似软件，" />
+                            <LineBreak/>
+                            <Span FontSize="18" Foreground="OrangeRed">
+                                <Run Text="请关闭所有杀毒软件，且不要使用 Steamcommunity 302 等类似软件" />
                                 <LineBreak/>
-                                <Run Text="否则可能会出现无法访问网页等异常情况！" FontSize="20"/>
+                                <Run Text="否则程序可能会出现无法访问网页或闪退等异常情况！" FontSize="20"/>
                             </Span>
                         </Paragraph>
                         <Paragraph TextAlignment="Left">
                             <Span>
-                                <Run Text="➲ DNS（Domain Name System）是什么？" FontSize="24" Foreground="#FF00D88E" FontWeight="Bold"/>
+                                <Run Text="➲ DNS（Domain Name System）是什么？" FontSize="24" Foreground="#FF00D88E"/>
                                 <LineBreak/>
                                 <Run Text="     DNS可以理解为互联网中的“电话簿”。它的作用是将我们常用的域名（例如：www.example.com）转换成计算机可以理解的IP地址（例如：192.0.2.1），因为计算机是通过IP地址来进行通信的。" FontSize="18">
                                     <Run.Foreground>
@@ -203,7 +206,7 @@
                                 </Run>
                                 <LineBreak/>
                                 <LineBreak/>
-                                <Run Text="➲ SNI（Server Name Indication）是什么？" FontSize="24" Foreground="#FF00BCFB" FontWeight="Bold"/>
+                                <Run Text="➲ SNI（Server Name Indication）是什么？" FontSize="24" Foreground="#FF00BCFB"/>
                                 <LineBreak/>
                                 <Run Text="     SNI是TLS/SSL协议的一部分，用于在建立加密连接之前，客户端向服务器说明自己想连接哪个具体网站。简而言之，SNI就像是你在酒店登记时告诉前台你要去哪个房间，这样前台才能为你提供正确的房间钥匙。" FontSize="18">
                                     <Run.Foreground>
@@ -223,7 +226,7 @@
                                 </Run>
                                 <LineBreak/>
                                 <LineBreak/>
-                                <Run Text="➲ GFW（Great Firewall，简称“防火长城”）是什么？" FontSize="24" Foreground="#FF8738FF" FontWeight="Bold"/>
+                                <Run Text="➲ GFW（Great Firewall，简称“防火长城”）是什么？" FontSize="24" Foreground="#FF8738FF"/>
                                 <LineBreak/>
                                 <Run Text="     GFW是中国的一个网络审查和过滤系统，旨在限制和监控从中国境内访问全球互联网的流量。它的主要功能是阻止或限制中国用户访问某些外国网站和服务，同时监控、审查互联网上的信息流动。" FontSize="18">
                                     <Run.Foreground>
@@ -260,7 +263,7 @@
                                 </Run>
                                 <LineBreak/>
                                 <LineBreak/>
-                                <Run Text="➲ DNS劫持是什么？" FontSize="24" Foreground="#FF00D88E" FontWeight="Bold"/>
+                                <Run Text="➲ DNS劫持是什么？" FontSize="24" Foreground="#FF00D88E"/>
                                 <LineBreak/>
                                 <Run Text="     DNS劫持就像是你给别人发了一条短信，里面有一个地址（比如：“去www.example.com”）。但是，在你发出去之前，短信被某人篡改了，发给了一个假地址。结果你到达的地方并不是你想去的地方，而是一个假的或被封锁的地方。" FontSize="18">
                                     <Run.Foreground>
@@ -297,7 +300,7 @@
                                 </Run>
                                 <LineBreak/>
                                 <LineBreak/>
-                                <Run Text="➲ SNI阻断是什么？" FontSize="24" Foreground="#FF7E38FF" FontWeight="Bold"/>
+                                <Run Text="➲ SNI阻断是什么？" FontSize="24" Foreground="#FF7E38FF"/>
                                 <LineBreak/>
                                 <Run Text="     当用户访问一个使用HTTPS的网站，客户端在发起SSL/TLS握手时，会将目标网站的域名发送给服务器。中间的网络设备可以读取这些SNI信息。根据SNI信息，网络服务提供商可能选择阻止与特定域名的连接请求。" FontSize="18">
                                     <Run.Foreground>
@@ -317,7 +320,7 @@
                                 </Run>
                                 <LineBreak/>
                                 <LineBreak/>
-                                <Run Text="➲ SNI明文传输，是否安全？" FontSize="24" Foreground="#FFF74D73" FontWeight="Bold"/>
+                                <Run Text="➲ SNI明文传输，是否安全？" FontSize="24" Foreground="#FFF74D73"/>
                                 <LineBreak/>
                                 <Run Text="     由于SNI信息并未加密，审查者可以识别出用户访问的网站域名。现已被部分国家用于互联网审查，如GFW和韩国的KCSC。" FontSize="18">
                                     <Run.Foreground>
@@ -354,7 +357,7 @@
                                 </Run>
                                 <LineBreak/>
                                 <LineBreak/>
-                                <Run Text="➲ 本软件如何绕过GFW对部分站点的封锁？" FontSize="24" Foreground="#FF38C4FF" FontWeight="Bold"/>
+                                <Run Text="➲ 本软件如何绕过GFW对部分站点的封锁？" FontSize="24" Foreground="#FF38C4FF"/>
                                 <LineBreak/>
                                 <Run Text="     通过本地DNS服务或系统hosts文件将被封锁的域名及子域名指向127.0.0.1，有关请求会先到达Nginx代理服务器。Nginx代理服务器会与目标服务器建立加密连接，并将实际的SNI信息传递给目标服务器。" FontSize="18">
                                     <Run.Foreground>
@@ -408,7 +411,7 @@
                                 </Run>
                                 <LineBreak/>
                                 <LineBreak/>
-                                <Run Text="➲ CDN（Content Delivery Network）是什么？" FontSize="24" Foreground="#FFFBCF00" FontWeight="Bold"/>
+                                <Run Text="➲ CDN（Content Delivery Network）是什么？" FontSize="24" Foreground="#FFFBCF00"/>
                                 <LineBreak/>
                                 <Run Text="     CDN是一种通过将网站内容缓存到多个分布在不同地区的服务器上，以提高用户访问速度的技术。简单来说，CDN的作用就是让网站的数据更快、更稳定地传递到用户。" FontSize="18">
                                     <Run.Foreground>
@@ -445,7 +448,7 @@
                                 </Run>
                                 <LineBreak/>
                                 <LineBreak/>
-                                <Run Text="➲ 为什么无法支持部分站点？" FontSize="24" Foreground="#FFFFCA38" FontWeight="Bold"/>
+                                <Run Text="➲ 为什么无法支持部分站点？" FontSize="24" Foreground="#FFFFCA38"/>
                                 <LineBreak/>
                                 <Run Text="     一些较大型的网站为了降低带宽成本和提升全球范围的访问速度与安全性，采用了像Amazon CloudFront、Cloudflare这样的大型CDN业务。" FontSize="18">
                                     <Run.Foreground>
@@ -518,11 +521,11 @@
                         </Paragraph>
                         <Paragraph TextAlignment="Left" FontSize="18">
                             <Span Foreground="#FF31EF83">
-                                <Run Text="     本程序的前身Pixiv-Nginx-GUI，旨在为没有相关基础但需要使用该项目的人士提供一个更易于使用的方案。" FontWeight="Bold"/>
+                                <Run Text="     本程序的前身Pixiv-Nginx-GUI，旨在为没有相关基础但需要使用该项目的人士提供一个更易于使用的方案。"/>
                             </Span>
                             <LineBreak/>
                             <Span Foreground="#FF3C75FF">
-                                <Run Text="     为了更好地适应程序的发展与版本的更迭，迁移到SNIBypassGUI继续开发，以提供更好的使用体验与更广的适用范围。" FontWeight="Bold"/>
+                                <Run Text="     为了更好地适应程序的发展与版本的更迭，迁移到SNIBypassGUI继续开发，以提供更好的使用体验与更广的适用范围。"/>
                             </Span>
                             <LineBreak/>
                             <Span Foreground="#FFC74DE4">
@@ -534,29 +537,29 @@
                 </RichTextBox>
             </hc:TransitioningContentControl>
             <hc:TransitioningContentControl TransitionMode="Top2BottomWithFade" Grid.Column="1">
-                <TabControl x:Name="MainTabControl" Margin="10,10,20,20" Style="{StaticResource TabControlInLine}" FontFamily="{StaticResource AaManYuShouXieTi}" Background="Transparent" BorderBrush="White" FontSize="14">
+                <TabControl x:Name="MainTabControl" Margin="10,10,20,20" Style="{StaticResource TabControlInLine}" FontFamily="{StaticResource 腾祥沁圆简-W2}" Background="Transparent" BorderBrush="White" FontSize="14">
                     <TabItem Header="主页" IsSelected="True" Background="#70FFFFFF">
                         <ScrollViewer>
                             <StackPanel Background="#70FFFFFF">
-                                <TextBlock Margin="20,5,20,5" TextWrapping="Wrap" Text="欢迎使用 &#x000A;SNIBypassGUI！" FontSize="24" Foreground="#FF2100C3" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
-                                <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您是第一次使用 SNIBypassGUI ，请单击下方按钮安装所需证书，所有对话框均选择 是(Y)。" FontSize="19" Foreground="#FF8738FF" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
-                                <Button x:Name="InstallCertBtn" hc:IconElement.Geometry="{StaticResource CertificateGeometry}" Click="InstallCertBtn_Click" Height="30" Margin="10,0,10,0" HorizontalAlignment="Stretch" Content="安装或重装证书"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                                <TextBlock x:Name="ServiceStatusText" Margin="20,5,20,0" TextWrapping="Wrap" Text="当前服务状态：&#x000A;主服务与DNS服务未运行" FontSize="21" Foreground="Red" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
+                                <TextBlock Margin="20,5,20,5" TextWrapping="Wrap" Text="欢迎使用 &#x000A;SNIBypassGUI！" FontSize="24" Foreground="#FF2100C3" FontFamily="{StaticResource 腾祥沁圆简-W2}"/>
+                                <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您是第一次使用 SNIBypassGUI ，请单击下方按钮安装所需证书，所有对话框均选择 是(Y)。" FontSize="18" Foreground="#FF8738FF" FontFamily="{StaticResource 腾祥沁圆简-W2}"/>
+                                <Button x:Name="InstallCertBtn" hc:IconElement.Geometry="{StaticResource CertificateGeometry}" Click="InstallCertBtn_Click" Height="30" Margin="10,0,10,0" HorizontalAlignment="Stretch" Content="安装或重装证书"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                <TextBlock x:Name="ServiceStatusText" Margin="20,5,20,0" TextWrapping="Wrap" Text="当前服务状态：&#x000A;主服务与DNS服务未运行" FontSize="21" Foreground="Red" FontFamily="{StaticResource 腾祥沁圆简-W2}"/>
                                 <Grid Margin="10,0,10,5">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="auto"/>
                                         <ColumnDefinition/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="选择正在使用的网络适配器：" FontSize="18" Foreground="#FF8738FF" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
-                                    <Button HorizontalAlignment="Right" x:Name="HelpBtn_HowToFindActiveAdapter" Click="HelpBtn_HowToFindActiveAdapter_Click" Grid.Column="1" BorderBrush="#FF212121" Background="#70FFFFFF" hc:BorderElement.CornerRadius="15" Content="如何选择？" hc:IconElement.Geometry="{StaticResource HelpGeometry}" FontWeight="Bold" FontSize="13"/>
+                                    <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="选择正在使用的网络适配器：" FontSize="18" Foreground="#FF8738FF" FontFamily="{StaticResource 腾祥沁圆简-W2}"/>
+                                    <Button HorizontalAlignment="Right" x:Name="HelpBtn_HowToFindActiveAdapter" Click="HelpBtn_HowToFindActiveAdapter_Click" Grid.Column="1" BorderBrush="#FF212121" Background="#70FFFFFF" hc:BorderElement.CornerRadius="15" Content="如何选择？" hc:IconElement.Geometry="{StaticResource HelpGeometry}" FontSize="13"/>
                                 </Grid>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition/>
                                         <ColumnDefinition Width="auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="AdaptersCombo" Margin="10,0,10,10" SelectionChanged="AdaptersCombo_SelectionChanged" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="#70FFFFFF" FontWeight="Bold" FontSize="16"/>
-                                    <Button x:Name="GetActiveAdapterBtn" hc:IconElement.Geometry="{StaticResource FindGeometry}" Grid.Column="1" Click="GetActiveAdapterBtn_Click" Height="30" Margin="0,0,10,10" HorizontalAlignment="Stretch" Content="自动获取"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center" Width="auto"/>
+                                    <ComboBox x:Name="AdaptersCombo" Margin="10,0,10,10" SelectionChanged="AdaptersCombo_SelectionChanged" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="#70FFFFFF" FontSize="16"/>
+                                    <Button x:Name="GetActiveAdapterBtn" hc:IconElement.Geometry="{StaticResource FindGeometry}" Grid.Column="1" Click="GetActiveAdapterBtn_Click" Height="30" Margin="0,0,10,10" HorizontalAlignment="Stretch" Content="自动获取"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center" Width="auto"/>
                                 </Grid>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -567,20 +570,20 @@
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Button x:Name="RefreshBtn" Height="30" hc:IconElement.Geometry="{StaticResource RefreshGeometry}" HorizontalAlignment="Stretch" Grid.Column="0" Click="RefreshBtn_Click" Margin="10,0,5,10" Content="刷新"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF00C7B9" BorderBrush="#FF00C7B9"/>
-                                    <Button x:Name="StartBtn" Height="30" hc:IconElement.Geometry="{StaticResource StartGeometry}" HorizontalAlignment="Stretch" Grid.Column="1" Click="StartBtn_Click" Margin="5,0,5,10" Content="启动"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF00ED66" BorderBrush="#FF00ED66"/>
-                                    <Button x:Name="StopBtn" Height="30" hc:IconElement.Geometry="{StaticResource StopGeometry}"  HorizontalAlignment="Stretch" Grid.Column="2" Click="StopBtn_Click" Margin="5,0,10,10" Content="停止"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFFF2424" BorderBrush="#FFFF2424"/>
+                                    <Button x:Name="RefreshBtn" Height="30" hc:IconElement.Geometry="{StaticResource RefreshGeometry}" HorizontalAlignment="Stretch" Grid.Column="0" Click="RefreshBtn_Click" Margin="10,0,5,10" Content="刷新"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF00C7B9" BorderBrush="#FF00C7B9"/>
+                                    <Button x:Name="StartBtn" Height="30" hc:IconElement.Geometry="{StaticResource StartGeometry}" HorizontalAlignment="Stretch" Grid.Column="1" Click="StartBtn_Click" Margin="5,0,5,10" Content="启动"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF00ED66" BorderBrush="#FF00ED66"/>
+                                    <Button x:Name="StopBtn" Height="30" hc:IconElement.Geometry="{StaticResource StopGeometry}"  HorizontalAlignment="Stretch" Grid.Column="2" Click="StopBtn_Click" Margin="5,0,10,10" Content="停止"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FFFF2424" BorderBrush="#FFFF2424"/>
                                 </Grid>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition/>
                                         <ColumnDefinition/>
                                     </Grid.ColumnDefinitions>
-                                    <Button x:Name="SetStartBtn" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Click="SetStartBtn_Click" Height="30"  Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="开机自动启动"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
-                                    <Button x:Name="StopStartBtn" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Height="30" Grid.Column="1" Click="StopStartBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="停止自动启动"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="SetStartBtn" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Click="SetStartBtn_Click" Height="30"  Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="开机自动启动"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="StopStartBtn" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Height="30" Grid.Column="1" Click="StopStartBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="停止自动启动"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
                                 </Grid>
-                                <Button x:Name="TaskbarIconRunBtn" hc:IconElement.Geometry="{StaticResource WindowsGeometry}" Click="TaskbarIconRunBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="最小化到托盘图标运行"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                                <Button x:Name="ExitBtn" hc:IconElement.Geometry="{StaticResource ExitGeometry}" Click="ExitBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="退出工具"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
+                                <Button x:Name="TaskbarIconRunBtn" hc:IconElement.Geometry="{StaticResource WindowsGeometry}" Click="TaskbarIconRunBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="最小化到托盘图标运行"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                <Button x:Name="ExitBtn" hc:IconElement.Geometry="{StaticResource ExitGeometry}" Click="ExitBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="退出工具"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
@@ -596,10 +599,10 @@
                                         <RowDefinition/>
                                         <RowDefinition/>
                                     </Grid.RowDefinitions>
-                                    <Button x:Name="ApplyBtn" hc:IconElement.Geometry="{StaticResource ApplyGeometry}" IsEnabled="False" Click="ApplyBtn_Click" Height="30" Margin="10,10,5,10" HorizontalAlignment="Stretch" Content="应用更改" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF00ED66" BorderBrush="#FF00ED66" VerticalContentAlignment="Center"/>
-                                    <Button x:Name="UnchangeBtn" hc:IconElement.Geometry="{StaticResource DiscardGeometry}" IsEnabled="False" Grid.Column="1" Click="UnchangeBtn_Click" Height="30" Margin="5,10,10,10" HorizontalAlignment="Stretch" Content="取消更改" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
-                                    <Button x:Name="AllOnBtn" hc:IconElement.Geometry="{StaticResource AddGeometry}" Grid.Row="1" Click="AllOnBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="全部开启" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
-                                    <Button x:Name="AllOffBtn" hc:IconElement.Geometry="{StaticResource RemoveGeometry}" Grid.Row="1" Grid.Column="1" Click="AllOffBtn_Click" Height="30" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="全部关闭" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="ApplyBtn" hc:IconElement.Geometry="{StaticResource ApplyGeometry}" IsEnabled="False" Click="ApplyBtn_Click" Height="30" Margin="10,10,5,10" HorizontalAlignment="Stretch" Content="应用更改" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF00ED66" BorderBrush="#FF00ED66" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="UnchangeBtn" hc:IconElement.Geometry="{StaticResource DiscardGeometry}" IsEnabled="False" Grid.Column="1" Click="UnchangeBtn_Click" Height="30" Margin="5,10,10,10" HorizontalAlignment="Stretch" Content="取消更改" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="AllOnBtn" hc:IconElement.Geometry="{StaticResource AddGeometry}" Grid.Row="1" Click="AllOnBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="全部开启" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="AllOffBtn" hc:IconElement.Geometry="{StaticResource RemoveGeometry}" Grid.Row="1" Grid.Column="1" Click="AllOffBtn_Click" Height="30" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="全部关闭" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
                                 </Grid>
                                 <Border Margin="10,0,10,10" BorderBrush="#FF00C7B9" BorderThickness="1,1,1,1" CornerRadius="5,5,5,5">
                                     <Grid Background="#70969696" x:Name="Switchlist">
@@ -616,7 +619,7 @@
                                     </Grid>
                                 </Border>
                                 <TextBlock Margin="10,0,10,5" TextWrapping="Wrap" Text="* 点击上面的链接可以直接打开哦，没发现吧，嘻嘻" FontSize="14" Foreground="#FF6B6B6B"  FontStyle="Italic" FontFamily="Microsoft YaHei UI"/>
-                                <TextBlock Margin="10,0,10,10" TextWrapping="Wrap" Text="目前支持的站点部分还有问题，正在火速适配，请见谅～QAQ" FontSize="22" Foreground="#FF7600DC" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold"/>
+                                <TextBlock Margin="10,0,10,10" TextWrapping="Wrap" Text="目前支持的站点部分还有问题，正在火速适配，请见谅～QAQ" FontSize="22" Foreground="#FF7600DC" FontFamily="{StaticResource 腾祥沁圆简-W2}"/>
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
@@ -629,11 +632,11 @@
                                             <hc:AnimationPath Data="{DynamicResource GithubGeometry}" Duration="00:00:05" Stretch="Uniform" StrokeThickness="40" Stroke="Black" RepeatBehavior="Forever"/>
                                         </Viewbox>
                                         <TextBlock PreviewMouseDown="LinkText_PreviewMouseDown"  Margin="10,5,10,0" TextWrapping="Wrap" Text="https://github.com/racpast/SNIBypassGUI" FontSize="15" Foreground="#FF04ABD6" TextDecorations="Underline" FontFamily="Microsoft Tai Le" HorizontalAlignment="Center" Cursor="Hand"/>
-                                        <TextBlock Margin="10,5,10,10" TextWrapping="Wrap" Text="如果您觉得这个项目有用，请去Github上面为我点一颗Star～" FontSize="20" Foreground="#FF04ABD6" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <TextBlock Margin="10,5,10,10" TextWrapping="Wrap" Text="如果您觉得这个项目有用，请去Github上面为我点一颗Star～" FontSize="20" Foreground="#FF04ABD6" FontFamily="{StaticResource 腾祥沁圆简-W2}" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
-                                <Button x:Name="CheckUpdateBtn" hc:IconElement.Geometry="{StaticResource CheckUpdateGeometry}" Click="CheckUpdateBtn_Click" Height="30" Margin="10,10,10,10" HorizontalAlignment="Stretch" Content="检查是否有新版本可用"  Background="#70B560FF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                                <Button x:Name="CleanBtn" hc:IconElement.Geometry="{StaticResource CleanGeometry}" Click="CleanBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="清理服务运行日志及缓存 (0MB)"  Background="#70B560FF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                <Button x:Name="CheckUpdateBtn" hc:IconElement.Geometry="{StaticResource CheckUpdateGeometry}" Click="CheckUpdateBtn_Click" Height="30" Margin="10,10,10,10" HorizontalAlignment="Stretch" Content="检查是否有新版本可用"  Background="#70B560FF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                <Button x:Name="CleanBtn" hc:IconElement.Geometry="{StaticResource CleanGeometry}" Click="CleanBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="清理服务运行日志及缓存 (0MB)"  Background="#70B560FF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition/>
@@ -642,10 +645,10 @@
                                     <Grid.RowDefinitions>
                                         <RowDefinition/>
                                     </Grid.RowDefinitions>
-                                    <Button x:Name="CustomBkgBtn" hc:IconElement.Geometry="{StaticResource CustomGeometry}" Click="CustomBkgBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="自定义背景"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF21C500" BorderBrush="#FF21C500" VerticalContentAlignment="Center"/>
-                                    <Button x:Name="DefaultBkgBtn" hc:IconElement.Geometry="{StaticResource DefaultGeometry}" Grid.Column="1" Click="DefaultBkgBtn_Click" Height="30" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="恢复默认背景"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="CustomBkgBtn" hc:IconElement.Geometry="{StaticResource CustomGeometry}" Click="CustomBkgBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="自定义背景"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF21C500" BorderBrush="#FF21C500" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="DefaultBkgBtn" hc:IconElement.Geometry="{StaticResource DefaultGeometry}" Grid.Column="1" Click="DefaultBkgBtn_Click" Height="30" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="恢复默认背景"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
                                 </Grid>
-                                <Button x:Name="PixivIPPreferenceBtn" hc:IconElement.Geometry="{StaticResource ExperimentGeometry}" Click="PixivIPPreferenceBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="Pixiv IP优选：关"  Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                <Button x:Name="PixivIPPreferenceBtn" hc:IconElement.Geometry="{StaticResource ExperimentGeometry}" Click="PixivIPPreferenceBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="Pixiv IP优选：关"  Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition/>
@@ -654,19 +657,8 @@
                                     <Grid.RowDefinitions>
                                         <RowDefinition/>
                                     </Grid.RowDefinitions>
-                                    <Button x:Name="DebugModeBtn" hc:IconElement.Geometry="{StaticResource DebugGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" Click="DebugModeBtn_Click" Height="50" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="调试模式：&#x000A;关" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
-                                    <Button x:Name="GUIDebugBtn" hc:IconElement.Geometry="{StaticResource DebugGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" Grid.Column="1" IsEnabled="False" Click="GUIDebugBtn_Click" Height="50" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="GUI调试：&#x000A;关" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
-                                </Grid>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition/>
-                                    </Grid.RowDefinitions>
-                                    <Button x:Name="SwitchDomainNameResolutionMethodBtn" hc:IconElement.Geometry="{StaticResource DomainNameGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" IsEnabled="False" Click="SwitchDomainNameResolutionMethodBtn_Click" Height="50" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="域名解析：&#x000A;DNS服务" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
-                                    <Button x:Name="AcrylicDebugBtn" hc:IconElement.Geometry="{StaticResource DebugGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" Grid.Column="1" IsEnabled="False" Click="AcrylicDebugBtn_Click" Height="50" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="DNS服务调试：&#x000A;关" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="DebugModeBtn" hc:IconElement.Geometry="{StaticResource DebugGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" Click="DebugModeBtn_Click" Height="50" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="调试模式：&#x000A;关" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="GUIDebugBtn" hc:IconElement.Geometry="{StaticResource DebugGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" Grid.Column="1" IsEnabled="False" Click="GUIDebugBtn_Click" Height="50" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="GUI调试：&#x000A;关" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
                                 </Grid>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -676,8 +668,19 @@
                                     <Grid.RowDefinitions>
                                         <RowDefinition/>
                                     </Grid.RowDefinitions>
-                                    <Button x:Name="EditHostsBtn" hc:IconElement.Geometry="{StaticResource EditGeometry}" Click="EditHostsBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="编辑系统hosts" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                                    <Button x:Name="BackHostsBtn" hc:IconElement.Geometry="{StaticResource RestoreGeometry}" Grid.Column="1" Click="BackHostsBtn_Click" Height="30" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="还原系统hosts" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="SwitchDomainNameResolutionMethodBtn" hc:IconElement.Geometry="{StaticResource DomainNameGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" IsEnabled="False" Click="SwitchDomainNameResolutionMethodBtn_Click" Height="50" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="域名解析：&#x000A;DNS服务" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="AcrylicDebugBtn" hc:IconElement.Geometry="{StaticResource DebugGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" Grid.Column="1" IsEnabled="False" Click="AcrylicDebugBtn_Click" Height="50" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="DNS服务调试：&#x000A;关" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <Button x:Name="EditHostsBtn" hc:IconElement.Geometry="{StaticResource EditGeometry}" Click="EditHostsBtn_Click" Height="30" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="编辑系统Hosts" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="RestoreHostsBtn" hc:IconElement.Geometry="{StaticResource RestoreGeometry}" Grid.Column="1" Click="RestoreHostsBtn_Click" Height="30" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="还原系统Hosts" HorizontalContentAlignment="Center" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
                                 </Grid>
                             </StackPanel>
                         </ScrollViewer>

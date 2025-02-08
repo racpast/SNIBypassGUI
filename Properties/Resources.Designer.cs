@@ -63,16 +63,6 @@ namespace SNIBypassGUI.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static byte[] AaManYuShouXieTi_JianFan__2 {
-            get {
-                object obj = ResourceManager.GetObject("AaManYuShouXieTi_JianFan__2", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
         internal static byte[] AcrylicConfiguration {
             get {
                 object obj = ResourceManager.GetObject("AcrylicConfiguration", resourceCulture);
@@ -103,16 +93,6 @@ namespace SNIBypassGUI.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static byte[] bypass {
-            get {
-                object obj = ResourceManager.GetObject("bypass", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
         internal static byte[] ca {
             get {
                 object obj = ResourceManager.GetObject("ca", resourceCulture);
@@ -123,39 +103,9 @@ namespace SNIBypassGUI.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static byte[] cert {
-            get {
-                object obj = ResourceManager.GetObject("cert", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
         internal static byte[] nginx {
             get {
                 object obj = ResourceManager.GetObject("nginx", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
-        internal static byte[] shared_proxy_params_1 {
-            get {
-                object obj = ResourceManager.GetObject("shared_proxy_params_1", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
-        internal static byte[] shared_proxy_params_2 {
-            get {
-                object obj = ResourceManager.GetObject("shared_proxy_params_2", resourceCulture);
                 return ((byte[])(obj));
             }
         }

@@ -24,7 +24,7 @@
                     <GradientStop Color="#FF0057CC" Offset="1"/>
                 </LinearGradientBrush>
             </Border.BorderBrush>
-            <TextBlock Margin="5" TextWrapping="Wrap" Text="裁剪图像" FontSize="21" Foreground="#FF00A7FF" FontFamily="{StaticResource AaManYuShouXieTi}" FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Margin="5" TextWrapping="Wrap" Text="裁剪图像" FontSize="21" Foreground="#FF00A7FF" FontFamily="{StaticResource 腾祥沁圆简-W2}" TextAlignment="Center"/>
         </Border>
         <Border Grid.Row="1" Margin="20,10,20,5" CornerRadius="5,5,5,5" Background="#70000000" BorderBrush="White" BorderThickness="1.5,1.5,1.5,1.5">
             <imagecropper:ImageCropper x:Name="ImageCropperControl" Padding="20" CropShape="Rectangular" CropperEnable="True" DragImgEnable="True" ThumbMode="Draw"/>
@@ -44,10 +44,10 @@
                     </LinearGradientBrush>
                 </hc:Badge.Background>
             </hc:Badge>
-            <Button x:Name="HelpBtn" Grid.Column="0" Click="HelpBtn_Click" Height="30" Margin="20,10,5,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource HelpGeometry}" Content="操作指引" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" VerticalContentAlignment="Center" Foreground="#FFFF38EE" BorderBrush="#FFFF38EE"/>
-            <Button x:Name="ResetBtn" Grid.Column="1" Click="ResetBtn_Click" Height="30" Margin="5,10,5,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource RefreshGeometry}" Content="重置" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
-            <Button x:Name="CancelBtn" Grid.Column="2" Click="CancelBtn_Click" Height="30" Margin="5,10,5,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource DiscardGeometry}" Content="取消" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" VerticalContentAlignment="Center" Foreground="#FFFF2424" BorderBrush="#FFFF2424"/>
-            <Button x:Name="OKBtn" Grid.Column="3" Click="OKBtn_Click" Height="30" Margin="5,10,20,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource CropGeometry}" Content="完成" Background="#70FFFFFF" FontWeight="Bold" FontSize="17" FontFamily="{StaticResource AaManYuShouXieTi}" VerticalContentAlignment="Center" Foreground="#FF00ED66" BorderBrush="#FF00ED66"/>
+            <Button x:Name="HelpBtn" Grid.Column="0" Click="HelpBtn_Click" Height="30" Margin="20,10,5,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource HelpGeometry}" Content="操作指引" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" VerticalContentAlignment="Center" Foreground="#FFFF38EE" BorderBrush="#FFFF38EE"/>
+            <Button x:Name="ResetBtn" Grid.Column="1" Click="ResetBtn_Click" Height="30" Margin="5,10,5,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource RefreshGeometry}" Content="重置" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
+            <Button x:Name="CancelBtn" Grid.Column="2" Click="CancelBtn_Click" Height="30" Margin="5,10,5,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource DiscardGeometry}" Content="取消" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" VerticalContentAlignment="Center" Foreground="#FFFF2424" BorderBrush="#FFFF2424"/>
+            <Button x:Name="OKBtn" Grid.Column="3" Click="OKBtn_Click" Height="30" Margin="5,10,20,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource CropGeometry}" Content="完成" Background="#70FFFFFF" FontSize="17" FontFamily="{StaticResource 腾祥沁圆简-W2}" VerticalContentAlignment="Center" Foreground="#FF00ED66" BorderBrush="#FF00ED66"/>
         </Grid>
     </Grid>
 </Window>
