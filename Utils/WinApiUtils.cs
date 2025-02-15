@@ -5,6 +5,9 @@ namespace SNIBypassGUI.Utils
 {
     public static class WinApiUtils
     {
+        [DllImport("dnsapi.dll", EntryPoint = "DnsFlushResolverCache")]
+        public static extern UInt32 DnsFlushResolverCache();
+
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr childAfter, string className, string windowTitle);
 

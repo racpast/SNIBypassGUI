@@ -44,17 +44,13 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         public static List<NetworkAdapter> GetNetworkAdapters(string condition)
         {
-            Dictionary<uint, string[]> IndexToIPv6DNSServer = [];
+            Dictionary<string, string[]> GUIDToIPv6DNSServer = [];
             foreach (var netInterface in NetworkInterface.GetAllNetworkInterfaces())
             {
-                var properties = netInterface.GetIPProperties();
-                if (properties.GetIPv4Properties() != null)
-                {
-                    var ipv6Dns = properties.DnsAddresses
-                        .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6)
-                        .Select(ip => ip.ToString());
-                    IndexToIPv6DNSServer.Add((uint)netInterface.GetIPProperties().GetIPv4Properties().Index, ipv6Dns.ToArray());
-                }
+                var ipv6Dns = netInterface.GetIPProperties().DnsAddresses
+                    .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6)
+                    .Select(ip => ip.ToString());
+                GUIDToIPv6DNSServer.Add(netInterface.Id, ipv6Dns.ToArray());
             }
 
             List<NetworkAdapter> adapters = [];
@@ -133,7 +129,7 @@ namespace SNIBypassGUI.Utils
                         // 处理DNS服务器
                         string[] dnsServers = ipConfig["DNSServerSearchOrder"] as string[] ?? [];
                         ipv4DnsServer.AddRange(dnsServers.Where(dns => !dns.Contains(':')));
-                        ipv6DnsServer = IndexToIPv6DNSServer.ContainsKey(interfaceIndex) ? IndexToIPv6DNSServer[interfaceIndex] : [];
+                        ipv6DnsServer = GUIDToIPv6DNSServer.ContainsKey(guid) ? GUIDToIPv6DNSServer[guid] : [];
                     }
 
                     adapters.Add(new NetworkAdapter(

@@ -4,17 +4,14 @@ using System.Net;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using static SNIBypassGUI.Utils.WinApiUtils;
 using static SNIBypassGUI.Utils.LogManager;
 
 namespace SNIBypassGUI.Utils
 {
     public class NetworkUtils
     {
-        [DllImport("dnsapi.dll", EntryPoint = "DnsFlushResolverCache")]
-        static extern UInt32 DnsFlushResolverCache();
-
         /// <summary>
         /// 刷新 DNS 缓存
         /// </summary>
@@ -132,8 +129,6 @@ namespace SNIBypassGUI.Utils
             }
         }
 
-        private static readonly HttpClient _httpClient = new();
-
         /// <summary>
         /// 异步发送 GET 请求
         /// </summary>
@@ -142,6 +137,7 @@ namespace SNIBypassGUI.Utils
         /// <param name="userAgent">用户代理</param>
         public static async Task<string> GetAsync(string url, double timeOut = 10, string userAgent = "Mozilla/5.0")
         {
+            HttpClient _httpClient = new();
             try
             {
                 _httpClient.Timeout = TimeSpan.FromSeconds(timeOut);
@@ -155,6 +151,10 @@ namespace SNIBypassGUI.Utils
             {
                 WriteLog($"发送请求时遇到异常。", LogLevel.Error, ex);
                 throw;
+            }
+            finally
+            {
+                _httpClient.Dispose();
             }
         }
     }
