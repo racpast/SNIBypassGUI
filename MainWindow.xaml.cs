@@ -684,7 +684,7 @@ namespace SNIBypassGUI
                 if (IsPortInUse(80))
                 {
                     WriteLog($"检测到系统 80 端口被占用。", LogLevel.Warning);
-                    if (MessageBox.Show($"检测到系统 80 端口被占用，主服务可能无法正常运行。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您的主服务运行后自动停止或遇到80端口被占用的提示时,useShellExecute: true);
+                    if (MessageBox.Show($"检测到系统 80 端口被占用，主服务可能无法正常运行，点击“否”尝试继续运行。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您的主服务运行后自动停止或遇到80端口被占用的提示时,useShellExecute: true);
                 }
                 StartProcess(nginxPath,workingDirectory: NginxDirectory);
             }

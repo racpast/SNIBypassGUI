@@ -155,10 +155,6 @@
             "#\tEtsy Start",
             "127.0.0.1       etsy.com",
             "127.0.0.1       *.etsy.com",
-            "127.0.0.1       pinimg.com",
-            "127.0.0.1       pinterest.com",
-            "127.0.0.1       *.pinimg.com",
-            "127.0.0.1       *.pinterest.com",
             "#\tEtsy End"
         ];
 
@@ -204,8 +200,14 @@
             "#\tTelegram Start",
             "127.0.0.1       telegram.org",
             "127.0.0.1       *.telegram.org",
+            "127.0.0.1       web.telegram.org",
+            "127.0.0.1       *.web.telegram.org",
             "127.0.0.1       t.me",
             "127.0.0.1       *.t.me",
+            "127.0.0.1       tg.dev",
+            "127.0.0.1       *.tg.dev",
+            "127.0.0.1       telesco.pe",
+            "127.0.0.1       *.telesco.pe",
             "127.0.0.1       telegram.me",
             "127.0.0.1       *.telegram.me",
             "127.0.0.1       cdn-telegram.org",
@@ -328,6 +330,228 @@
             "127.0.0.1       greasyfork.org",
             "127.0.0.1       *.greasyfork.org",
             "#\tGreasy Fork End"
-         ];
+        ];
+
+        public static string[] FacebookSection =
+        [
+            "#\tFacebook Start",
+            "127.0.0.1       facebook.com",
+            "127.0.0.1       *.facebook.com",
+            "127.0.0.1       fbcdn.net",
+            "127.0.0.1       *.fbcdn.net",
+            "#\tFacebook End"
+        ];
+
+        public static string[] InstagramSection =
+        [
+            "#\tInstagram Start",
+            "127.0.0.1       instagram.com",
+            "127.0.0.1       *.instagram.com",
+            "127.0.0.1       instagr.am",
+            "127.0.0.1       *.instagr.am",
+            "127.0.0.1       ig.me",
+            "127.0.0.1       *.ig.me",
+            "127.0.0.1       static.cdninstagram.com",
+            "127.0.0.1       *.cdninstagram.com",
+            "127.0.0.1       *.*.fna.fbcdn.net",
+            "#\tInstagram End"
+        ];
+
+        public static string[] XSection =
+        [
+            "#\tX Start",
+            "127.0.0.1       twitter.com",
+            "127.0.0.1       *.twitter.com",
+            "127.0.0.1       x.com",
+            "127.0.0.1       *.x.com",
+            "127.0.0.1       t.co",
+            "127.0.0.1       *.t.co",
+            "127.0.0.1       twimg.com",
+            "127.0.0.1       *.twimg.com",
+            "#\tX End"
+        ];
+
+        public static string[] WhatsAppSection =
+        [
+            "#\tWhatsApp Start",
+            "127.0.0.1       whatsapp.com",
+            "127.0.0.1       *.whatsapp.com",
+            "127.0.0.1       whatsapp.net",
+            "127.0.0.1       *.whatsapp.net",
+            "#\tWhatsApp End"
+        ];
+
+        public static string[] PrismicImagesSection =
+        [
+            "#\tPrismic Images Start",
+            "127.0.0.1       images.prismic.io",
+            "#\tPrismic Images End"
+        ];
+
+        public static string[] PinterestSection =
+        [
+            "#\tPinterest Start",
+            "127.0.0.1       pinterest.com",
+            "127.0.0.1       *.pinterest.com",
+            "127.0.0.1       pinimg.com",
+            "127.0.0.1       *.pinimg.com",
+            "#\tPinterest End"
+        ];
+
+        public static string[] RutubeSection =
+        [
+            "#\tRutube Start",
+            "127.0.0.1       rutube.ru",
+            "127.0.0.1       *.rutube.ru",
+            "#\tRutube End"
+        ];
+
+        public static string[] HuggingFaceSection =
+        [
+            "#\tHugging Face Start",
+            "127.0.0.1       huggingface.co",
+            "127.0.0.1       *.huggingface.co",
+            "#\tHugging Face End"
+        ];
+
+        public static string[] RumbleSection =
+        [
+            "#\tRumble Start",
+            "127.0.0.1       rumble.com",
+            "127.0.0.1       *.rumble.com",
+            "#\tRumble End"
+        ];
+
+        public static string[] RedditSection =
+        [
+            "#\tReddit Start",
+            "127.0.0.1       reddit.com",
+            "127.0.0.1       *.reddit.com",
+            "127.0.0.1       redd.it",
+            "127.0.0.1       *.redd.it",
+            "127.0.0.1       redditmedia.com",
+            "127.0.0.1       *.redditmedia.com",
+            "127.0.0.1       redditstatic.com",
+            "127.0.0.1       *.redditstatic.com",
+            "#\tReddit End"
+        ];
+
+        public static string[] TwitchSection =
+        [
+            "#\tTwitch Start",
+            "127.0.0.1       twitch.tv",
+            "127.0.0.1       *.twitch.tv",
+            "127.0.0.1       *.chat.twitch.tv",
+            "#\tTwitch End"
+        ];
+
+        public static string[] SteamStoreSection =
+        [
+            "#\tSteam Store Start",
+            "127.0.0.1       store.steampowered.com",
+            "#\tSteam Store End"
+        ];
+
+        public static string[] V2EXSection =
+        [
+            "#\tV2EX Start",
+            "127.0.0.1       v2ex.com",
+            "127.0.0.1       *.v2ex.com",
+            "#\tV2EX End"
+        ];
+
+        public static string[] OneDriveLiveSection =
+        [
+            "#\tOneDrive Live Start",
+            "127.0.0.1       onedrive.live.com",
+            "#\tOneDrive Live End"
+        ];
+
+        public static string[] MEGASection =
+        [
+            "#\tMEGA Start",
+            "127.0.0.1       mega.nz",
+            "127.0.0.1       *.mega.nz",
+            "127.0.0.1       mega.io",
+            "127.0.0.1       *.mega.io",
+            "127.0.0.1       api.mega.co.nz",
+            "127.0.0.1       *.api.mega.co.nz",
+            "#\tMEGA End"
+        ];
+
+        public static string[] DropboxSection =
+        [
+            "#\tDropbox Start",
+            "127.0.0.1       dropbox.com",
+            "127.0.0.1       *.dropbox.com",
+            "#\tDropbox End"
+        ];
+
+        public static string[] RFISection =
+        [
+            "#\tRFI Start",
+            "127.0.0.1       rfi.fr",
+            "127.0.0.1       *.rfi.fr",
+            "#\tRFI End"
+        ];
+
+        public static string[] DailymotionSection =
+        [
+            "#\tDailymotion Start",
+            "127.0.0.1       dailymotion.com",
+            "127.0.0.1       *.dailymotion.com",
+            "127.0.0.1       *.api.dailymotion.com",
+            "#\tDailymotion End"
+        ];
+
+        public static string[] GravatarSection =
+        [
+            "#\tGravatar Start",
+            "127.0.0.1       gravatar.com",
+            "127.0.0.1       *.gravatar.com",
+            "#\tGravatar End"
+        ];
+
+        public static string[] PatreonSection =
+        [
+            "#\tPatreon Start",
+            "127.0.0.1       patreon.com",
+            "127.0.0.1       *.patreon.com",
+            "127.0.0.1       patreonusercontent.com",
+            "127.0.0.1       *.patreonusercontent.com",
+            "#\tPatreon End"
+        ];
+
+        public static string[] FlickrSection =
+        [
+            "#\tFlickr Start",
+            "127.0.0.1       flickr.com",
+            "127.0.0.1       *.flickr.com",
+            "#\tFlickr End"
+        ];
+
+        public static string[] ImgurSection =
+        [
+            "#\tImgur Start",
+            "127.0.0.1       imgur.com",
+            "127.0.0.1       *.imgur.com",
+            "#\tImgur End"
+        ];
+
+        public static string[] TheTVDBSection =
+        [
+            "#\tTheTVDB Start",
+            "127.0.0.1       thetvdb.com",
+            "127.0.0.1       *.thetvdb.com",
+            "#\tTheTVDB End"
+        ];
+
+        public static string[] VercelSection =
+        [
+            "#\tVercel Start",
+            "127.0.0.1       vercel.app",
+            "127.0.0.1       *.vercel.app",
+            "#\tVercel End"
+        ];
     }
 }

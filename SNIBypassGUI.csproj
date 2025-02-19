@@ -244,6 +244,30 @@
     <Resource Include="Resources\favicons\rule34video.png" />
     <None Include="Resources\AcrylicConfiguration.ini" />
     <Resource Include="Resources\favicons\greasyfork.png" />
+    <Resource Include="Resources\favicons\dailymotion.png" />
+    <Resource Include="Resources\favicons\dropbox.ico" />
+    <Resource Include="Resources\favicons\facebook.ico" />
+    <Resource Include="Resources\favicons\flickr.png" />
+    <Resource Include="Resources\favicons\gravatar.png" />
+    <Resource Include="Resources\favicons\huggingface.ico" />
+    <Resource Include="Resources\favicons\imgur.ico" />
+    <Resource Include="Resources\favicons\instagram.png" />
+    <Resource Include="Resources\favicons\mega.png" />
+    <Resource Include="Resources\favicons\onedrive.ico" />
+    <Resource Include="Resources\favicons\patreon.png" />
+    <Resource Include="Resources\favicons\pinterest.png" />
+    <Resource Include="Resources\favicons\prismic.png" />
+    <Resource Include="Resources\favicons\reddit.ico" />
+    <Resource Include="Resources\favicons\rfi.png" />
+    <Resource Include="Resources\favicons\rumble.png" />
+    <Resource Include="Resources\favicons\rutube.ico" />
+    <Resource Include="Resources\favicons\steamstore.ico" />
+    <Resource Include="Resources\favicons\thetvdb.png" />
+    <Resource Include="Resources\favicons\twitch.png" />
+    <Resource Include="Resources\favicons\v2ex.ico" />
+    <Resource Include="Resources\favicons\vercel.ico" />
+    <Resource Include="Resources\favicons\whatsapp.png" />
+    <Resource Include="Resources\favicons\x.png" />
     <Content Include="Resources\libs\ImageCropper.dll" />
   </ItemGroup>
   <ItemGroup />
