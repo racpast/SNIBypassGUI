@@ -9,11 +9,11 @@ https://github.com/user-attachments/assets/0d6671c0-39b1-4281-a500-09e183bc5b6a
 
 ## ✨ 功能预览
 ### 💻 多站点可开关支持
-![image](https://github.com/user-attachments/assets/896f89af-3ef3-4658-9328-a6f94baf2576)
+![image](https://github.com/user-attachments/assets/f1ceceb2-c825-4e6e-87fc-cbea20e879db)
 ### 📰 可视化管理
-![image](https://github.com/user-attachments/assets/8c2c43da-8166-4624-a661-aabb5d9b9599)
+![image](https://github.com/user-attachments/assets/3106a9e3-4f43-41b8-8004-c306527a4a2c)
 ### 🧩 一键清理及自定义背景 _`被撅力`_ 功能
-![image](https://github.com/user-attachments/assets/bf31a328-50bc-42fc-80e2-bdd3791f2e07)
+![image](https://github.com/user-attachments/assets/bcb9b0ae-9817-4a85-bd64-becc46cddb0c)
 ### 📋 详细原理见软件内左侧`说明`栏目
 ## 🌸 贡献者名单
 ### 🏆️ 特别感谢@[mashirozx](https://github.com/mashirozx)大佬还有@[c15412](https://github.com/c15412)大佬
