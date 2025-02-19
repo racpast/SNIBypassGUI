@@ -1,12 +1,8 @@
 ![social_compressed](https://github.com/user-attachments/assets/2cefa9c4-413f-4a61-91ee-891f3896b9d3)
 ## 📝 简介
 一个**通过 Nginx 反向代理实现绕过 SNI 阻断** 的工具，由 [Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI) 迁移开发。
-## ☕ 使用演示（ 10 秒内完成 Pixiv、Wikipedia 与 Steam Community 等的直连 ）
-
-
-https://github.com/user-attachments/assets/0d6671c0-39b1-4281-a500-09e183bc5b6a
-
-
+## ☕ 使用演示（ 一键完成 Facebook、X、Instagram、Pixiv、Wikipedia 等的直连 ）
+https://github.com/user-attachments/assets/c3c93570-9637-4099-9802-87fa1b399301
 ## ✨ 功能预览
 ### 💻 多站点可开关支持
 ![image](https://github.com/user-attachments/assets/f1ceceb2-c825-4e6e-87fc-cbea20e879db)
