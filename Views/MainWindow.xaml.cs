@@ -1984,10 +1984,10 @@ namespace SNIBypassGUI.Views
                 }
             }
             if (activeAdapter != null && AdaptersCombo.Items.OfType<string>().Contains(activeAdapter.FriendlyName))
-			{
-				AdaptersCombo.SelectedItem = activeAdapter.FriendlyName;
-				INIWrite("程序设置", "SpecifiedAdapter", AdaptersCombo.SelectedItem.ToString(), INIPath);
-			}                   
+            {
+                AdaptersCombo.SelectedItem = activeAdapter.FriendlyName;
+                INIWrite("程序设置", "SpecifiedAdapter", AdaptersCombo.SelectedItem.ToString(), INIPath);
+            }                   
             else
             {
                 WriteLog($"没有找到活动且可设置的网络适配器！", LogLevel.Warning);
