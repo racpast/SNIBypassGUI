@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.NetworkInformation;
@@ -132,16 +133,15 @@ namespace SNIBypassGUI.Utils
         /// <summary>
         /// 异步发送 GET 请求
         /// </summary>
-        /// <param name="url">指定链接</param>
-        /// <param name="timeOut">超时时间，以秒为单位</param>
-        /// <param name="userAgent">用户代理</param>
         public static async Task<string> GetAsync(string url, double timeOut = 10, string userAgent = "Mozilla/5.0")
         {
-            HttpClient _httpClient = new();
+            HttpClient _httpClient = new()
+            {
+                Timeout = TimeSpan.FromSeconds(timeOut)
+            };
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
             try
             {
-                _httpClient.Timeout = TimeSpan.FromSeconds(timeOut);
-                _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
                 HttpResponseMessage response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
                 string Output = await response.Content.ReadAsStringAsync();
@@ -156,6 +156,74 @@ namespace SNIBypassGUI.Utils
             {
                 _httpClient.Dispose();
             }
+        }
+
+        /// <summary>
+        /// 尝试下载文件并返回是否成功
+        /// </summary>
+        public static async Task<bool> TryDownloadFile(string url, string savePath, Action<double> updateProgress, double timeOut = 60, string userAgent = "Mozilla/5.0")
+        {
+            HttpClient _httpClient = new()
+            {
+                Timeout = TimeSpan.FromSeconds(timeOut),
+            };
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+            using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            if (!response.IsSuccessStatusCode)
+            {
+                Exception ex = new($"文件 {url} 下载失败！响应码：{response.StatusCode}");
+                WriteLog("下载文件时遇到异常。", LogLevel.Error, ex);
+                throw ex;
+            }
+            using var stream = await response.Content.ReadAsStreamAsync();
+            long totalBytes = response.Content.Headers.ContentLength ?? 0;
+            long bytesDownloaded = 0;
+
+            using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                await fileStream.WriteAsync(buffer, 0, bytesRead);
+                bytesDownloaded += bytesRead;
+                double progress = (double)bytesDownloaded / totalBytes * 100;
+                updateProgress(progress);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 尝试从主服务器和备用服务器下载文件并显示进度
+        /// </summary>
+        public static async Task DownloadFileWithProgress(string primaryUrl, string backupUrl, string savePath, Action<double> updateProgress, double timeOut = 60, string userAgent = "Mozilla/5.0")
+        {
+            bool success = false;
+            Exception lastException = null;
+
+            try
+            {
+                success = await TryDownloadFile(primaryUrl, savePath, updateProgress, timeOut, userAgent);
+            }
+            catch (Exception ex)
+            {
+                WriteLog("从主服务器下载文件遇到异常。", LogLevel.Error, ex);
+                lastException = ex;
+            }
+
+            if (!success)
+            {
+                try
+                {
+                    success = await TryDownloadFile(backupUrl, savePath, updateProgress, timeOut, userAgent);
+                }
+                catch (Exception ex)
+                {
+                    WriteLog("从备用服务器下载文件遇到异常。", LogLevel.Error, ex);
+                    lastException = ex;
+                }
+            }
+
+            if (!success) throw lastException;
         }
     }
 }

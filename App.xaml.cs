@@ -33,12 +33,10 @@ namespace SNIBypassGUI
 
         private void Application_SessionEnding(object sender, SessionEndingCancelEventArgs e)
         {
-            // 关机前模拟点击“退出工具”按钮
             var _mainWindow = Current.Windows
             .Cast<Window>()
-            .FirstOrDefault(window => window is MainWindow) as MainWindow;
+            .FirstOrDefault(window => window is Views.MainWindow) as Views.MainWindow;
             _mainWindow.ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         }
-
     }
 }

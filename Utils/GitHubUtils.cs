@@ -3,16 +3,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using static SNIBypassGUI.Utils.FileUtils;
-using static SNIBypassGUI.Utils.NetworkUtils;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Consts.GitHubConsts;
-using static SNIBypassGUI.Consts.PathConsts;
 
 namespace SNIBypassGUI.Utils
 {
     public static class GitHubUtils
     {
+        /*
         /// <summary>
         /// 确保 api.github.com 可以正常访问
         /// </summary>
@@ -32,6 +30,7 @@ namespace SNIBypassGUI.Utils
             }
             return false;
         }
+        */
 
         /// <summary>
         /// 寻找最优代理

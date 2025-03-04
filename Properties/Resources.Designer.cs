@@ -83,6 +83,16 @@ namespace SNIBypassGUI.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
+        internal static byte[] AcrylicHosts_All {
+            get {
+                object obj = ResourceManager.GetObject("AcrylicHosts_All", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Byte[] 类型的本地化资源。
+        /// </summary>
         internal static byte[] AcrylicService {
             get {
                 object obj = ResourceManager.GetObject("AcrylicService", resourceCulture);
@@ -136,6 +146,26 @@ namespace SNIBypassGUI.Properties {
         internal static byte[] SNIBypassKey {
             get {
                 object obj = ResourceManager.GetObject("SNIBypassKey", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Byte[] 类型的本地化资源。
+        /// </summary>
+        internal static byte[] SwitchData {
+            get {
+                object obj = ResourceManager.GetObject("SwitchData", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Byte[] 类型的本地化资源。
+        /// </summary>
+        internal static byte[] SystemHosts_All {
+            get {
+                object obj = ResourceManager.GetObject("SystemHosts_All", resourceCulture);
                 return ((byte[])(obj));
             }
         }

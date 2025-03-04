@@ -1,46 +1,69 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SNIBypassGUI.Utils
 {
     public static class IniFileUtils
     {
-        [System.Runtime.InteropServices.DllImport("kernel32")]
+        [DllImport("kernel32", CharSet = CharSet.Unicode)]
+        private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
+
+        [DllImport("kernel32", CharSet = CharSet.Unicode)]
         private static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
 
-        [System.Runtime.InteropServices.DllImport("kernel32")]
-        private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
+        [DllImport("kernel32", CharSet = CharSet.Unicode)]
+        private static extern uint GetPrivateProfileSection(string lpAppName, byte[] lpReturnedString, uint nSize, string lpFileName);
 
         /// <summary>
         /// 写入配置文件
         /// </summary>
-        /// <param name="section">部分名称</param>
-        /// <param name="key">键名称</param>
-        /// <param name="value">值</param>
-        /// <param name="path">文件路径</param>
         public static void INIWrite(string section, string key, string value, string path) => WritePrivateProfileString(section, key, value, path);
 
         /// <summary>
         /// 读取配置文件
         /// </summary>
-        /// <param name="section">部分名称</param>
-        /// <param name="key">键名称</param>
-        /// <param name="path">文件路径</param>
-        /// <returns>值</returns>
         public static string INIRead(string section, string key, string path)
         {
-            StringBuilder temp = new StringBuilder(255);
+            StringBuilder temp = new(255);
             GetPrivateProfileString(section, key, "", temp, 255, path);
             return temp.ToString();
         }
 
         /// <summary>
+        /// 获取指定部分的所有键名
+        /// </summary>
+        public static List<string> GetKeys(string section, string path)
+        {
+            byte[] buffer = new byte[32767]; // 32KB 缓冲区
+            uint bytesReturned = GetPrivateProfileSection(section, buffer, (uint)buffer.Length, path);
+
+            List<string> keys = [];
+            if (bytesReturned > 0)
+            {
+                string sectionData = Encoding.Unicode.GetString(buffer, 0, (int)bytesReturned).Trim('\0');
+                string[] entries = sectionData.Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (string entry in entries)
+                {
+                    int equalIndex = entry.IndexOf('=');
+                    if (equalIndex > 0)
+                    {
+                        keys.Add(entry.Substring(0, equalIndex));
+                    }
+                }
+            }
+            return keys;
+        }
+
+        /// <summary>
         /// 删除配置文件
         /// </summary>
-        /// <param name="FilePath">文件路径</param>
-        public static void INIDelete(string FilePath)
+        public static void INIDelete(string filePath)
         {
-            if (File.Exists(FilePath)) File.Delete(FilePath);
+            if (File.Exists(filePath)) File.Delete(filePath);
         }
     }
 }

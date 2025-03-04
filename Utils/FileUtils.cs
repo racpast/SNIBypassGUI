@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Media.Imaging;
 using static SNIBypassGUI.Utils.LogManager;
@@ -135,6 +136,10 @@ namespace SNIBypassGUI.Utils
                     Directory.Delete(folderPath, true);
                     Directory.CreateDirectory(folderPath);
                 }
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                WriteLog($"未找到目录 {folderPath} 。", LogLevel.Warning);
             }
             catch (Exception ex)
             {
@@ -299,8 +304,8 @@ namespace SNIBypassGUI.Utils
         /// <summary>
         /// 从文件中移除从“#   sectionName Start”到“#   sectionName End”的部分
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="sectionName"></param>
+        /// <param name="filePath">文件路径</param>
+        /// <param name="sectionName">部分名称</param>
         public static void RemoveSection(string filePath, string sectionName)
         {
             if (!File.Exists(filePath))
@@ -333,6 +338,46 @@ namespace SNIBypassGUI.Utils
             catch (Exception ex)
             {
                 WriteLog($"移除文件 {filePath} 中的 {sectionName} 部分时遇到异常。", LogLevel.Error, ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 从文件中获取从“#   sectionName Start”到“#   sectionName End”的部分
+        /// </summary>
+        /// <param name="filePath">文件路径</param>
+        /// <param name="sectionName">部分名称</param>
+        public static string[] GetSection(string filePath, string sectionName)
+        {
+            if (!File.Exists(filePath))
+            {
+                WriteLog($"文件{filePath}不存在！", LogLevel.Warning);
+                return [];
+            }
+            string startMarker = $"#\t{sectionName} Start";
+            string endMarker = $"#\t{sectionName} End";
+            bool isInSection = false;
+            List<String> section = [];
+            try
+            {
+                foreach (string line in File.ReadAllLines(filePath))
+                {
+                    if (line == startMarker)
+                    {
+                        isInSection = true;
+                        section.Add(line);
+                    }
+                    else if (isInSection)
+                    {
+                        section.Add(line);
+                        if (line == endMarker) break;
+                    }
+                }
+                return [.. section];
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"读取文件 {filePath} 中的 {sectionName} 部分时遇到异常。", LogLevel.Error, ex);
                 throw;
             }
         }
@@ -386,6 +431,54 @@ namespace SNIBypassGUI.Utils
             catch (Exception ex)
             {
                 WriteLog($"创建文件 {filePath} 时遇到异常。", LogLevel.Error, ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 将 Base64 转换为图片文件，并返回图片路径
+        /// </summary>
+        public static string SaveBase64AsImage(string base64, string title, string basepath)
+        {
+            if (string.IsNullOrEmpty(base64)) return string.Empty;
+
+            string filePath = Path.Combine(basepath, $"{title}.png");
+            byte[] imageBytes = Convert.FromBase64String(base64);
+
+            try
+            {
+                File.WriteAllBytes(filePath, imageBytes);
+                return filePath;
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"将 Base64 保存为图片 {filePath} 时遇到异常。", LogLevel.Error, ex);
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 计算文件哈希值
+        /// </summary>
+        public static string CalculateFileHash(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
+                WriteLog("指定的文件未找到！", LogLevel.Warning);
+                return null;
+            }
+            try
+            {
+                using var sha256 = SHA256.Create();
+                using var stream = File.OpenRead(filePath);
+                byte[] hashBytes = sha256.ComputeHash(stream);
+                StringBuilder hashStringBuilder = new(64);
+                foreach (byte b in hashBytes) hashStringBuilder.Append(b.ToString("x2"));
+                return hashStringBuilder.ToString();
+            }
+            catch (Exception ex)
+            {
+                WriteLog("计算文件哈希值时出现异常。", LogLevel.Error, ex);
                 throw;
             }
         }

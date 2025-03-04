@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
+/*
 using System.Linq;
 using System.Management.Automation;
+*/
 using System.Text;
 using System.Threading.Tasks;
 using static SNIBypassGUI.Utils.LogManager;
@@ -10,6 +12,7 @@ namespace SNIBypassGUI.Utils
 {
     public static class CommandUtils
     {
+        /*
         /// <summary>
         /// 执行指定的 PowerShell 命令
         /// </summary>
@@ -38,6 +41,7 @@ namespace SNIBypassGUI.Utils
                 throw;
             }
         }
+        */
 
         /// <summary>
         /// 执行指定的 CMD 命令

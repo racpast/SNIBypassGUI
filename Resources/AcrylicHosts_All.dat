@@ -1,0 +1,344 @@
+#	Amazon（日本） Start
+127.0.0.1       amazon.co.jp
+127.0.0.1       *.amazon.co.jp
+#	Amazon（日本） End
+#	APKMirror Start
+127.0.0.1       apkmirror.com
+127.0.0.1       *.apkmirror.com
+#	APKMirror End
+#	Archive of Our Own Start
+127.0.0.1       archiveofourown.org
+127.0.0.1       *.archiveofourown.org
+#	Archive of Our Own End
+#	BBC Start
+127.0.0.1       bbc.com
+127.0.0.1       *.bbc.com
+127.0.0.1       *.*.bbc.com
+127.0.0.1       bbc.co.uk
+127.0.0.1       *.bbc.co.uk
+127.0.0.1       *.*.bbc.co.uk
+127.0.0.1       bbci.co.uk
+127.0.0.1       *.bbci.co.uk
+127.0.0.1       *.*.bbci.co.uk
+#	BBC End
+#	Dailymotion Start
+127.0.0.1       dailymotion.com
+127.0.0.1       *.dailymotion.com
+127.0.0.1       *.api.dailymotion.com
+#	Dailymotion End
+#	Docker Hub Start
+127.0.0.1       hub.docker.com
+#	Docker Hub End
+#	Dropbox Start
+127.0.0.1       dropbox.com
+127.0.0.1       *.dropbox.com
+#	Dropbox End
+#	DuckDuckGo Start
+127.0.0.1       duckduckgo.com
+127.0.0.1       *.duckduckgo.com
+#	DuckDuckGo End
+#	E-Hentai Start
+127.0.0.1       e-hentai.org
+127.0.0.1       *.e-hentai.org
+127.0.0.1       exhentai.org
+127.0.0.1       *.exhentai.org
+127.0.0.1       ehgt.org
+127.0.0.1       *.ehgt.org
+#	E-Hentai End
+#	Etsy Start
+127.0.0.1       etsy.com
+127.0.0.1       *.etsy.com
+#	Etsy End
+#	Facebook Start
+127.0.0.1       facebook.com
+127.0.0.1       *.facebook.com
+127.0.0.1       fbcdn.net
+127.0.0.1       *.fbcdn.net
+#	Facebook End
+#	F-Droid Start
+127.0.0.1       f-droid.org
+127.0.0.1       *.f-droid.org
+#	F-Droid End
+#	Flickr Start
+127.0.0.1       flickr.com
+127.0.0.1       *.flickr.com
+#	Flickr End
+#	Gelbooru Start
+127.0.0.1       gelbooru.com
+127.0.0.1       *.gelbooru.com
+127.0.0.1       rmzsglng.com
+127.0.0.1       *.rmzsglng.com
+#	Gelbooru End
+#	Github Start
+127.0.0.1       github.com
+127.0.0.1       *.github.com
+127.0.0.1       githubusercontent.com
+127.0.0.1       *.githubusercontent.com
+127.0.0.1       githubassets.com
+127.0.0.1       *.githubassets.com
+127.0.0.1       github.io
+127.0.0.1       *.github.io
+#	Github End
+#	Google Start
+127.0.0.1       google.*
+127.0.0.1       *.google
+127.0.0.1       *.google.*
+127.0.0.1       *.*.google
+127.0.0.1       *.*.google.*
+127.0.0.1       googleapis.com
+127.0.0.1       *.googleapis.com
+#	Google End
+#	Gravatar Start
+127.0.0.1       gravatar.com
+127.0.0.1       *.gravatar.com
+#	Gravatar End
+#	Greasy Fork Start
+127.0.0.1       greasyfork.org
+127.0.0.1       *.greasyfork.org
+#	Greasy Fork End
+#	Hugging Face Start
+127.0.0.1       huggingface.co
+127.0.0.1       *.huggingface.co
+#	Hugging Face End
+#	Imgur Start
+127.0.0.1       imgur.com
+127.0.0.1       *.imgur.com
+#	Imgur End
+#	Instagram Start
+127.0.0.1       instagram.com
+127.0.0.1       *.instagram.com
+127.0.0.1       instagr.am
+127.0.0.1       *.instagr.am
+127.0.0.1       ig.me
+127.0.0.1       *.ig.me
+127.0.0.1       static.cdninstagram.com
+127.0.0.1       *.cdninstagram.com
+127.0.0.1       *.*.fna.fbcdn.net
+#	Instagram End
+#	Iwara Start
+104.26.12.96       iwara.tv
+104.26.12.96       *.iwara.tv
+104.26.12.96       *.*.iwara.tv
+#	Iwara End
+#	MEGA Start
+127.0.0.1       mega.nz
+127.0.0.1       *.mega.nz
+127.0.0.1       mega.io
+127.0.0.1       *.mega.io
+127.0.0.1       api.mega.co.nz
+127.0.0.1       *.api.mega.co.nz
+#	MEGA End
+#	Nyaa Start
+127.0.0.1       nyaa.si
+127.0.0.1       *.nyaa.si
+#	Nyaa End
+#	OK Start
+127.0.0.1       ok.ru
+127.0.0.1       *.ok.ru
+#	OK End
+#	OKX.COM Start
+127.0.0.1       okx.com
+127.0.0.1       *.okx.com
+#	OKX.COM End
+#	OneDrive Live Start
+127.0.0.1       onedrive.live.com
+#	OneDrive Live End
+#	Patreon Start
+127.0.0.1       patreon.com
+127.0.0.1       *.patreon.com
+127.0.0.1       patreonusercontent.com
+127.0.0.1       *.patreonusercontent.com
+#	Patreon End
+#	Pinterest Start
+127.0.0.1       pinterest.com
+127.0.0.1       *.pinterest.com
+127.0.0.1       pinimg.com
+127.0.0.1       *.pinimg.com
+#	Pinterest End
+#	Pixiv Start
+127.0.0.1       pixiv.net
+127.0.0.1       *.pixiv.net
+127.0.0.1       *.*.pixiv.net
+127.0.0.1       pximg.net
+127.0.0.1       *.pximg.net
+127.0.0.1       pixiv.org
+127.0.0.1       *.pixiv.org
+#	Pixiv End
+#	pixivFANBOX Start
+127.0.0.1       fanbox.cc
+104.18.41.140       api.fanbox.cc
+127.0.0.1       *.fanbox.cc
+#	pixivFANBOX End
+#	Pornhub Start
+127.0.0.1       pornhub.com
+127.0.0.1       *.pornhub.com
+127.0.0.1       gstatic.com
+127.0.0.1       *.gstatic.com
+127.0.0.1       jsdelivr.net
+127.0.0.1       cdn.jsdelivr.net
+#	Pornhub End
+#	Prismic Images Start
+127.0.0.1       images.prismic.io
+#	Prismic Images End
+#	Proton Start
+127.0.0.1       proton.me
+127.0.0.1       *.proton.me
+#	Proton End
+#	Reddit Start
+127.0.0.1       reddit.com
+127.0.0.1       *.reddit.com
+127.0.0.1       redd.it
+127.0.0.1       *.redd.it
+127.0.0.1       redditmedia.com
+127.0.0.1       *.redditmedia.com
+127.0.0.1       redditstatic.com
+127.0.0.1       *.redditstatic.com
+#	Reddit End
+#	RFI Start
+127.0.0.1       rfi.fr
+127.0.0.1       *.rfi.fr
+#	RFI End
+#	Rule34Video Start
+190.115.31.243       rule34video.com
+190.115.31.243       *.rule34video.com
+#	Rule34Video End
+#	Rumble Start
+127.0.0.1       rumble.com
+127.0.0.1       *.rumble.com
+#	Rumble End
+#	Rutube Start
+127.0.0.1       rutube.ru
+127.0.0.1       *.rutube.ru
+#	Rutube End
+#	Sankaku Complex Start
+208.100.24.247       sankakucomplex.com
+208.100.24.254       s.sankakucomplex.com
+143.244.49.177       v.sankakucomplex.com
+192.169.120.162       f.sankakucomplex.com
+208.100.24.244       chan.sankakucomplex.com
+208.100.24.244       legacy.sankakucomplex.com
+208.100.24.247       login.sankakucomplex.com
+208.100.24.252       news.sankakucomplex.com
+208.100.24.252       forum.sankakucomplex.com
+208.100.24.247       legal.sankakucomplex.com
+192.169.120.162       static.sankakucomplex.com
+208.100.24.247       *.sankakucomplex.com
+#	Sankaku Complex End
+#	Steam Community Start
+127.0.0.1       steamcommunity.com
+127.0.0.1       *.steamcommunity.com
+#	Steam Community End
+#	Steam Store Start
+127.0.0.1       store.steampowered.com
+#	Steam Store End
+#	Telegram Start
+127.0.0.1       telegram.org
+127.0.0.1       *.telegram.org
+127.0.0.1       web.telegram.org
+127.0.0.1       *.web.telegram.org
+127.0.0.1       t.me
+127.0.0.1       *.t.me
+127.0.0.1       tg.dev
+127.0.0.1       *.tg.dev
+127.0.0.1       telesco.pe
+127.0.0.1       *.telesco.pe
+127.0.0.1       telegram.me
+127.0.0.1       *.telegram.me
+127.0.0.1       cdn-telegram.org
+127.0.0.1       *.cdn-telegram.org
+#	Telegram End
+#	The New York Times Start
+127.0.0.1       nytimes.com
+127.0.0.1       *.nytimes.com
+127.0.0.1       *.*.nytimes.com
+127.0.0.1       nyt.com
+127.0.0.1       *.nyt.com
+#	The New York Times End
+#	TheTVDB Start
+127.0.0.1       thetvdb.com
+127.0.0.1       *.thetvdb.com
+#	TheTVDB End
+#	Twitch Start
+127.0.0.1       twitch.tv
+127.0.0.1       *.twitch.tv
+127.0.0.1       *.chat.twitch.tv
+#	Twitch End
+#	V2EX Start
+127.0.0.1       v2ex.com
+127.0.0.1       *.v2ex.com
+#	V2EX End
+#	Vercel Start
+127.0.0.1       vercel.app
+127.0.0.1       *.vercel.app
+#	Vercel End
+#	Wallhaven Start
+127.0.0.1       wallhaven.cc
+127.0.0.1       *.wallhaven.cc
+#	Wallhaven End
+#	WhatsApp Start
+127.0.0.1       whatsapp.com
+127.0.0.1       *.whatsapp.com
+127.0.0.1       whatsapp.net
+127.0.0.1       *.whatsapp.net
+#	WhatsApp End
+#	Wikimedia Foundation Start
+127.0.0.1       wikipedia.org
+127.0.0.1       *.wikipedia.org
+127.0.0.1       *.m.wikipedia.org
+127.0.0.1       wikimedia.org
+127.0.0.1       *.wikimedia.org
+127.0.0.1       *.m.wikimedia.org
+127.0.0.1       wikivoyage.org
+127.0.0.1       *.wikivoyage.org
+127.0.0.1       *.m.wikivoyage.org
+127.0.0.1       wiktionary.org
+127.0.0.1       *.wiktionary.org
+127.0.0.1       *.m.wiktionary.org
+127.0.0.1       wikibooks.org
+127.0.0.1       *.wikibooks.org
+127.0.0.1       *.m.wikibooks.org
+127.0.0.1       wikinews.org
+127.0.0.1       *.wikinews.org
+127.0.0.1       *.m.wikinews.org
+127.0.0.1       wikidata.org
+127.0.0.1       *.wikidata.org
+127.0.0.1       wikiversity.org
+127.0.0.1       *.wikiversity.org
+127.0.0.1       *.m.wikiversity.org
+127.0.0.1       wikiquote.org
+127.0.0.1       *.wikiquote.org
+127.0.0.1       *.m.wikiquote.org
+127.0.0.1       mediawiki.org
+127.0.0.1       *.mediawiki.org
+127.0.0.1       wikisource.org
+127.0.0.1       *.wikisource.org
+127.0.0.1       *.m.wikisource.org
+127.0.0.1       wikifunctions.org
+127.0.0.1       *.wikifunctions.org
+#	Wikimedia Foundation End
+#	X Start
+127.0.0.1       twitter.com
+127.0.0.1       *.twitter.com
+127.0.0.1       x.com
+127.0.0.1       *.x.com
+127.0.0.1       t.co
+127.0.0.1       *.t.co
+127.0.0.1       twimg.com
+127.0.0.1       *.twimg.com
+#	X End
+#	YouTube Start
+127.0.0.1       youtube.com
+127.0.0.1       *.youtube.com
+127.0.0.1       ytimg.com
+127.0.0.1       *.ytimg.com
+127.0.0.1       ggpht.com
+127.0.0.1       *.ggpht.com
+127.0.0.1       googlevideo.com
+127.0.0.1       *.googlevideo.com
+#	YouTube End
+#	Z-Library Start
+127.0.0.1       1lib.sk
+127.0.0.1       *.1lib.sk
+127.0.0.1       z-lib.fm
+127.0.0.1       *.z-lib.fm
+#	Z-Library End

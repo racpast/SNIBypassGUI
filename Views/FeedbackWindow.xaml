@@ -1,0 +1,117 @@
+﻿<Window x:Class="SNIBypassGUI.Views.FeedbackWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:imagecropper="clr-namespace:ImageCropper;assembly=ImageCropper"
+        xmlns:local="clr-namespace:SNIBypassGUI.Views"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        mc:Ignorable="d"
+        Title="填写反馈" Height="335" Width="600" ShowInTaskbar="True" Topmost="True" Loaded="Window_Loaded" Background="Transparent" AllowsTransparency="True" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
+    <Window.Resources>
+        <Style TargetType="{x:Type TextBox}">
+            <Style.Resources>
+                <Style TargetType="{x:Type Border}">
+                    <Setter Property="CornerRadius" Value="8" />
+                </Style>
+            </Style.Resources>
+        </Style>
+    </Window.Resources>
+    <Border x:Name="VideoHelp" CornerRadius="15" Padding="10">
+        <Border.Background>
+            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
+        </Border.Background>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Border x:Name="TopBar" Grid.Row="0" Margin="10,10,10,5" Background="{DynamicResource BackgroundBrush}" BorderThickness="1.5" CornerRadius="12">
+                <Border.BorderBrush>
+                    <LinearGradientBrush EndPoint="1,0">
+                        <GradientStop Color="#FFCE00FF"/>
+                        <GradientStop Color="#FF0057CC" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.BorderBrush>
+                <TextBlock Margin="5" TextWrapping="Wrap" Text="联系我们" FontSize="21" Foreground="#FFB700FF" TextAlignment="Center"/>
+            </Border>
+            <Grid Grid.Row="1" Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="100"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="反馈内容：" FontSize="16" VerticalAlignment="Center" Margin="0,0,0,2">
+                    <TextBlock.Foreground>
+                        <LinearGradientBrush EndPoint="1,0">
+                            <GradientStop Color="#FF0057CC" Offset="1"/>
+                            <GradientStop Color="#FFCE00FF"/>
+                        </LinearGradientBrush>
+                    </TextBlock.Foreground>
+                </TextBlock>
+                <TextBox Grid.Row="1" x:Name="FeedbackTextBox" Height="100" BorderThickness="1" FontSize="14" Padding="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="{DynamicResource BackgroundBrush}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto">
+                    <TextBox.BorderBrush>
+                        <LinearGradientBrush EndPoint="1,0">
+                            <GradientStop Color="#FFCE00FF"/>
+                            <GradientStop Color="#FF0057CC" Offset="1"/>
+                        </LinearGradientBrush>
+                    </TextBox.BorderBrush>
+                </TextBox>
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="auto"/>
+                        <ColumnDefinition Width="auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="42"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="您的邮箱：" FontSize="16" VerticalAlignment="Center" Margin="0,10,0,2">
+                        <TextBlock.Foreground>
+                            <LinearGradientBrush EndPoint="1,0">
+                                <GradientStop Color="#FF0057CC" Offset="1"/>
+                                <GradientStop Color="#FFCE00FF"/>
+                            </LinearGradientBrush>
+                        </TextBlock.Foreground>
+                    </TextBlock>
+                    <TextBox Grid.Row="1" x:Name="EmailTextBox" Padding="10" BorderThickness="1" FontSize="14" Height="40"  Background="{DynamicResource BackgroundBrush}" Margin="0,0,5,0">
+                        <TextBox.BorderBrush>
+                            <LinearGradientBrush EndPoint="1,0">
+                                <GradientStop Color="#FFCE00FF"/>
+                                <GradientStop Color="#FF0057CC" Offset="1"/>
+                            </LinearGradientBrush>
+                        </TextBox.BorderBrush>
+                    </TextBox>
+                    <Button x:Name="SendCodeBtn" hc:BorderElement.CornerRadius="8" Grid.Column="1" Grid.Row="1" Click="SendCodeBtn_Click" Height="40" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource VerificationGeometry}" Content="发送验证码" MinWidth="160" Margin="15,0,5,0" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="10" VerticalContentAlignment="Center" Foreground="#FF19EBEF" BorderBrush="#FF19EBEF"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="验证码：" FontSize="16" VerticalAlignment="Center" Margin="5,10,0,2">
+                        <TextBlock.Foreground>
+                            <LinearGradientBrush EndPoint="1,0">
+                                <GradientStop Color="#FFCE00FF"/>
+                                <GradientStop Color="#FF0057CC" Offset="1"/>
+                            </LinearGradientBrush>
+                        </TextBlock.Foreground>
+                    </TextBlock>
+                    <TextBox Grid.Row="1" Grid.Column="2" Width="100" x:Name="CodeTextBox" Padding="10" MaxLength="6" BorderThickness="1" FontSize="14" Height="40"  Background="{DynamicResource BackgroundBrush}" Margin="5,0,0,0">
+                        <TextBox.BorderBrush>
+                            <LinearGradientBrush EndPoint="1,0">
+                                <GradientStop Color="#FFCE00FF"/>
+                                <GradientStop Color="#FF0057CC" Offset="1"/>
+                            </LinearGradientBrush>
+                        </TextBox.BorderBrush>
+                    </TextBox>
+                </Grid>
+            </Grid>
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="CancelBtn" hc:BorderElement.CornerRadius="8" Grid.Column="0" Click="CancelBtn_Click" Margin="10,5,10,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource DiscardGeometry}" Content="返回" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" VerticalContentAlignment="Center" Foreground="#FFFF2424" BorderBrush="#FFFF2424"/>
+                <Button x:Name="OKBtn" hc:BorderElement.CornerRadius="8" Grid.Column="1" Click="OKBtn_Click" Margin="10,5,10,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource ApplyGeometry}" Content="提交" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" VerticalContentAlignment="Center" Foreground="#FF00ED66" BorderBrush="#FF00ED66"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

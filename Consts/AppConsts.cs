@@ -5,14 +5,14 @@ namespace SNIBypassGUI.Consts
     public static class AppConsts
     {
         // 默认一言
-        public const string DefaultYiyan = "行远自迩，登高自卑。";
-        public const string DefaultYiyanFrom = "—— 戴圣「礼记」";
+        public const string DefaultYiyan = "天地之功不可仓促，艰难之业当累日月。";
+        public const string DefaultYiyanFrom = "—— 「后汉书」";
 
         // 证书指纹
         public const string CertificateThumbprint = "263961dd1800f3513b1e7818881683889c92aa1a";
 
         // 版本号，更新时需要修改
-        public const string CurrentVersion = "V3.7";
+        public const string CurrentVersion = "V3.8";
 
         // 日志头
         public static string[] LogHead =

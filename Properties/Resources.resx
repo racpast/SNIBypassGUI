@@ -124,6 +124,9 @@
   <data name="AcrylicHosts" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\AcrylicHosts.txt;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="AcrylicHosts_All" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\AcrylicHosts_All.dat;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="AcrylicService" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\AcrylicService.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -141,5 +144,11 @@
   </data>
   <data name="SNIBypassKey" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\SNIBypassKey.key;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="SwitchData" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\SwitchData.json;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="SystemHosts_All" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\SystemHosts_All.dat;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>

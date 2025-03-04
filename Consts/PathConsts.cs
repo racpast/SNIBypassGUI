@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 
 namespace SNIBypassGUI.Consts
 {
@@ -9,6 +10,7 @@ namespace SNIBypassGUI.Consts
         public static string currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
         public static string dataDirectory = Path.Combine(currentDirectory, "data");
         public static string NginxDirectory = Path.Combine(dataDirectory, "core");
+        public static string FaviconsDirectory = Path.Combine(dataDirectory, "favicons");
         public static string nginxPath = Path.Combine(NginxDirectory, "SNIBypass.exe");
         public static string nginxConfigDirectory = Path.Combine(NginxDirectory, "conf");
         public static string nginxConfigFile = Path.Combine(nginxConfigDirectory, "nginx.conf");
@@ -30,9 +32,15 @@ namespace SNIBypassGUI.Consts
         public static string AcrylicHostsPath = Path.Combine(dnsDirectory, "AcrylicHosts.txt");
         public static string AcrylicConfigurationPath = Path.Combine(dnsDirectory, "AcrylicConfiguration.ini");
         public static string CustomBackground = Path.Combine(dataDirectory, "CustomBkg.png");
+        public static string SwitchData = Path.Combine(dataDirectory, "SwitchData.json");
+        public static string AcrylicHostsAll = Path.Combine(dataDirectory, "AcrylicHosts_All.dat");
+        public static string SystemHostsAll = Path.Combine(dataDirectory, "SystemHosts_All.dat");
+        public static string NewVersionExe = Path.Combine(dataDirectory, "SNIBypassGUI.exe");
+        public static string CurrentExe = Assembly.GetExecutingAssembly().Location;
+        public static string OldVersionExe = Path.Combine(currentDirectory, "SNIBypassGUI.exe.old");
         public static string SNIBypassGUIExeFilePath = System.Windows.Forms.Application.ExecutablePath;
         public static List<string> TempFilesPaths = [nginxLogFile_A, nginxLogFile_B, AcrylicCacheFilePath];
         public static List<string> TempFilesPathsIncludingGUILogs = [nginxLogFile_A, nginxLogFile_B, AcrylicCacheFilePath, LogDirectory];
-        public static List<string> NeccesaryDirectories = [dataDirectory, NginxDirectory, nginxConfigDirectory, CADirectory, nginxLogDirectory, nginxTempDirectory, dnsDirectory];
+        public static List<string> NeccesaryDirectories = [dataDirectory, NginxDirectory, nginxConfigDirectory, CADirectory, nginxLogDirectory, nginxTempDirectory, dnsDirectory, FaviconsDirectory];
     }
 }
