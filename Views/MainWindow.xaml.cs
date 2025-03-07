@@ -1967,6 +1967,17 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
+        /// 适配器下拉框选择项改变事件
+        /// </summary>
+        private void AdaptersCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            WriteLog("进入 AdaptersCombo_SelectionChanged 。", LogLevel.Debug);
+            if (AdaptersCombo.SelectedItem != null) INIWrite("程序设置", "SpecifiedAdapter", AdaptersCombo.SelectedItem.ToString(), INIPath);
+            e.Handled = true;
+            WriteLog("完成 AdaptersCombo_SelectionChanged 。", LogLevel.Debug);
+        }
+
+        /// <summary>
         /// 自动获取活动适配器按钮点击事件
         /// </summary>
         private void GetActiveAdapterBtn_Click(object sender, RoutedEventArgs e)
@@ -1986,7 +1997,7 @@ namespace SNIBypassGUI.Views
             if (activeAdapter != null && AdaptersCombo.Items.OfType<string>().Contains(activeAdapter.FriendlyName))
             {
                 AdaptersCombo.SelectedItem = activeAdapter.FriendlyName;
-                INIWrite("程序设置", "SpecifiedAdapter", AdaptersCombo.SelectedItem.ToString(), INIPath);
+                INIWrite("程序设置", "SpecifiedAdapter", activeAdapter.FriendlyName, INIPath);
             }                   
             else
             {
@@ -2125,7 +2136,6 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 主题切换按钮点击事件
         /// </summary>
-
         private void ThemeSwitchTB_Checked(object sender, RoutedEventArgs e)
         {
             SwitchTheme(true);

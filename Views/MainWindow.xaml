@@ -566,7 +566,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <ComboBox x:Name="AdaptersCombo"  hc:BorderElement.CornerRadius="8" Margin="10,0,5,10" Grid.ColumnSpan="2" SelectedIndex="0" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="{DynamicResource BackgroundBrush}" FontSize="15"/>
+                                            <ComboBox x:Name="AdaptersCombo" SelectionChanged="AdaptersCombo_SelectionChanged" hc:BorderElement.CornerRadius="8" Margin="10,0,5,10" Grid.ColumnSpan="2" SelectedIndex="0" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="{DynamicResource BackgroundBrush}" FontSize="15"/>
                                             <Grid Grid.Column="2">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="auto"/>

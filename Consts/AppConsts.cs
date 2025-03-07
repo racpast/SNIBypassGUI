@@ -12,7 +12,7 @@ namespace SNIBypassGUI.Consts
         public const string CertificateThumbprint = "263961dd1800f3513b1e7818881683889c92aa1a";
 
         // 版本号，更新时需要修改
-        public const string CurrentVersion = "V3.8";
+        public const string CurrentVersion = "V3.8.1";
 
         // 日志头
         public static string[] LogHead =
