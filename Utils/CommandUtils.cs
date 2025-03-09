@@ -92,7 +92,7 @@ namespace SNIBypassGUI.Utils
 
                 if (completedTask == timeoutTask)
                 {
-                    WriteLog($"执行命令超时。", LogLevel.Warning);
+                    WriteLog($"执行命令 {command} 超时。", LogLevel.Warning);
                     process.Kill();
                     return (false, output.ToString(), "进程超时。");
                 }
@@ -101,7 +101,7 @@ namespace SNIBypassGUI.Utils
             }
             catch (Exception ex)
             {
-                WriteLog($"执行命令时遇到异常。", LogLevel.Error, ex);
+                WriteLog($"执行命令 {command} 时遇到异常。", LogLevel.Error, ex);
                 throw;
             }
             finally

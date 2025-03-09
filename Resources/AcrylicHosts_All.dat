@@ -26,6 +26,16 @@
 127.0.0.1       *.dailymotion.com
 127.0.0.1       *.api.dailymotion.com
 #	Dailymotion End
+#	Discord Start
+127.0.0.1       discord.com
+127.0.0.1       *.discord.com
+127.0.0.1       discord.gg
+127.0.0.1       *.discord.gg
+127.0.0.1       discordapp.com
+127.0.0.1       *.discordapp.com
+127.0.0.1       discordapp.net
+127.0.0.1       *.discordapp.net
+#	Discord End
 #	Docker Hub Start
 127.0.0.1       hub.docker.com
 #	Docker Hub End
@@ -232,10 +242,6 @@
 127.0.0.1       store.steampowered.com
 #	Steam Store End
 #	Telegram Start
-127.0.0.1       telegram.org
-127.0.0.1       *.telegram.org
-127.0.0.1       web.telegram.org
-127.0.0.1       *.web.telegram.org
 127.0.0.1       t.me
 127.0.0.1       *.t.me
 127.0.0.1       tg.dev
@@ -246,6 +252,10 @@
 127.0.0.1       *.telegram.me
 127.0.0.1       cdn-telegram.org
 127.0.0.1       *.cdn-telegram.org
+127.0.0.1       telegram.org
+127.0.0.1       *.telegram.org
+127.0.0.1       web.telegram.org
+127.0.0.1       *.web.telegram.org
 #	Telegram End
 #	The New York Times Start
 127.0.0.1       nytimes.com
@@ -275,6 +285,12 @@
 127.0.0.1       wallhaven.cc
 127.0.0.1       *.wallhaven.cc
 #	Wallhaven End
+#	WGCZ Holding Start
+127.0.0.1       xvideos.com
+127.0.0.1       *.xvideos.com
+127.0.0.1       xnxx.com
+127.0.0.1       *.xnxx.com
+#	WGCZ Holding End
 #	WhatsApp Start
 127.0.0.1       whatsapp.com
 127.0.0.1       *.whatsapp.com

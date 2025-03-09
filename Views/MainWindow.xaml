@@ -715,7 +715,7 @@
                                                 <RowDefinition/>
                                             </Grid.RowDefinitions>
                                             <Button x:Name="EditHostsBtn" hc:IconElement.Geometry="{StaticResource EditGeometry}" hc:BorderElement.CornerRadius="8" Click="EditHostsBtn_Click" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="编辑系统Hosts" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                                            <Button x:Name="RestoreHostsBtn" hc:IconElement.Geometry="{StaticResource RestoreGeometry}" hc:BorderElement.CornerRadius="8" Grid.Column="1" Click="RestoreHostsBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="还原系统Hosts" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                            <Button x:Name="RestoreSystemBtn" hc:IconElement.Geometry="{StaticResource RestoreGeometry}" hc:BorderElement.CornerRadius="8" Grid.Column="1" Click="RestoreSystemBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="还原系统设置" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
                                         </Grid>
                                     </StackPanel>
                                 </ScrollViewer>

@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Management;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using Microsoft.Win32;
+using System.Threading.Tasks;
 using SNIBypassGUI.Models;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.CommandUtils;
@@ -198,7 +199,7 @@ namespace SNIBypassGUI.Utils
         /// <summary>
         /// 设置指定网络适配器的IPv6 DNS服务器
         /// </summary>
-        public static async void SetIPv6DNS(NetworkAdapter networkAdapter, string[] dnsServers)
+        public static async Task SetIPv6DNS(NetworkAdapter networkAdapter, string[] dnsServers)
         {
             try
             {

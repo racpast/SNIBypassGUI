@@ -41,6 +41,19 @@
 127.0.0.1       www.dailymotion.com
 127.0.0.1       graphql.api.dailymotion.com
 #	Dailymotion End
+#	Discord Start
+127.0.0.1       discord.com
+127.0.0.1       www.discord.com
+127.0.0.1       discord.gg
+127.0.0.1       www.discord.gg
+127.0.0.1       discordapp.com
+127.0.0.1       www.discordapp.com
+127.0.0.1       discordapp.net
+127.0.0.1       media.discordapp.net
+127.0.0.1       images-ext-1.discordapp.net
+127.0.0.1       gateway.discord.gg
+127.0.0.1       remote-auth-gateway.discord.gg
+#	Discord End
 #	Docker Hub Start
 127.0.0.1       hub.docker.com
 #	Docker Hub End
@@ -52,6 +65,7 @@
 127.0.0.1      duckduckgo.com
 127.0.0.1      www.duckduckgo.com
 127.0.0.1      start.duckduckgo.com
+127.0.0.1      external-content.duckduckgo.com
 #	DuckDuckGo End
 #	E-Hentai Start
 127.0.0.1       e-hentai.org
@@ -331,14 +345,6 @@
 127.0.0.1       store.steampowered.com
 #	Steam Store End
 #	Telegram Start
-127.0.0.1       telegram.org
-127.0.0.1       www.telegram.org
-127.0.0.1       core.telegram.org
-127.0.0.1       web.telegram.org
-127.0.0.1       translations.telegram.org
-127.0.0.1       instantview.telegram.org
-127.0.0.1       desktop.telegram.org
-127.0.0.1       macos.telegram.org
 127.0.0.1       t.me
 127.0.0.1       tg.dev
 127.0.0.1       www.tg.dev
@@ -349,6 +355,14 @@
 127.0.0.1       cdn1.cdn-telegram.org
 127.0.0.1       cdn4.cdn-telegram.org
 127.0.0.1       cdn5.cdn-telegram.org
+127.0.0.1       telegram.org
+127.0.0.1       www.telegram.org
+127.0.0.1       core.telegram.org
+127.0.0.1       web.telegram.org
+127.0.0.1       translations.telegram.org
+127.0.0.1       instantview.telegram.org
+127.0.0.1       desktop.telegram.org
+127.0.0.1       macos.telegram.org
 #	Telegram End
 #	The New York Times Start
 127.0.0.1       nytimes.com
@@ -399,6 +413,12 @@
 127.0.0.1       static.wallhaven.cc
 127.0.0.1       alpha.wallhaven.cc
 #	Wallhaven End
+#	WGCZ Holding Start
+127.0.0.1       xvideos.com
+127.0.0.1       www.xvideos.com
+127.0.0.1       xnxx.com
+127.0.0.1       www.xnxx.com
+#	WGCZ Holding End
 #	WhatsApp Start
 127.0.0.1       whatsapp.com
 127.0.0.1       www.whatsapp.com

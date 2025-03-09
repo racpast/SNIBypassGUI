@@ -57,7 +57,7 @@ namespace SNIBypassGUI.Views
         /// </summary>
         public MainWindow()
         {
-            if(StringToBool(INIRead("高级设置", "GUIDebug", INIPath))) EnableLog();
+            if (StringToBool(INIRead("高级设置", "GUIDebug", INIPath))) EnableLog();
             WriteLog("进入 MainWindow 。", LogLevel.Debug);
             InitializeComponent();
 
@@ -209,7 +209,7 @@ namespace SNIBypassGUI.Views
                 if (linksTextParts == "、" || linksTextParts == "等") textBlock.Inlines.Add(new Run { Text = linksTextParts, FontSize = 15, FontWeight = FontWeights.Bold });
                 else
                 {
-                    Run run = new() { Text = linksTextParts, Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xF9, 0xFF)), FontSize = 15, Cursor = Cursors.Hand};
+                    Run run = new() { Text = linksTextParts, Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xF9, 0xFF)), FontSize = 15, Cursor = Cursors.Hand };
                     run.PreviewMouseDown += LinkText_PreviewMouseDown;
                     textBlock.Inlines.Add(run);
                 }
@@ -290,6 +290,9 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 UpdateAdaptersCombo 。", LogLevel.Debug);
 
+            // 从配置文件中读取上次选中的适配器
+            string PreviousSelectedAdapter = INIRead("程序设置", "SpecifiedAdapter", INIPath);
+
             // 获取友好名称不为空的适配器
             List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
 
@@ -305,9 +308,6 @@ namespace SNIBypassGUI.Views
                     AdaptersCombo.Items.Add(adapter.FriendlyName);
                 }
             }
-
-            // 从配置文件中读取上次选中的适配器
-            string PreviousSelectedAdapter = INIRead("程序设置", "SpecifiedAdapter", INIPath);
 
             // 如果更新后的列表包含之前选中的适配器，那么重新选中
             // Cast<string>() 假定 AdaptersCombo.Items 中的所有项都是 string 类型。如果不是，可能会遇到运行时错误。
@@ -333,7 +333,7 @@ namespace SNIBypassGUI.Views
         /// </summary>
         public void UpdateServiceStatus()
         {
-            WriteLog("进入 UpdateServiceStatus 。", LogLevel.Debug);         
+            WriteLog("进入 UpdateServiceStatus 。", LogLevel.Debug);
 
             // 检查主服务是否在运行
             bool IsNginxRunning = IsProcessRunning(NginxProcessName);
@@ -341,8 +341,8 @@ namespace SNIBypassGUI.Views
             // 检查DNS服务是否在运行
             bool IsDnsRunning = IsAcrylicServiceRunning();
 
-            WriteLog($"主服务运行中： {BoolToYesNo(IsNginxRunning)}",LogLevel.Info);
-            WriteLog($"DNS服务运行中： {BoolToYesNo(IsDnsRunning)}",LogLevel.Info);
+            WriteLog($"主服务运行中： {BoolToYesNo(IsNginxRunning)}", LogLevel.Info);
+            WriteLog($"DNS服务运行中： {BoolToYesNo(IsDnsRunning)}", LogLevel.Info);
 
             // 根据不同情况显示不同的服务状态文本
             if (IsNginxRunning && IsDnsRunning)
@@ -454,7 +454,7 @@ namespace SNIBypassGUI.Views
                 foreach (var config in InitialConfigurations)
                 {
                     var sections = config.Key.Split(':');
-                    if (sections.Length == 2)  INIWrite(sections[0], sections[1], config.Value, INIPath);
+                    if (sections.Length == 2) INIWrite(sections[0], sections[1], config.Value, INIPath);
                 }
             }
             WriteLog("完成 InitializeDirectoriesAndFiles 。", LogLevel.Debug);
@@ -563,7 +563,7 @@ namespace SNIBypassGUI.Views
             catch (UnauthorizedAccessException ex)
             {
                 WriteLog($"对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
-                if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时,useShellExecute: true );
+                if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
             }
             catch (Exception ex)
             {
@@ -605,7 +605,7 @@ namespace SNIBypassGUI.Views
                     WriteLog($"开关 {toggleButtonInstance.Name} 从配置键 {pair.SectionName} 同步状态： {BoolToYesNo(isEnabled)} 。", LogLevel.Debug);
                 }
             }
-                                                                                                
+
             // 判断调试模式是否开启
             bool isDebugModeOn = StringToBool(INIRead("高级设置", "DebugMode", INIPath));
 
@@ -651,7 +651,7 @@ namespace SNIBypassGUI.Views
         /// 设置指定网络适配器首选DNS为环回地址并记录先前的DNS服务器地址
         /// </summary>
         /// <param name="Adapter">指定的网络适配器</param>
-        public void SetLoopbackDNS(NetworkAdapter Adapter)
+        public async void SetLoopbackDNS(NetworkAdapter Adapter)
         {
             WriteLog("进入 SetLoopbackDNS 。", LogLevel.Debug);
             try
@@ -667,7 +667,7 @@ namespace SNIBypassGUI.Views
                     // 用于暂存DNS服务器地址
                     string PreviousDNS1 = string.Empty, PreviousDNS2 = string.Empty;
 
-                   if (isIPv4DNSAuto != true)
+                    if (isIPv4DNSAuto != true)
                     {
                         // 遍历 DNS 地址并获取有效的 DNS
                         int validDnsCount = 0;
@@ -687,13 +687,21 @@ namespace SNIBypassGUI.Views
                     SetIPv4DNS(Adapter, ["127.0.0.1"]);
 
                     // 将指定适配器的IPv6 DNS服务器设置为首选::1
-                    SetIPv6DNS(Adapter, ["::1"]);
+                    await SetIPv6DNS(Adapter, ["::1"]);
 
-                    // 刷新指定适配器的信息
-                    Adapter = Refresh(Adapter);
+                    // 刷新适配器信息
+                    var refreshedAdapter = Refresh(Adapter);
+                    if (refreshedAdapter == null)
+                    {
+                        WriteLog("刷新适配器信息失败！", LogLevel.Error);
+                        return;
+                    }
+                    Adapter = refreshedAdapter;
 
+                    string ipv4Dns = Adapter.IPv4DNSServer.Length > 0 ? Adapter.IPv4DNSServer[0] : "未设置";
+                    string ipv6Dns = Adapter.IPv6DNSServer.Length > 0 ? Adapter.IPv6DNSServer[0] : "未设置";
                     WriteLog($"指定网络适配器是否为自动获取 DNS： {BoolToYesNo(isIPv4DNSAuto)}", LogLevel.Info);
-                    WriteLog($"成功设置指定网络适配器的 IPv4 首选 DNS 为 {Adapter.IPv4DNSServer[0]} ，IPv6 首选 DNS 为 {Adapter.IPv6DNSServer[0]}", LogLevel.Info);
+                    WriteLog($"成功设置指定网络适配器的 IPv4 首选 DNS 为 {ipv4Dns}，IPv6 首选 DNS 为 {ipv6Dns}", LogLevel.Info);
                     WriteLog($"将暂存的DNS服务器为： {PreviousDNS1} ， {PreviousDNS2}", LogLevel.Debug);
 
                     // 将停止服务时恢复适配器所需要的信息写入配置文件备用
@@ -705,7 +713,7 @@ namespace SNIBypassGUI.Views
             catch (Exception ex)
             {
                 WriteLog($"无法设置指定的网络适配器！", LogLevel.Error, ex);
-                if (MessageBox.Show($"无法设置指定的网络适配器！请手动设置！\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时,useShellExecute: true );
+                if (MessageBox.Show($"无法设置指定的网络适配器！请手动设置！\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时, useShellExecute: true);
             }
             WriteLog("完成 SetLoopbackDNS 。", LogLevel.Debug);
         }
@@ -714,7 +722,7 @@ namespace SNIBypassGUI.Views
         /// 从配置文件还原适配器
         /// </summary>
         /// <param name="Adapter">指定的网络适配器</param>
-        public void RestoreAdapterDNS(NetworkAdapter Adapter)
+        public async Task RestoreAdapterDNS(NetworkAdapter Adapter)
         {
             WriteLog("进入 RestoreAdapterDNS 。", LogLevel.Debug);
             try
@@ -751,11 +759,11 @@ namespace SNIBypassGUI.Views
                 }
                 if (Adapter.IPv6DNSServer.Length > 0 && Adapter.IPv6DNSServer[0] == "::1")
                 {
-                    SetIPv6DNS(Adapter, []);
+                    await SetIPv6DNS(Adapter, []);
                     WriteLog($"活动网络适配器的 IPv6 DNS 成功设置为自动获取。", LogLevel.Info);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 WriteLog($"无法还原指定的网络适配器！", LogLevel.Error, ex);
                 if (MessageBox.Show($"无法还原指定的网络适配器！请手动还原！\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您在停止时遇到适配器设置失败或不确定该软件是否对适配器造成影响时, useShellExecute: true);
@@ -776,9 +784,9 @@ namespace SNIBypassGUI.Views
                 if (IsPortInUse(80))
                 {
                     WriteLog($"检测到系统 80 端口被占用。", LogLevel.Warning);
-                    if (MessageBox.Show($"检测到系统 80 端口被占用，主服务可能无法正常运行，点击“否”尝试继续运行。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您的主服务运行后自动停止或遇到80端口被占用的提示时,useShellExecute: true);
+                    if (MessageBox.Show($"检测到系统 80 端口被占用，主服务可能无法正常运行，点击“否”尝试继续运行。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您的主服务运行后自动停止或遇到80端口被占用的提示时, useShellExecute: true);
                 }
-                StartProcess(nginxPath,workingDirectory: NginxDirectory);
+                StartProcess(nginxPath, workingDirectory: NginxDirectory);
             }
             catch (Exception ex)
             {
@@ -842,7 +850,7 @@ namespace SNIBypassGUI.Views
                 else
                 {
                     WriteLog($"没有找到指定的网络适配器！", LogLevel.Warning);
-                    if (MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时,useShellExecute: true);
+                    if (MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时, useShellExecute: true);
                 }
             }
             else
@@ -916,7 +924,7 @@ namespace SNIBypassGUI.Views
                     break;
                 }
             }
-            if (activeAdapter != null) RestoreAdapterDNS(activeAdapter);
+            if (activeAdapter != null) await RestoreAdapterDNS(activeAdapter);
             WriteLog("完成 StopService 。", LogLevel.Debug);
         }
 
@@ -986,8 +994,8 @@ namespace SNIBypassGUI.Views
             await StopService();
 
             // 实验性功能：Pixiv IP优选
-           if (StringToBool(INIRead("程序设置", "PixivIPPreference", INIPath)))
-           {
+            if (StringToBool(INIRead("程序设置", "PixivIPPreference", INIPath)))
+            {
                 try
                 {
                     RemoveSection(SystemHosts, "s.pximg.net");
@@ -995,7 +1003,7 @@ namespace SNIBypassGUI.Views
                 catch (UnauthorizedAccessException ex)
                 {
                     WriteLog($"对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
-                    if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时,useShellExecute: true);
+                    if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
                 }
                 catch (Exception ex)
                 {
@@ -1069,7 +1077,7 @@ namespace SNIBypassGUI.Views
             }
             catch (Exception ex)
             {
-                WriteLog($"尝试设置 SNIBypassGUI 为开机启动时遇到异常。", LogLevel.Error,ex);
+                WriteLog($"尝试设置 SNIBypassGUI 为开机启动时遇到异常。", LogLevel.Error, ex);
                 MessageBox.Show($"设置开机启动时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             WriteLog("完成 SetStartBtn_Click 。", LogLevel.Debug);
@@ -1173,7 +1181,7 @@ namespace SNIBypassGUI.Views
 
             // 不必要的日志记录
             WriteLog("完成 ExitBtn_Click 。", LogLevel.Debug);
-            }
+        }
 
         /// <summary>
         /// 更新数据按钮点击事件
@@ -1280,7 +1288,7 @@ namespace SNIBypassGUI.Views
             finally
             {
                 UpdateBtn.IsEnabled = true;
-                UpdateBtn.Content = "更新数据";               
+                UpdateBtn.Content = "更新数据";
             }
             WriteLog("完成 UpdateBtn_Click 。", LogLevel.Debug);
         }
@@ -1377,7 +1385,7 @@ namespace SNIBypassGUI.Views
                         UpdateTempFilesSize();
                         SyncControlsFromConfig();
                         controlsStatusUpdateTimer?.Start();
-                        tempFilesSizeUpdateTimer?.Start(); 
+                        tempFilesSizeUpdateTimer?.Start();
                         serviceStatusUpdateTimer?.Stop();
                         adaptersComboUpdateTimer?.Stop();
                         break;
@@ -1438,7 +1446,8 @@ namespace SNIBypassGUI.Views
             {
                 if (IsCertificateInstalled(CertificateThumbprint)) UninstallCertificate(CertificateThumbprint);
                 InstallCertificate(CERFile);
-            }catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 WriteLog($"尝试安装证书时遇到异常。", LogLevel.Error, ex);
                 MessageBox.Show($"安装证书时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1471,16 +1480,16 @@ namespace SNIBypassGUI.Views
                     BeginAnimation(OpacityProperty, fadeOut);
                     await Task.Delay(800);
                     Hide();
-                    var feedbackWindow = new FeedbackWindow();
-                    if (new ImageClippingWindow(sourceFile).ShowDialog() == true)
+                    Opacity = 0;
+                    var result = new ImageClippingWindow(sourceFile).ShowDialog();
+                    Show();
+                    var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
                     {
-                        Opacity = 0;
-                        Show();
-                        var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
-                        {
-                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-                        };
-                        BeginAnimation(OpacityProperty, fadeIn);
+                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                    };
+                    BeginAnimation(OpacityProperty, fadeIn);
+                    if (result == true)
+                    {
                         INIWrite("程序设置", "Background", "Custom", INIPath);
                         UpdateBackground();
                     }
@@ -1524,7 +1533,8 @@ namespace SNIBypassGUI.Views
             string url = string.Empty;
             if (sender is TextBlock textblock) url = textblock.Text;
             else if (sender is Run run) url = run.Text;
-            if (!string.IsNullOrEmpty(url)){
+            if (!string.IsNullOrEmpty(url))
+            {
                 if (!url.StartsWith("http://") && !url.StartsWith("https://")) url = "https://" + url;
                 WriteLog($"用户点击的链接被识别为 {url} 。", LogLevel.Info);
                 StartProcess(url, useShellExecute: true);
@@ -1643,7 +1653,15 @@ namespace SNIBypassGUI.Views
         public async void TaskbarIcon_LeftClick()
         {
             WriteLog("进入 TaskbarIcon_LeftClicsk 。", LogLevel.Debug);
-            if (Opacity == 0 || IsVisible == false || IsActive == false)
+            bool isAnyDialogOpen()
+            {
+                foreach (Window window in Application.Current.Windows)
+                {
+                    if (window is FeedbackWindow || window is ImageClippingWindow) return true;
+                }
+                return false;
+            }
+            if ((Opacity == 0 || IsVisible == false || IsActive == false) && !isAnyDialogOpen())
             {
                 Hide();
                 var fadeIn = new DoubleAnimation
@@ -1725,8 +1743,8 @@ namespace SNIBypassGUI.Views
             await AddSwitchesToList();
 
             // 如果有配置中不存在的项，则开启
-            List<String> ExistingKeys =  GetKeys("代理开关", INIPath);
-            foreach(SwitchItem item in Switchs)
+            List<String> ExistingKeys = GetKeys("代理开关", INIPath);
+            foreach (SwitchItem item in Switchs)
             {
                 if (!ExistingKeys.Contains(item.SectionName)) INIWrite("代理开关", item.SectionName, "true", INIPath);
             }
@@ -1839,7 +1857,7 @@ namespace SNIBypassGUI.Views
                     "停止服务" => "#FFFF0000",
                     "退出工具" => "#FFFF00C7",
                     _ => null
-                }; 
+                };
                 menuitem.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(color));
                 menuitem.Header = $"『{menuitem.Header}』";
                 menuitem.FontSize += 2;
@@ -1936,12 +1954,12 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 还原系统 Hosts 按钮点击事件
+        /// 还原系统设置按钮点击事件
         /// </summary>
-        private void RestoreHostsBtn_Click(object sender, RoutedEventArgs e)
+        private async void RestoreSystemBtn_Click(object sender, RoutedEventArgs e)
         {
-            WriteLog("进入 RestoreHostsBtn_Click 。", LogLevel.Debug);
-            if (MessageBox.Show("还原系统 Hosts 功能用于消除本程序对系统 Hosts 所产生的影响。\r\n当您认为本程序（特别是历史版本）对您的系统 Hosts 造成了不良影响时可以使用此功能。\r\n是否还原系统 Hosts ？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            WriteLog("进入 RestoreSystemBtn_Click 。", LogLevel.Debug);
+            if (MessageBox.Show("还原系统设置功能用于消除本程序对系统适配器设置以及 Hosts 所产生的影响。\r\n当您认为本程序（特别是历史版本）对您的系统造成了不良影响时可以使用此功能。\r\n是否还原系统设置？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 try
                 {
@@ -1950,6 +1968,21 @@ namespace SNIBypassGUI.Views
                         WriteLog($"移除 {pair.SectionName} 的记录部分。", LogLevel.Info);
                         RemoveSection(SystemHosts, pair.SectionName);
                     }
+
+                    // 获取所有网络适配器
+                    List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
+                    NetworkAdapter activeAdapter = null;
+
+                    // 遍历所有适配器
+                    foreach (var adapter in adapters)
+                    {
+                        if (adapter.FriendlyName == AdaptersCombo.SelectedItem?.ToString())
+                        {
+                            activeAdapter = adapter;
+                            break;
+                        }
+                    }
+                    if (activeAdapter != null) await RestoreAdapterDNS(activeAdapter);
                     FlushDNSCache();
                 }
                 catch (UnauthorizedAccessException ex)
@@ -1963,7 +1996,7 @@ namespace SNIBypassGUI.Views
                     MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
-            WriteLog("完成 RestoreHostsBtn_Click 。", LogLevel.Debug);
+            WriteLog("完成 RestoreSystemBtn_Click 。", LogLevel.Debug);
         }
 
         /// <summary>
@@ -1998,11 +2031,11 @@ namespace SNIBypassGUI.Views
             {
                 AdaptersCombo.SelectedItem = activeAdapter.FriendlyName;
                 INIWrite("程序设置", "SpecifiedAdapter", activeAdapter.FriendlyName, INIPath);
-            }                   
+            }
             else
             {
                 WriteLog($"没有找到活动且可设置的网络适配器！", LogLevel.Warning);
-                if (MessageBox.Show($"没有找到活动且可设置的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时,useShellExecute: true );
+                if (MessageBox.Show($"没有找到活动且可设置的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时, useShellExecute: true);
             }
             WriteLog("完成 GetActiveAdapterBtn_Click 。", LogLevel.Debug);
         }
@@ -2013,7 +2046,7 @@ namespace SNIBypassGUI.Views
         private void HelpBtn_HowToFindActiveAdapter_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 HelpBtn_HowToFindActiveAdapter_Click 。", LogLevel.Debug);
-            StartProcess(当您无法确定当前正在使用的适配器时,useShellExecute: true );
+            StartProcess(当您无法确定当前正在使用的适配器时, useShellExecute: true);
             WriteLog("完成 HelpBtn_HowToFindActiveAdapter_Click 。", LogLevel.Debug);
         }
 
@@ -2044,7 +2077,7 @@ namespace SNIBypassGUI.Views
             catch (UnauthorizedAccessException ex)
             {
                 WriteLog($"对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
-                if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时,useShellExecute: true);
+                if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
             }
             catch (Exception ex)
             {
@@ -2069,7 +2102,6 @@ namespace SNIBypassGUI.Views
             Hide();
             var feedbackWindow = new FeedbackWindow();
             feedbackWindow.ShowDialog();
-
             Opacity = 0;
             Show();
             var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
@@ -2198,7 +2230,7 @@ namespace SNIBypassGUI.Views
 
             public bool CanExecute(object parameter) => _canExecute == null || _canExecute();
 
-            public void Execute(object parameter) =>  _execute();
+            public void Execute(object parameter) => _execute();
         }
     }
 
