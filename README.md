@@ -140,4 +140,4 @@ https://github.com/user-attachments/assets/c3c93570-9637-4099-9802-87fa1b399301
 </table>
 
 ## 🧪 任何 Bug 或建议请提交至 issue 或发送邮件至 yaojun.mail@qq.com 。
-## 👥 QQ 交流群：94681320 ( [SNIBypassGUI](https://github.com/racpast/SNIBypassGUI) 兼 _[Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI)_ 交流群)。
+## 👥 QQ 交流群：946813204 ( [SNIBypassGUI](https://github.com/racpast/SNIBypassGUI) 兼 _[Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI)_ 交流群)。
