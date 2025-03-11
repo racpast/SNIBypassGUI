@@ -5,13 +5,13 @@
 https://github.com/user-attachments/assets/c3c93570-9637-4099-9802-87fa1b399301
 ## ✨ 功能预览
 ### 💻 多站点可开关支持
-![image](https://github.com/user-attachments/assets/bb5c7807-918f-451a-9d19-722d3957d7bd)
+![image](https://github.com/user-attachments/assets/ab0aa829-67b4-4800-ad2b-6d0616b19bf5)
 ### 📰 可视化管理
-![image](https://github.com/user-attachments/assets/5c76d610-a80e-4c12-ad4e-152f45165df6)
+![image](https://github.com/user-attachments/assets/d97b3257-e4d7-497e-a696-9cef11c4f8bc)
 ### 🌙 深色主题
-![image](https://github.com/user-attachments/assets/054d82f2-a177-450c-954e-c89cc8c2e55b)
+![image](https://github.com/user-attachments/assets/b0ed6b80-d7b3-4b60-8c4b-fb116d537122)
 ### 🧩 一键更新与更多设置
-![image](https://github.com/user-attachments/assets/3bcb16ba-ff57-4c30-b194-70814a3e183b)
+![image](https://github.com/user-attachments/assets/c4b0673f-0d3c-4dde-a2a2-84266b5e1488)
 ### 📋 详细原理见软件内左侧`说明`栏目
 ## 🌸 贡献者名单
 ### 🏆️ 特别感谢@[mashirozx](https://github.com/mashirozx)大佬还有@[c15412](https://github.com/c15412)大佬
