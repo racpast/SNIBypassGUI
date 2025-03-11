@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using static SNIBypassGUI.Utils.LogManager;
 
 namespace SNIBypassGUI.Utils
@@ -28,6 +29,10 @@ namespace SNIBypassGUI.Utils
         {
             try
             {
+                if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    processName = Path.GetFileNameWithoutExtension(processName);
+                }
                 return Process.GetProcessesByName(processName).Length;
             }
             catch (Exception ex)
@@ -61,7 +66,7 @@ namespace SNIBypassGUI.Utils
                     }
                 };
                 process.Start();
-                WriteLog($"成功启动 {fileName} 。", LogLevel.Info);
+                WriteLog($"成功启动 {fileName}。", LogLevel.Info);
             }
             catch (Exception ex)
             {
@@ -90,7 +95,7 @@ namespace SNIBypassGUI.Utils
                     try
                     {
                         process.Kill();
-                        WriteLog($"成功结束 PID 为 {process.Id} 的进程 {processName} 。", LogLevel.Info);
+                        WriteLog($"成功结束 PID 为 {process.Id} 的进程 {processName}。", LogLevel.Info);
                     }
                     catch (Exception ex)
                     {

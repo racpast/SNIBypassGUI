@@ -149,7 +149,7 @@ namespace SNIBypassGUI.Utils
             }
             catch (Exception ex)
             {
-                WriteLog($"发送请求时遇到异常。", LogLevel.Error, ex);
+                WriteLog("发送请求时遇到异常。", LogLevel.Error, ex);
                 throw;
             }
             finally
@@ -193,37 +193,19 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 尝试从主服务器和备用服务器下载文件并显示进度
+        /// 尝试下载文件并显示进度
         /// </summary>
-        public static async Task DownloadFileWithProgress(string primaryUrl, string backupUrl, string savePath, Action<double> updateProgress, double timeOut = 60, string userAgent = "Mozilla/5.0")
+        public static async Task DownloadFileWithProgress(string Url, string savePath, Action<double> updateProgress, double timeOut = 60, string userAgent = "Mozilla/5.0")
         {
-            bool success = false;
-            Exception lastException = null;
-
             try
             {
-                success = await TryDownloadFile(primaryUrl, savePath, updateProgress, timeOut, userAgent);
+                await TryDownloadFile(Url, savePath, updateProgress, timeOut, userAgent);
             }
             catch (Exception ex)
             {
-                WriteLog("从主服务器下载文件遇到异常。", LogLevel.Error, ex);
-                lastException = ex;
+                WriteLog("从服务器下载文件遇到异常。", LogLevel.Error, ex);
+                throw;
             }
-
-            if (!success)
-            {
-                try
-                {
-                    success = await TryDownloadFile(backupUrl, savePath, updateProgress, timeOut, userAgent);
-                }
-                catch (Exception ex)
-                {
-                    WriteLog("从备用服务器下载文件遇到异常。", LogLevel.Error, ex);
-                    lastException = ex;
-                }
-            }
-
-            if (!success) throw lastException;
         }
     }
 }

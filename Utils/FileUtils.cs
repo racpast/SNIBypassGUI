@@ -139,7 +139,7 @@ namespace SNIBypassGUI.Utils
             }
             catch (DirectoryNotFoundException ex)
             {
-                WriteLog($"未找到目录 {folderPath} 。", LogLevel.Warning);
+                WriteLog($"未找到目录 {folderPath}。", LogLevel.Error, ex);
             }
             catch (Exception ex)
             {
@@ -310,7 +310,7 @@ namespace SNIBypassGUI.Utils
         {
             if (!File.Exists(filePath))
             {
-                WriteLog($"文件{filePath}不存在！", LogLevel.Warning);
+                WriteLog($"文件 {filePath} 不存在！", LogLevel.Warning);
                 return;
             }
             string startMarker = $"#\t{sectionName} Start";
@@ -351,7 +351,7 @@ namespace SNIBypassGUI.Utils
         {
             if (!File.Exists(filePath))
             {
-                WriteLog($"文件{filePath}不存在！", LogLevel.Warning);
+                WriteLog($"文件 {filePath} 不存在！", LogLevel.Warning);
                 return [];
             }
             string startMarker = $"#\t{sectionName} Start";

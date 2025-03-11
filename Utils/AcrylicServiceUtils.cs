@@ -1,9 +1,13 @@
 ﻿using Microsoft.Win32;
+using System;
 using System.IO;
 using System.Threading.Tasks;
-using static SNIBypassGUI.Utils.CommandUtils;
 using static SNIBypassGUI.Utils.ProcessUtils;
 using static SNIBypassGUI.Utils.FileUtils;
+using static SNIBypassGUI.Utils.ServiceUtils;
+using static SNIBypassGUI.Utils.WinApiUtils;
+using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.PathConsts;
 
 namespace SNIBypassGUI.Utils
@@ -13,7 +17,7 @@ namespace SNIBypassGUI.Utils
         /// <summary>
         /// 检查 Acrylic DNS Proxy 服务是否已安装
         /// </summary>
-        public static bool IsAcrylicServiceInstalled() => Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\AcrylicDNSProxySvc") != null;
+        public static bool IsAcrylicServiceInstalled() => Registry.LocalMachine.OpenSubKey($"SYSTEM\\CurrentControlSet\\Services\\{DnsServiceName}") != null;
 
         /// <summary>
         /// 安装 Acrylic DNS Proxy 服务
@@ -22,12 +26,18 @@ namespace SNIBypassGUI.Utils
         {
             if (!IsAcrylicServiceInstalled())
             {
-                await RunCommand($"\"{AcrylicServiceExeFilePath}\" /INSTALL /SILENT");
-                await RunCommand($"ICACLS \"{AcrylicServiceExeFilePath}\" /inheritance:d");
-                await RunCommand($"ICACLS \"{AcrylicServiceExeFilePath}\" /remove:g \"Authenticated Users\"");
+                StartProcess(AcrylicServiceExeFilePath, "/INSTALL /SILENT");
+
+                TimeSpan timeout = TimeSpan.FromSeconds(30);
+                DateTime startTime = DateTime.Now;
+                while (!IsAcrylicServiceInstalled())
+                {
+                    if (DateTime.Now - startTime > timeout) WriteLog("等待服务安装超时。", LogLevel.Warning);
+                    await Task.Delay(1000);
+                }
 
                 // 安装服务的时候会将启动类型设置为“自动”导致开机自动启动从而窗口显示状态文本误导用户的问题，应调整为“手动”
-                await RunCommand("sc config AcrylicDNSProxySvc start= demand");
+                ChangeServiceStartType(DnsServiceName, SERVICE_DEMAND_START);
             }
         }
 
@@ -36,7 +46,17 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         public static async Task UninstallAcrylicService()
         {
-            if (IsAcrylicServiceInstalled()) await RunCommand($"\"{AcrylicServiceExeFilePath}\" /UNINSTALL /SILENT");
+            if (IsAcrylicServiceInstalled())
+            {
+                StartProcess(AcrylicServiceExeFilePath, "/UNINSTALL /SILENT");
+                TimeSpan timeout = TimeSpan.FromSeconds(30);
+                DateTime startTime = DateTime.Now;
+                while (IsAcrylicServiceInstalled())
+                {
+                    if (DateTime.Now - startTime > timeout) WriteLog("等待服务卸载超时。", LogLevel.Warning);
+                    await Task.Delay(1000);
+                }
+            }
         }
 
         /// <summary>
@@ -47,17 +67,17 @@ namespace SNIBypassGUI.Utils
         /// <summary>
         /// 启动 Acrylic DNS Proxy 服务
         /// </summary>
-        public static async Task StartAcrylicService()
+        public static void StartAcrylicService()
         {
-            if (!IsAcrylicServiceRunning()) await RunCommand("Net.exe Start AcrylicDNSProxySvc");
+            if (!IsAcrylicServiceRunning()) StartServiceByName(DnsServiceName);
         }
 
         /// <summary>
         /// 停止 Acrylic DNS Proxy 服务
         /// </summary>
-        public static async Task StopAcrylicService()
+        public static void  StopAcrylicService()
         {
-            if (IsAcrylicServiceRunning()) await RunCommand("Net.exe Stop AcrylicDNSProxySvc");
+            if (IsAcrylicServiceRunning()) StopService(DnsServiceName);
         }
 
         /// <summary>

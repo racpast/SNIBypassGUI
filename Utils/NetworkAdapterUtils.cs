@@ -7,8 +7,9 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using SNIBypassGUI.Models;
-using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.CommandUtils;
+using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Utils.NetworkUtils;
 
 namespace SNIBypassGUI.Utils
 {
@@ -24,7 +25,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取指定范围的网络适配器的信息，并返回NetworkAdapter列表
+        /// 获取指定范围的网络适配器的信息，并返回 NetworkAdapter 列表。
         /// </summary>
         public static List<NetworkAdapter> GetNetworkAdapters(ScopeNeeded scopeNeeded = ScopeNeeded.All)
         {
@@ -41,7 +42,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取指定条件的网络适配器的信息，并返回NetworkAdapter列表
+        /// 获取指定条件的网络适配器的信息，并返回 NetworkAdapter 列表。
         /// </summary>
         public static List<NetworkAdapter> GetNetworkAdapters(string condition)
         {
@@ -82,7 +83,7 @@ namespace SNIBypassGUI.Utils
                         isIPv4DNSAuto = string.IsNullOrEmpty(ns);
                     }
 
-                    // 查询IP配置信息
+                    // 查询 IP 配置信息
                     string ipQuery = $"SELECT * FROM Win32_NetworkAdapterConfiguration WHERE InterfaceIndex = {interfaceIndex}";
                     using ManagementObjectSearcher ipSearcher = new(ipQuery);
                     using ManagementObjectCollection ipConfigs = ipSearcher.Get();
@@ -127,7 +128,7 @@ namespace SNIBypassGUI.Utils
                         dhcpLeaseObtained = !string.IsNullOrEmpty(dhcpLeaseObtainedRaw) ? ManagementDateTimeConverter.ToDateTime(dhcpLeaseObtainedRaw) : DateTime.MinValue;
                         dhcpLeaseExpires = !string.IsNullOrEmpty(dhcpLeaseExpiresRaw) ? ManagementDateTimeConverter.ToDateTime(dhcpLeaseExpiresRaw) : DateTime.MinValue;
 
-                        // 处理DNS服务器
+                        // 处理 DNS 服务器
                         string[] dnsServers = ipConfig["DNSServerSearchOrder"] as string[] ?? [];
                         ipv4DnsServer.AddRange(dnsServers.Where(dns => !dns.Contains(':')));
                         ipv6DnsServer = GUIDToIPv6DNSServer.ContainsKey(guid) ? GUIDToIPv6DNSServer[guid] : [];
@@ -176,7 +177,7 @@ namespace SNIBypassGUI.Utils
         public static NetworkAdapter Refresh(NetworkAdapter networkAdapter) => GetNetworkAdapters($" WHERE GUID=\"{networkAdapter.GUID}\"").FirstOrDefault();
 
         /// <summary>
-        /// 设置指定网络适配器的IPv4 DNS服务器
+        /// 设置指定网络适配器的 IPv4 DNS 服务器。
         /// </summary>
         public static void SetIPv4DNS(NetworkAdapter networkAdapter, string[] dnsServers)
         {
@@ -197,17 +198,25 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 设置指定网络适配器的IPv6 DNS服务器
+        /// 设置指定网络适配器的 IPv6 DNS 服务器。
         /// </summary>
         public static async Task SetIPv6DNS(NetworkAdapter networkAdapter, string[] dnsServers)
         {
             try
             {
-                var vs = new string[] { "SYSTEM", "CurrentControlSet", "Services", "Tcpip6", "Parameters", "Interfaces", networkAdapter.GUID };
-                var path = string.Join(@"\", vs);
-                var reg = Registry.LocalMachine.OpenSubKey(path, true);
-                reg.SetValue("NameServer", string.Join(",", dnsServers));
-                await RunCommand("ipconfig /renew6");
+                if (dnsServers.Length == 0)
+                {
+                    networkAdapter = Refresh(networkAdapter);
+                    string v4DnsList = string.Join(", ", networkAdapter.IPv4DNSServer.Select(dns => $"\"{dns}\""));
+                    await RunPowerShell($"Set-DnsClientServerAddress -InterfaceIndex {networkAdapter.InterfaceIndex} -ResetServerAddresses");
+                    if (networkAdapter.IPv4DNSServer.Length != 0 && !networkAdapter.IsIPv4DNSAuto) await RunPowerShell($"Set-DnsClientServerAddress -InterfaceIndex {networkAdapter.InterfaceIndex} -ServerAddresses ({v4DnsList})");
+                }
+                else
+                {
+                    string v6DnsList = string.Join(", ", dnsServers.Select(dns => $"\"{dns}\""));
+                    await RunPowerShell($"Set-DnsClientServerAddress -InterfaceIndex {networkAdapter.InterfaceIndex} -ServerAddresses ({v6DnsList})");
+                }
+                FlushDNSCache();
             }
             catch (Exception ex)
             {

@@ -8,7 +8,7 @@
         xmlns:local="clr-namespace:SNIBypassGUI.Views"
         mc:Ignorable="d"
         Loaded="Window_Loaded"
-        Title="SNIBypassGUI" Height="450" Width="800" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
+        Title="SNIBypassGUI" Height="500" Width="810" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
     <Window.Resources>
         <Style TargetType="RichTextBox">
             <Setter Property="Template">
@@ -557,7 +557,7 @@
                                 <ScrollViewer>
                                     <StackPanel>
                                         <TextBlock Margin="20,5,20,5" TextWrapping="Wrap" Text="欢迎使用 &#x000A;SNIBypassGUI！" FontSize="24" Foreground="#FF2100C3" />
-                                        <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您是第一次使用 SNIBypassGUI ，请单击下方按钮安装所需证书，所有对话框均选择 是(Y)。" FontSize="18" Foreground="#FF8738FF" />
+                                        <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您是第一次使用，请单击下方按钮安装所需证书，所有对话框均选择 是(Y)。" FontSize="18" Foreground="#FF8738FF" />
                                         <Button x:Name="InstallCertBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource CertificateGeometry}" Click="InstallCertBtn_Click" Margin="10,0,10,0" HorizontalAlignment="Stretch" Content="安装证书"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4"  Foreground="#FF2100C3" BorderBrush="#FF2100C3"/>
                                         <TextBlock x:Name="ServiceStatusText" Margin="20,5,20,5" TextWrapping="Wrap" Text="当前服务状态：&#x000A;主服务与DNS服务未运行" FontSize="21" Foreground="Red" />
                                         <Grid>
@@ -597,8 +597,14 @@
                                             <Button x:Name="SetStartBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Click="SetStartBtn_Click"  Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="开机自动启动"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
                                             <Button x:Name="StopStartBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Grid.Column="1" Click="StopStartBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="停止自动启动"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
                                         </Grid>
-                                        <Button x:Name="TaskbarIconRunBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource WindowsGeometry}" Click="TaskbarIconRunBtn_Click" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="最小化到托盘图标运行"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                                        <Button x:Name="ExitBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource ExitGeometry}" Click="ExitBtn_Click" Margin="10,0,10,10" HorizontalAlignment="Stretch" Content="退出工具"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition/>
+                                                <ColumnDefinition/>
+                                            </Grid.ColumnDefinitions>
+                                            <Button x:Name="TaskbarIconRunBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource WindowsGeometry}" Click="TaskbarIconRunBtn_Click" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="托盘运行"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                            <Button x:Name="ExitBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource ExitGeometry}" Grid.Column="1" Click="ExitBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="退出工具"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
+                                        </Grid>
                                     </StackPanel>
                                 </ScrollViewer>
                             </hc:TabItem>
@@ -715,7 +721,7 @@
                                                 <RowDefinition/>
                                             </Grid.RowDefinitions>
                                             <Button x:Name="EditHostsBtn" hc:IconElement.Geometry="{StaticResource EditGeometry}" hc:BorderElement.CornerRadius="8" Click="EditHostsBtn_Click" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="编辑系统Hosts" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
-                                            <Button x:Name="RestoreSystemBtn" hc:IconElement.Geometry="{StaticResource RestoreGeometry}" hc:BorderElement.CornerRadius="8" Grid.Column="1" Click="RestoreSystemBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="还原系统设置" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                            <Button x:Name="UninstallBtn" hc:IconElement.Geometry="{StaticResource UninstallGeometry}" hc:BorderElement.CornerRadius="8" Grid.Column="1" Click="UninstallBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="一键卸载" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFFF2424" BorderBrush="#FFFF2424" VerticalContentAlignment="Center"/>
                                         </Grid>
                                     </StackPanel>
                                 </ScrollViewer>
