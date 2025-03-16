@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using static SNIBypassGUI.Consts.PathConsts;
 using SNIBypassGUI.Models;
+using static SNIBypassGUI.Consts.PathConsts;
 
 namespace SNIBypassGUI.Consts
 {
@@ -20,7 +20,7 @@ namespace SNIBypassGUI.Consts
             "210.140.139.136"
         ];
 
-        public readonly static Dictionary<string, byte[]> PathToResourceDic = new()
+        public readonly static ReadOnlyDictionary<string, byte[]> PathToResourceDic = new(new Dictionary<string, byte[]>
         {
             {nginxPath, Properties.Resources.SNIBypass},
             {nginxConfigFile, Properties.Resources.nginx},
@@ -33,9 +33,9 @@ namespace SNIBypassGUI.Consts
             {AcrylicHostsAll,Properties.Resources.AcrylicHosts_All},
             {SystemHostsAll,Properties.Resources.SystemHosts_All},
             {SwitchData,Properties.Resources.SwitchData},
-        };
+        });
 
-        public readonly static Dictionary<string, string> InitialConfigurations = new()
+        public readonly static ReadOnlyDictionary<string, string> InitialConfigurations = new(new Dictionary<string, string>
         {
             { "程序设置:Background", "Default" },
             { "程序设置:ThemeMode", "Light" },
@@ -48,7 +48,7 @@ namespace SNIBypassGUI.Consts
             { "暂存数据:PreviousDNS1", "" },
             { "暂存数据:PreviousDNS2", "" },
             { "暂存数据:IsPreviousDnsAutomatic", "true" }
-        };
+        });
 
         public static ObservableCollection<SwitchItem> Switchs = [];
     }
