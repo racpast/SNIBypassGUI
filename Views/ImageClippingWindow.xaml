@@ -8,7 +8,7 @@
         xmlns:hc="https://handyorg.github.io/handycontrol"
         mc:Ignorable="d"
         Title="图像裁剪" Height="660" Width="890" ShowInTaskbar="True" Topmost="True" Loaded="Window_Loaded" Background="Transparent" AllowsTransparency="True" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
-    <Border x:Name="VideoHelp" CornerRadius="15" Padding="10">
+    <Border CornerRadius="15" Padding="10">
         <Border.Background>
             <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
         </Border.Background>

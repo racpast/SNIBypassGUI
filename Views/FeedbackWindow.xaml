@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:SNIBypassGUI.Views"
         xmlns:hc="https://handyorg.github.io/handycontrol"
         mc:Ignorable="d"
-        Title="填写反馈" Height="335" Width="600" ShowInTaskbar="True" Topmost="True" Loaded="Window_Loaded" Background="Transparent" AllowsTransparency="True" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
+        Title="填写反馈" Height="380" Width="600" ShowInTaskbar="True" Topmost="True" Loaded="Window_Loaded" Background="Transparent" AllowsTransparency="True" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
     <Window.Resources>
         <Style TargetType="{x:Type TextBox}">
             <Style.Resources>
@@ -17,7 +17,7 @@
             </Style.Resources>
         </Style>
     </Window.Resources>
-    <Border x:Name="VideoHelp" CornerRadius="15" Padding="10">
+    <Border CornerRadius="15" Padding="10">
         <Border.Background>
             <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
         </Border.Background>
@@ -104,7 +104,8 @@
                     </TextBox>
                 </Grid>
             </Grid>
-            <Grid Grid.Row="2">
+            <TextBlock TextWrapping="Wrap" Grid.Row="2" Text="提交反馈前请注意，请勿提交与 SNIBypassGUI 无关或无意义的反馈，我们无法处理此类内容。请保持文明和尊重，避免使用恶意或攻击性言论。请不要在反馈中包含敏感信息（如密码、身份证号等个人资料）。我们会认真阅读每条反馈，但并非每条反馈都会得到单独回复。" Margin="10,0,10,5" Foreground="#FF6B6B6B" FontFamily="Microsoft YaHei UI" FontSize="11" TextAlignment="Center"/>
+            <Grid Grid.Row="3">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition/>

@@ -8,7 +8,7 @@
         xmlns:local="clr-namespace:SNIBypassGUI.Views"
         mc:Ignorable="d"
         Loaded="Window_Loaded"
-        Title="SNIBypassGUI" Height="490" Width="800" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
+        Title="SNIBypassGUI" Height="500" Width="800" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
     <Window.Resources>
         <Style TargetType="RichTextBox">
             <Setter Property="Template">
@@ -563,7 +563,10 @@
                                         <TextBlock Margin="20,5,20,5" TextWrapping="Wrap" Text="欢迎使用 &#x000A;SNIBypassGUI！" FontSize="24" Foreground="#FF2100C3" />
                                         <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您遇到了浏览器提示连接不安全的问题，请单击下方按钮安装证书。" FontSize="18" Foreground="#FF8738FF" />
                                         <Button x:Name="InstallCertBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource CertificateGeometry}" Click="InstallCertBtn_Click" Margin="10,0,10,0" HorizontalAlignment="Stretch" Content="安装证书"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4"  Foreground="#FF2100C3" BorderBrush="#FF2100C3"/>
-                                        <TextBlock x:Name="ServiceStatusText" Margin="10,15,10,15" TextWrapping="Wrap" Text="主服务与DNS服务未运行" FontSize="23" Foreground="Red" TextAlignment="Center"/>
+                                        <Grid Margin="10,15,10,15" Background="{DynamicResource BackgroundBrush}">
+                                            <Rectangle RadiusX="8" RadiusY="8" Stroke="{DynamicResource BorderBrush}" StrokeDashArray="4,2"/>
+                                            <TextBlock x:Name="ServiceStatusText" TextWrapping="Wrap" Text="主服务与DNS服务未运行" FontSize="21" Padding="5" Foreground="Red" TextAlignment="Center"/>
+                                        </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -643,7 +646,7 @@
                                                 <Border x:Name="LastColumnBorder" Grid.Row="0" Grid.RowSpan="1" Grid.Column="2" BorderBrush="Transparent" BorderThickness="0" Background="{DynamicResource BackgroundBrush}" CornerRadius="0,8,8,0"></Border>
                                             </Grid>
                                         </Border>
-                                        <TextBlock Margin="10,0,10,5" TextWrapping="Wrap" Text="* 点击上面的链接可以直接打开哦，没发现吧，嘻嘻" FontSize="14" Foreground="#FF6B6B6B"  FontStyle="Italic" FontFamily="Microsoft YaHei UI"/>
+                                        <TextBlock Margin="10,0,10,5" TextWrapping="Wrap" Text="* 点击上面的链接可以直接打开哦，没发现吧，嘻嘻" FontSize="14" Foreground="#FF6B6B6B" FontStyle="Italic" FontFamily="Microsoft YaHei UI"/>
                                         <TextBlock Margin="10,0,10,10" TextWrapping="Wrap" Text="目前部分站点还有问题，正在适配！如发现完全支持的站点访问出现异常，请转到设置提交反馈，谢谢！" FontSize="19" Foreground="#FF7600DC" />
                                     </StackPanel>
                                 </ScrollViewer>
@@ -651,9 +654,9 @@
                             <hc:TabItem Header="设置" Background="Transparent">
                                 <ScrollViewer>
                                     <StackPanel>
-                                        <Border Height="194" Margin="10,10,10,0" BorderBrush="DeepSkyBlue" BorderThickness="1" CornerRadius="8" Background="{DynamicResource BackgroundBrush}">
+                                        <Border Height="204" Margin="10,10,10,0" BorderBrush="DeepSkyBlue" BorderThickness="1" CornerRadius="8" Background="{DynamicResource BackgroundBrush}">
                                             <StackPanel  Height="210">
-                                                <Viewbox Margin="10,10,10,0" Width="100" Height="100">
+                                                <Viewbox Margin="10,10,10,0" Width="110" Height="110">
                                                     <hc:AnimationPath Data="{DynamicResource GithubGeometry}" Duration="00:00:08" Stretch="Uniform" StrokeThickness="40" Stroke="#FF1794F3" RepeatBehavior="Forever"/>
                                                 </Viewbox>
                                                 <TextBlock PreviewMouseDown="LinkText_PreviewMouseDown"  Margin="10,5,10,5" TextWrapping="Wrap" Text="https://github.com/racpast/SNIBypassGUI" FontSize="16" Foreground="#FF04ABD6" TextDecorations="Underline" FontFamily="Microsoft Tai Le" HorizontalAlignment="Center" Cursor="Hand"/>

@@ -1469,7 +1469,6 @@ namespace SNIBypassGUI.Views
                     BeginAnimation(OpacityProperty, fadeOut);
                     await Task.Delay(800);
                     Hide();
-                    Opacity = 0;
                     var result = new ImageClippingWindow(sourceFile).ShowDialog();
                     Show();
                     var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))

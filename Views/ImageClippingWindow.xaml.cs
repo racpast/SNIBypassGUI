@@ -30,11 +30,7 @@ namespace SNIBypassGUI.Views
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             ImageCropperControl.LoadImageFromFile(imagePath);
-            var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            BeginAnimation(OpacityProperty, fadeIn);
+            FadeIn();
         }
 
         /// <summary>
@@ -59,14 +55,8 @@ namespace SNIBypassGUI.Views
 
             // 保存裁剪后的图片
             croppedImage.Save(Path.Combine(CustomBackground));
-            var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromSeconds(0.8)))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            BeginAnimation(OpacityProperty, fadeOut);
-            await Task.Delay(800);
-            DialogResult = true;
-            Close();
+
+            await FadeOut(true);
         }
 
         /// <summary>
@@ -77,7 +67,23 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 取消按钮点击事件
         /// </summary>
-        private async void CancelBtn_Click(object sender, RoutedEventArgs e)
+        private async void CancelBtn_Click(object sender, RoutedEventArgs e) => await FadeOut();
+
+        /// <summary>
+        /// 帮助按钮点击事件
+        /// </summary>
+        private void HelpBtn_Click(object sender, RoutedEventArgs e) =>  StartProcess(如何使用自定义背景功能, useShellExecute: true);
+
+        private void FadeIn()
+        {
+            var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
+            BeginAnimation(OpacityProperty, fadeIn);
+        }
+
+        private async Task FadeOut(bool dialogResult = false)
         {
             var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromSeconds(0.8)))
             {
@@ -85,14 +91,9 @@ namespace SNIBypassGUI.Views
             };
             BeginAnimation(OpacityProperty, fadeOut);
             await Task.Delay(800);
-            DialogResult = false;
+            DialogResult = dialogResult;
             Close();
         }
-
-        /// <summary>
-        /// 帮助按钮点击事件
-        /// </summary>
-        private void HelpBtn_Click(object sender, RoutedEventArgs e) =>  StartProcess(如何使用自定义背景功能, useShellExecute: true);
     }
 
 }
