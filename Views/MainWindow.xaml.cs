@@ -1642,7 +1642,7 @@ namespace SNIBypassGUI.Views
         public async void TaskbarIcon_LeftClick()
         {
             WriteLog("进入 TaskbarIcon_LeftClicsk。", LogLevel.Debug);
-            bool isAnyDialogOpen()
+            static bool isAnyDialogOpen()
             {
                 foreach (Window window in Application.Current.Windows)
                 {
@@ -1650,7 +1650,7 @@ namespace SNIBypassGUI.Views
                 }
                 return false;
             }
-            if ((Opacity == 0 || IsVisible == false || IsActive == false) && !isAnyDialogOpen())
+            if ((Math.Abs(Opacity) < 1e-6 || IsVisible == false || IsActive == false) && !isAnyDialogOpen())
             {
                 Hide();
                 var fadeIn = new DoubleAnimation
