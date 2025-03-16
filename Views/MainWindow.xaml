@@ -8,7 +8,7 @@
         xmlns:local="clr-namespace:SNIBypassGUI.Views"
         mc:Ignorable="d"
         Loaded="Window_Loaded"
-        Title="SNIBypassGUI" Height="500" Width="810" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
+        Title="SNIBypassGUI" Height="490" Width="800" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
     <Window.Resources>
         <Style TargetType="RichTextBox">
             <Setter Property="Template">
@@ -133,7 +133,11 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Margin="5" x:Name="WindowTitle" TextWrapping="Wrap" Text="SNIBypassGUI" FontSize="21" Foreground="#FFB700FF" TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="1"/>
-                        <CheckBox x:Name="ThemeSwitchTB" Margin="0,0,8,0" local:ToggleButtonAttach.IsAutoFold="True" Visibility="Visible" Checked="ThemeSwitchTB_Checked" Unchecked="ThemeSwitchTB_Unchecked" Style="{StaticResource ThemeSwitchStyle}" Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <CheckBox x:Name="ThemeSwitchTB" local:ToggleButtonAttach.IsAutoFold="True" Margin="0,0,8,0" Visibility="Visible" Checked="ThemeSwitchTB_Checked" Unchecked="ThemeSwitchTB_Unchecked" Style="{StaticResource ThemeSwitchStyle}" Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <CheckBox.Content>
+                                <TextBlock x:Name="ThemeSwitchTBText" Text="切换主题" Foreground="#F3C62B"/>
+                            </CheckBox.Content>
+                        </CheckBox>
                     </Grid>
                 </Border>
             </hc:TransitioningContentControl>
@@ -159,7 +163,7 @@
                                 </Span>
                                 <LineBreak/>
                                 <Span FontSize="18" Foreground="OrangeRed">
-                                    <Run Text="请关闭所有杀毒软件，且不要使用 Steamcommunity 302 等类似软件" />
+                                    <Run Text="请关闭所有杀毒软件且不要使用 Steamcommunity 302 等类似软件" />
                                     <LineBreak/>
                                     <Run Text="否则程序可能会出现无法访问网页或闪退等异常情况！" FontSize="20"/>
                                 </Span>
@@ -557,24 +561,24 @@
                                 <ScrollViewer>
                                     <StackPanel>
                                         <TextBlock Margin="20,5,20,5" TextWrapping="Wrap" Text="欢迎使用 &#x000A;SNIBypassGUI！" FontSize="24" Foreground="#FF2100C3" />
-                                        <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您是第一次使用，请单击下方按钮安装所需证书，所有对话框均选择 是(Y)。" FontSize="18" Foreground="#FF8738FF" />
+                                        <TextBlock Margin="20,0,20,5" TextWrapping="Wrap" Text="如果您遇到了浏览器提示连接不安全的问题，请单击下方按钮安装证书。" FontSize="18" Foreground="#FF8738FF" />
                                         <Button x:Name="InstallCertBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource CertificateGeometry}" Click="InstallCertBtn_Click" Margin="10,0,10,0" HorizontalAlignment="Stretch" Content="安装证书"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4"  Foreground="#FF2100C3" BorderBrush="#FF2100C3"/>
-                                        <TextBlock x:Name="ServiceStatusText" Margin="20,5,20,5" TextWrapping="Wrap" Text="当前服务状态：&#x000A;主服务与DNS服务未运行" FontSize="21" Foreground="Red" />
+                                        <TextBlock x:Name="ServiceStatusText" Margin="10,15,10,15" TextWrapping="Wrap" Text="主服务与DNS服务未运行" FontSize="23" Foreground="Red" TextAlignment="Center"/>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <ComboBox x:Name="AdaptersCombo" SelectionChanged="AdaptersCombo_SelectionChanged" hc:BorderElement.CornerRadius="8" Margin="10,0,5,10" Grid.ColumnSpan="2" SelectedIndex="0" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="{DynamicResource BackgroundBrush}" FontSize="15"/>
-                                            <Grid Grid.Column="2">
+                                            <Grid Grid.Column="0" Grid.ColumnSpan="2">
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="auto"/>
                                                     <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Button hc:BorderElement.CornerRadius="8" Margin="5,0,10,10" Padding="5" HorizontalAlignment="Right" x:Name="HelpBtn_HowToFindActiveAdapter" Click="HelpBtn_HowToFindActiveAdapter_Click" Grid.Column="0" BorderBrush="#FF212121" Background="{DynamicResource BackgroundBrush}" hc:IconElement.Geometry="{StaticResource HelpGeometry}" FontSize="13"/>
-                                                <Button x:Name="GetActiveAdapterBtn" hc:BorderElement.CornerRadius="8"  hc:IconElement.Geometry="{StaticResource FindGeometry}" Grid.Column="1" Click="GetActiveAdapterBtn_Click" Margin="0,0,10,10" Padding="4" HorizontalAlignment="Stretch" Content="自动"  Background="{DynamicResource BackgroundBrush}" FontSize="15"  Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
+                                                <ComboBox x:Name="AdaptersCombo" SelectionChanged="AdaptersCombo_SelectionChanged" Grid.Column="0" hc:BorderElement.CornerRadius="8" Margin="10,0,5,10" SelectedIndex="0" Foreground="#FF2100C3" BorderBrush="#FF2100C3" Background="{DynamicResource BackgroundBrush}" FontSize="15"/>
+                                                <Button hc:BorderElement.CornerRadius="8" Margin="5,0,5,10" Padding="5" HorizontalAlignment="Left" Grid.Column="1" x:Name="HelpBtn_HowToFindActiveAdapter" Click="HelpBtn_HowToFindActiveAdapter_Click" BorderBrush="#FF212121" Background="{DynamicResource BackgroundBrush}" hc:IconElement.Geometry="{StaticResource HelpGeometry}" FontSize="13"/>
                                             </Grid>
+                                            <Button x:Name="GetActiveAdapterBtn" hc:BorderElement.CornerRadius="8"  hc:IconElement.Geometry="{StaticResource FindGeometry}" Grid.Column="2" Click="GetActiveAdapterBtn_Click" Margin="5,0,10,10" Padding="4" HorizontalAlignment="Stretch" Content="自动"  Background="{DynamicResource BackgroundBrush}" FontSize="15"  Foreground="#FF2100C3" BorderBrush="#FF2100C3" VerticalContentAlignment="Center"/>
                                         </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -594,8 +598,8 @@
                                                 <ColumnDefinition/>
                                                 <ColumnDefinition/>
                                             </Grid.ColumnDefinitions>
-                                            <Button x:Name="SetStartBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Click="SetStartBtn_Click"  Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="开机自动启动"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
-                                            <Button x:Name="StopStartBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Grid.Column="1" Click="StopStartBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="停止自动启动"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
+                                            <Button x:Name="SetStartBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Click="SetStartBtn_Click"  Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="开机自启"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
+                                            <Button x:Name="StopStartBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource SettingGeometry}" Grid.Column="1" Click="StopStartBtn_Click" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="停止自启"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FFB724FF" BorderBrush="#FFB724FF" VerticalContentAlignment="Center"/>
                                         </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -647,13 +651,13 @@
                             <hc:TabItem Header="设置" Background="Transparent">
                                 <ScrollViewer>
                                     <StackPanel>
-                                        <Border Height="190" Margin="10,10,10,0" BorderBrush="DeepSkyBlue" BorderThickness="1" CornerRadius="8" Background="{DynamicResource BackgroundBrush}">
-                                            <StackPanel  Height="200">
+                                        <Border Height="194" Margin="10,10,10,0" BorderBrush="DeepSkyBlue" BorderThickness="1" CornerRadius="8" Background="{DynamicResource BackgroundBrush}">
+                                            <StackPanel  Height="210">
                                                 <Viewbox Margin="10,10,10,0" Width="100" Height="100">
                                                     <hc:AnimationPath Data="{DynamicResource GithubGeometry}" Duration="00:00:08" Stretch="Uniform" StrokeThickness="40" Stroke="#FF1794F3" RepeatBehavior="Forever"/>
                                                 </Viewbox>
-                                                <TextBlock PreviewMouseDown="LinkText_PreviewMouseDown"  Margin="10,5,10,0" TextWrapping="Wrap" Text="https://github.com/racpast/SNIBypassGUI" FontSize="15" Foreground="#FF04ABD6" TextDecorations="Underline" FontFamily="Microsoft Tai Le" HorizontalAlignment="Center" Cursor="Hand"/>
-                                                <TextBlock Margin="10,0,10,10" TextWrapping="Wrap" Text="如果您觉得这个项目有用，请去Github上面为我点一颗Star！" TextAlignment="Center" FontSize="18" Foreground="#FF04ABD6"  HorizontalAlignment="Center"/>
+                                                <TextBlock PreviewMouseDown="LinkText_PreviewMouseDown"  Margin="10,5,10,5" TextWrapping="Wrap" Text="https://github.com/racpast/SNIBypassGUI" FontSize="16" Foreground="#FF04ABD6" TextDecorations="Underline" FontFamily="Microsoft Tai Le" HorizontalAlignment="Center" Cursor="Hand"/>
+                                                <TextBlock Margin="10,0,10,10" TextWrapping="Wrap" Text="如果您喜欢这个项目，请在Github上为我点一颗Star，好让我知道有多少人从这个项目中受益！" TextAlignment="Center" FontSize="15" Foreground="#FF04ABD6"  HorizontalAlignment="Center"/>
                                             </StackPanel>
                                         </Border>
                                         <Grid>

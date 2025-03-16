@@ -41,7 +41,6 @@ using static SNIBypassGUI.Utils.NetworkAdapterUtils;
 using Task = System.Threading.Tasks.Task;
 using Action = System.Action;
 using MessageBox = HandyControl.Controls.MessageBox;
-using System.Security.Cryptography;
 
 namespace SNIBypassGUI.Views
 {
@@ -341,36 +340,31 @@ namespace SNIBypassGUI.Views
             if (IsNginxRunning && IsDnsRunning)
             {
                 // 主服务和DNS服务都在运行的情况
-                ServiceStatusText.Text = "当前服务状态：\r\n主服务和DNS服务运行中";
-                TaskbarIconServiceST.Text = "主服务和DNS服务运行中";
+                ServiceStatusText.Text = TaskbarIconServiceST.Text = "主服务和DNS服务运行中";
                 ServiceStatusText.Foreground = TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.ForestGreen);
                 AdaptersCombo.IsEnabled = GetActiveAdapterBtn.IsEnabled = false;
             }
             else if (IsNginxRunning)
             {
                 // 仅主服务在运行的情况
-                ServiceStatusText.Text = "当前服务状态：\r\n主服务运行中，但DNS服务未运行";
-                TaskbarIconServiceST.Text = "仅主服务运行中";
+                ServiceStatusText.Text = TaskbarIconServiceST.Text = "仅主服务运行中";
                 ServiceStatusText.Foreground = TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 AdaptersCombo.IsEnabled = GetActiveAdapterBtn.IsEnabled = false;
             }
             else if (IsDnsRunning)
             {
                 // 仅DNS服务在运行的情况
-                ServiceStatusText.Text = "当前服务状态：\r\n主服务未运行，但DNS服务运行中";
-                TaskbarIconServiceST.Text = "仅DNS服务运行中";
+                ServiceStatusText.Text = TaskbarIconServiceST.Text = "仅DNS服务运行中";
                 ServiceStatusText.Foreground = TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 AdaptersCombo.IsEnabled = GetActiveAdapterBtn.IsEnabled = false;
             }
             else
             {
                 // 服务都不在运行的情况
-                ServiceStatusText.Text = "当前服务状态：\r\n主服务与DNS服务未运行";
-                TaskbarIconServiceST.Text = "主服务与DNS服务未运行";
+                ServiceStatusText.Text = TaskbarIconServiceST.Text = "主服务与DNS服务未运行";
                 ServiceStatusText.Foreground = TaskbarIconServiceST.Foreground = new SolidColorBrush(Colors.Red);
                 AdaptersCombo.IsEnabled = GetActiveAdapterBtn.IsEnabled = true;
             }
-
             WriteLog("完成 UpdateServiceStatus。", LogLevel.Debug);
         }
 
@@ -772,12 +766,12 @@ namespace SNIBypassGUI.Views
             WriteLog("进入 StartNginx。", LogLevel.Debug);
             try
             {
-                ServiceStatusText.Text = "当前服务状态：\r\n主服务启动中";
+                ServiceStatusText.Text = "主服务启动中";
                 ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
-                if (IsPortInUse(80))
+                if (IsPortInUse(80) || IsPortInUse(443))
                 {
-                    WriteLog($"检测到系统 80 端口被占用。", LogLevel.Warning);
-                    if (MessageBox.Show($"检测到系统 80 端口被占用，主服务可能无法正常运行，点击“否”尝试继续运行。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您的主服务运行后自动停止或遇到80端口被占用的提示时, useShellExecute: true);
+                    WriteLog($"检测到系统 80 或 443 端口被占用。", LogLevel.Warning);
+                    if (MessageBox.Show($"检测到系统 80 或 443 端口被占用，主服务可能无法正常运行，但仍然会尝试继续启动。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您的主服务运行后自动停止或遇到80端口被占用的提示时, useShellExecute: true);
                 }
                 StartProcess(nginxPath, workingDirectory: NginxDirectory);
             }
@@ -809,7 +803,7 @@ namespace SNIBypassGUI.Views
                 if (!IsAcrylicServiceRunning())
                 {
                     WriteLog($"DNS 服务未运行，将启动 DNS 服务。", LogLevel.Info);
-                    ServiceStatusText.Text = "当前服务状态：\r\nDNS服务启动中";
+                    ServiceStatusText.Text = "DNS服务启动中";
                     ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
                     try
                     {
@@ -872,7 +866,7 @@ namespace SNIBypassGUI.Views
             if (IsProcessRunning("SNIBypass"))
             {
                 WriteLog($"主服务运行中，将停止主服务。", LogLevel.Info);
-                ServiceStatusText.Text = "当前服务状态：\r\n主服务停止中";
+                ServiceStatusText.Text = "主服务停止中";
                 ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 try
                 {
@@ -888,7 +882,7 @@ namespace SNIBypassGUI.Views
             if (IsAcrylicServiceRunning())
             {
                 WriteLog($"DNS 服务运行中，将停止 DNS 服务。", LogLevel.Info);
-                ServiceStatusText.Text = "当前服务状态：\r\nDNS服务停止中";
+                ServiceStatusText.Text = "DNS服务停止中";
                 ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 try
                 {
@@ -1440,6 +1434,7 @@ namespace SNIBypassGUI.Views
             {
                 if (IsCertificateInstalled(CertificateThumbprint)) UninstallCertificate(CertificateThumbprint);
                 InstallCertificate(CERFile);
+                MessageBox.Show($"成功安装证书！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -1767,8 +1762,8 @@ namespace SNIBypassGUI.Views
             // 判断证书是否安装
             if (!IsCertificateInstalled(CertificateThumbprint))
             {
-                WriteLog($"未找到指纹为 {CertificateThumbprint} 的证书，提示用户安装证书。", LogLevel.Info);
-                if (MessageBox.Show("第一次使用需要安装证书，有关证书的对话框请点击“是”。", "提示", MessageBoxButton.OK, MessageBoxImage.Information) == MessageBoxResult.OK) InstallCertificate(CERFile);
+                WriteLog($"未找到指纹为 {CertificateThumbprint} 的证书，安装。", LogLevel.Info);
+                InstallCertificate(CERFile);
             }
 
             try
@@ -1960,6 +1955,7 @@ namespace SNIBypassGUI.Views
                 UninstallBtn.IsEnabled = false;
                 try
                 {
+                    UninstallCertificate(CertificateThumbprint);
                     StopBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     foreach (SwitchItem pair in Switchs)
                     {
@@ -2208,15 +2204,25 @@ namespace SNIBypassGUI.Views
         {
             Color currentBackgroundColor = (Color)Application.Current.Resources["BackgroundColor"];
             Color currentBorderColor = (Color)Application.Current.Resources["BorderColor"];
+            Color currentSwitchTextColor = ((SolidColorBrush)ThemeSwitchTBText.Foreground).Color;
 
             Color targetBackground = isNightMode ? Color.FromArgb(0x70, 0x61, 0x61, 0x61) : Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF);
             Color targetBorder = isNightMode ? Colors.Black : Colors.White;
+            Color targetSwitchText = isNightMode ? (Color)ColorConverter.ConvertFromString("#C4C9D4") : (Color)ColorConverter.ConvertFromString("#F3C62B");
 
             var newBackgroundBrush = new SolidColorBrush(currentBackgroundColor);
             var newBorderBrush = new SolidColorBrush(currentBorderColor);
+            var newSwitchTextBrush = new SolidColorBrush(currentSwitchTextColor);
 
             Application.Current.Resources["BackgroundColor"] = targetBackground;
             Application.Current.Resources["BorderColor"] = targetBorder;
+
+            var switchTextAnimation = new ColorAnimation
+            {
+                To = targetSwitchText,
+                Duration = TimeSpan.FromSeconds(0.8),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
 
             var backgroundAnimation = new ColorAnimation
             {
@@ -2234,9 +2240,11 @@ namespace SNIBypassGUI.Views
 
             newBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, backgroundAnimation);
             newBorderBrush.BeginAnimation(SolidColorBrush.ColorProperty, borderAnimation);
+            newSwitchTextBrush.BeginAnimation(SolidColorBrush.ColorProperty, switchTextAnimation);
 
             Application.Current.Resources["BackgroundBrush"] = newBackgroundBrush;
             Application.Current.Resources["BorderBrush"] = newBorderBrush;
+            ThemeSwitchTBText.Foreground = newSwitchTextBrush;
         }
 
         public class RelayCommand(Action execute, Func<bool> canExecute = null) : ICommand

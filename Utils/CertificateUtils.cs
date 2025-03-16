@@ -13,7 +13,7 @@ namespace SNIBypassGUI.Utils
         /// <param name="thumbprint">证书指纹</param>
         public static bool IsCertificateInstalled(string thumbprint)
         {
-            X509Store store = new(StoreName.Root, StoreLocation.CurrentUser);
+            X509Store store = new(StoreName.Root, StoreLocation.LocalMachine);
             try
             {
                 store.Open(OpenFlags.MaxAllowed);
@@ -38,7 +38,7 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         public static void InstallCertificate(string certificatePath)
         {
-            X509Store store = new(StoreName.Root, StoreLocation.CurrentUser);
+            X509Store store = new(StoreName.Root, StoreLocation.LocalMachine);
             try
             {
                 store.Open(OpenFlags.MaxAllowed);
@@ -61,7 +61,7 @@ namespace SNIBypassGUI.Utils
         /// <param name="thumbprint">证书指纹</param>
         public static void UninstallCertificate(string thumbprint)
         {
-            X509Store store = new(StoreName.Root, StoreLocation.CurrentUser);
+            X509Store store = new(StoreName.Root, StoreLocation.LocalMachine);
             try
             {
                 store.Open(OpenFlags.MaxAllowed);

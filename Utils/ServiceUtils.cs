@@ -288,5 +288,28 @@ namespace SNIBypassGUI.Utils
             }
             return null;
         }
+
+        /// <summary>
+        /// 检查指定名称的服务是否已经安装。
+        /// </summary>
+        /// <param name="serviceName">服务名称</param>
+        public static bool IsServiceInstalled(string serviceName)
+        {
+            IntPtr scm = OpenSCManager(null, null, SC_MANAGER_CONNECT);
+            if (scm == IntPtr.Zero)
+            {
+                WriteLog("与服务控制管理器建立连接失败：" + Marshal.GetLastWin32Error(), LogLevel.Error);
+                return false;
+            }
+            IntPtr svc = OpenService(scm, serviceName, SERVICE_QUERY_STATUS);
+            if (svc == IntPtr.Zero)
+            {
+                CloseServiceHandle(scm);
+                return false;
+            }
+            CloseServiceHandle(svc);
+            CloseServiceHandle(scm);
+            return true;
+        }
     }
 }

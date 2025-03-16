@@ -7,7 +7,7 @@ namespace SNIBypassGUI.Consts
 {
     public static class CollectionConsts
     {
-        public static string[] pximgIP =
+        public readonly static string[] pximgIP =
         [
             "210.140.139.135",
             "210.140.139.132",
@@ -20,7 +20,7 @@ namespace SNIBypassGUI.Consts
             "210.140.139.136"
         ];
 
-        public static Dictionary<string, byte[]> PathToResourceDic = new()
+        public readonly static Dictionary<string, byte[]> PathToResourceDic = new()
         {
             {nginxPath, Properties.Resources.SNIBypass},
             {nginxConfigFile, Properties.Resources.nginx},
@@ -35,7 +35,7 @@ namespace SNIBypassGUI.Consts
             {SwitchData,Properties.Resources.SwitchData},
         };
 
-        public static Dictionary<string, string> InitialConfigurations = new()
+        public readonly static Dictionary<string, string> InitialConfigurations = new()
         {
             { "程序设置:Background", "Default" },
             { "程序设置:ThemeMode", "Light" },

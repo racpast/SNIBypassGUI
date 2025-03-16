@@ -1,5 +1,4 @@
-﻿using Microsoft.Win32;
-using System;
+﻿using System;
 using System.IO;
 using System.Threading.Tasks;
 using static SNIBypassGUI.Utils.ProcessUtils;
@@ -17,7 +16,7 @@ namespace SNIBypassGUI.Utils
         /// <summary>
         /// 检查 Acrylic DNS Proxy 服务是否已安装
         /// </summary>
-        public static bool IsAcrylicServiceInstalled() => Registry.LocalMachine.OpenSubKey($"SYSTEM\\CurrentControlSet\\Services\\{DnsServiceName}") != null;
+        public static bool IsAcrylicServiceInstalled() => IsServiceInstalled(DnsServiceName);
 
         /// <summary>
         /// 安装 Acrylic DNS Proxy 服务

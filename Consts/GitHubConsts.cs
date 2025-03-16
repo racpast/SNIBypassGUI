@@ -14,7 +14,7 @@ namespace SNIBypassGUI.Consts
         ];
         */
 
-        public static List<string> ghproxyMirrors =
+        public readonly static List<string> ghproxyMirrors =
         [
             "gh.tryxd.cn",
             "cccccccccccccccccccccccccccccccccccccccccccccccccccc.cc",

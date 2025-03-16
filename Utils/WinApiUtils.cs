@@ -8,9 +8,9 @@ namespace SNIBypassGUI.Utils
     {
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr OpenSCManager(
-    string lpMachineName,
-    string lpDatabaseName,
-    uint dwDesiredAccess);
+            string lpMachineName,
+            string lpDatabaseName,
+            uint dwDesiredAccess);
 
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr CreateService(
@@ -101,11 +101,13 @@ namespace SNIBypassGUI.Utils
         }
 
         // SCM 访问权限
+        public const uint SC_MANAGER_CONNECT = 0x0001;
         public const uint SC_MANAGER_ALL_ACCESS = 0xF003F;
         // 用于写操作访问权限
         public const uint GENERIC_WRITE = 0x40000000;
-        // 服务访问权限，全部权限
+        // 服务访问权限
         public const uint SERVICE_ALL_ACCESS = 0xF01FF;
+        public const uint SERVICE_QUERY_STATUS = 0x0001;
         // 修改服务配置权限
         public const uint SERVICE_CHANGE_CONFIG = 0x0002;
         // 删除服务时需要的权限

@@ -15,7 +15,7 @@ namespace SNIBypassGUI.Consts
         public const string CurrentVersion = "V4.1";
 
         // 日志头
-        public static string[] LogHead =
+        public readonly static string[] LogHead =
         [
             "——————————————————————————————————————————",
             "  ___   _  _   ___   ___                                   ___   _   _   ___ ",

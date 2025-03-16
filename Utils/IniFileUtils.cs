@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -37,21 +36,37 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         public static List<string> GetKeys(string section, string path)
         {
-            byte[] buffer = new byte[32767]; // 32KB 缓冲区
-            uint bytesReturned = GetPrivateProfileSection(section, buffer, (uint)buffer.Length, path);
-
             List<string> keys = [];
-            if (bytesReturned > 0)
-            {
-                string sectionData = Encoding.Unicode.GetString(buffer, 0, (int)bytesReturned).Trim('\0');
-                string[] entries = sectionData.Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
+            Encoding fileEncoding = Encoding.Default;
 
-                foreach (string entry in entries)
+            // 打开配置文件进行读取
+            using FileStream fs = new(path, FileMode.Open, FileAccess.Read);
+            using StreamReader reader = new(fs, fileEncoding);
+            string line;
+            bool isInSection = false;
+
+            // 逐行读取文件
+            while ((line = reader.ReadLine()) != null)
+            {
+                // 检查是否进入指定部分
+                if (line.Trim().StartsWith("[" + section + "]"))
                 {
-                    int equalIndex = entry.IndexOf('=');
+                    isInSection = true;
+                    continue;
+                }
+
+                // 如果已进入指定部分，开始提取键名
+                if (isInSection)
+                {
+                    // 遇到另一个部分，停止读取
+                    if (line.Trim().StartsWith("[") && line.Trim().EndsWith("]")) break;
+
+                    // 检查是否是键值对
+                    int equalIndex = line.IndexOf('=');
                     if (equalIndex > 0)
                     {
-                        keys.Add(entry.Substring(0, equalIndex));
+                        string key = line.Substring(0, equalIndex).Trim();
+                        if (!string.IsNullOrEmpty(key)) keys.Add(key);
                     }
                 }
             }
