@@ -15,6 +15,8 @@ using static SNIBypassGUI.Consts.PathConsts;
 public class ImageSwitcherService : INotifyPropertyChanged
 {
     public int _currentIndex = -1;
+    private bool isFirstLoad = true;
+    private int preloadIndex = -1;
     private const int MaxDecodeSize = 1400;
     public event PropertyChangedEventHandler PropertyChanged;
     private readonly Random _random = new();
@@ -51,7 +53,15 @@ public class ImageSwitcherService : INotifyPropertyChanged
             _timer.Start();
         }
 
-        if (_imagePaths.Any()) CurrentImage = LoadImage(_imagePaths.First());
+        if (_imagePaths.Any())
+        {
+            if (ChangeMode == "Sequential") CurrentImage = LoadImage(_imagePaths.First());
+            else
+            {
+                preloadIndex = _random.Next(_imagePaths.Count);
+                CurrentImage = LoadImage(_imagePaths[preloadIndex]);
+            }
+        }
     }
 
     /// <summary>
@@ -59,7 +69,7 @@ public class ImageSwitcherService : INotifyPropertyChanged
     /// </summary>
     public void ReloadConfig()
     {
-        ChangeMode = INIRead("背景设置", "ChangeMode", INIPath);      
+        ChangeMode = INIRead("背景设置", "ChangeMode", INIPath);
         ChangeInterval = Math.Max(1, StringToInt(INIRead("背景设置", "ChangeInterval", INIPath)));
         LoadImagePaths();
         UpdateTimerInterval();
@@ -168,9 +178,29 @@ public class ImageSwitcherService : INotifyPropertyChanged
     /// </summary>
     private int CalculateNextIndex()
     {
-        return ChangeMode == "Sequential"
-            ? (_currentIndex + 1) % _imagePaths.Count
-            : _random.Next(_imagePaths.Count);
+        const int MAX_ATTEMPTS = 100;
+
+        if (ChangeMode == "Sequential") return (_currentIndex + 1) % _imagePaths.Count;
+        else if (isFirstLoad)
+        {
+            isFirstLoad = false;
+            return preloadIndex;
+        }
+        if (_imagePaths.Count <= 1) return 0;
+
+        int newIndex;
+        int attempts = 0;
+
+        do
+        {
+            newIndex = _random.Next(_imagePaths.Count);
+            attempts++;
+        } while (newIndex == _currentIndex && attempts < MAX_ATTEMPTS);
+
+        // 超过尝试次数后强制返回非当前值
+        return newIndex == _currentIndex
+            ? (newIndex + 1) % _imagePaths.Count
+            : newIndex;
     }
 
     /// <summary>

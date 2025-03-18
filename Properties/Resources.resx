@@ -119,25 +119,25 @@
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   <data name="AcrylicConfiguration" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\AcrylicConfiguration.ini;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\Resources\dns\AcrylicConfiguration.ini;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="AcrylicHosts" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\AcrylicHosts.txt;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\Resources\dns\AcrylicHosts.txt;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="AcrylicHosts_All" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\AcrylicHosts_All.dat;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="AcrylicService" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\AcrylicService.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\Resources\dns\AcrylicService.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="ca" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ca.cer;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="nginx" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\nginx.conf;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\Resources\nginx\nginx.conf;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="SNIBypass" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\SNIBypass.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\Resources\nginx\SNIBypass.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="SNIBypassCrt" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\SNIBypassCrt.crt;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>

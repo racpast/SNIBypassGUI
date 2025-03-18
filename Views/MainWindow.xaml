@@ -71,7 +71,7 @@
                 <tb:TaskbarIcon.ContextMenu>
                     <ContextMenu>
                         <ContextMenu.Background>
-                            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/MenuBkg.png"/>
+                            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/imgs/MenuBkg.png"/>
                         </ContextMenu.Background>
                         <MenuItem Foreground="White" x:Name="MenuItem_ShowMainWin" Header="显示主窗口" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ShowMainWin_Click" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}" FontWeight="Bold">
                             <MenuItem.Icon>
@@ -191,7 +191,7 @@
                                 <Span>
                                     <Run Text="➲ DNS（Domain Name System）是什么？" FontSize="24" Foreground="#FF00D88E"/>
                                     <LineBreak/>
-                                    <Run Text="     DNS可以理解为互联网中的“电话簿”。它的作用是将我们常用的域名（例如：www.example.com）转换成计算机可以理解的IP地址（例如：192.0.2.1），因为计算机是通过IP地址来进行通信的。" FontSize="18">
+                                    <Run Text="     DNS可以理解为互联网中的“电话簿”，它的作用是将我们常用的域名（例如：www.example.com）转换成计算机可以理解的IP地址（例如：192.0.2.1），因为计算机是通过IP地址来进行通信的。" FontSize="18">
                                         <Run.Foreground>
                                             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                                                 <LinearGradientBrush.RelativeTransform>
@@ -208,7 +208,7 @@
                                         </Run.Foreground>
                                     </Run>
                                     <LineBreak/>
-                                    <Run Text="     假设你想给一个朋友打电话，但你手上只有朋友的名字（比如“李华”），而没有电话号码。你去查找电话簿，输入“李明”的名字，电话簿会告诉你李明的电话号码。然后你就可以拨打这个电话号码，打通电话。“李华”就像是一个网站的域名（比如：www.example.com），电话号码就是网站的IP地址，而电话簿就是DNS，它负责将域名转换成IP地址。" FontSize="18">
+                                    <Run Text="     假设你想给一个朋友打电话，但你手上只有朋友的名字，而没有电话号码。你去查找电话簿，输入朋友的名字，电话簿会告诉你朋友的电话号码。然后你就可以拨打这个电话号码，打通电话。朋友的名字就像是一个网站的域名，电话号码就是网站的IP地址，而电话簿就是DNS，它负责将域名转换成IP地址。" FontSize="18">
                                         <Run.Foreground>
                                             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                                                 <LinearGradientBrush.RelativeTransform>
@@ -245,7 +245,7 @@
                                     <LineBreak/>
                                     <Run Text="➲ SNI（Server Name Indication）是什么？" FontSize="24" Foreground="#FF00BCFB"/>
                                     <LineBreak/>
-                                    <Run Text="     SNI是TLS/SSL协议的一部分，用于在建立加密连接之前，客户端向服务器说明自己想连接哪个具体网站。简而言之，SNI就像是你在酒店登记时告诉前台你要去哪个房间，这样前台才能为你提供正确的房间钥匙。" FontSize="18">
+                                    <Run Text="     SNI是TLS/SSL协议的一部分，用于在建立加密连接之前，客户端向服务器说明自己想连接哪个具体网站。简而言之，SNI就像是你到达酒店时，先告诉前台你要去哪个房间（网站），然后前台才能决定给你哪把钥匙。" FontSize="18">
                                         <Run.Foreground>
                                             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                                                 <LinearGradientBrush.RelativeTransform>
@@ -302,7 +302,7 @@
                                     <LineBreak/>
                                     <Run Text="➲ DNS劫持是什么？" FontSize="24" Foreground="#FF00D88E"/>
                                     <LineBreak/>
-                                    <Run Text="     DNS劫持就像是你给别人发了一条短信，里面有一个地址（比如：“去www.example.com”）。但是，在你发出去之前，短信被某人篡改了，发给了一个假地址。结果你到达的地方并不是你想去的地方，而是一个假的或被封锁的地方。" FontSize="18">
+                                    <Run Text="     DNS 劫持就像你问路时被人故意指错方向，让你误入假网站，甚至泄露个人信息。" FontSize="18">
                                         <Run.Foreground>
                                             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                                                 <LinearGradientBrush.RelativeTransform>
@@ -396,7 +396,7 @@
                                     <LineBreak/>
                                     <Run Text="➲ 本软件如何绕过GFW对部分站点的封锁？" FontSize="24" Foreground="#FF38C4FF"/>
                                     <LineBreak/>
-                                    <Run Text="     通过本地DNS服务或系统hosts文件将被封锁的域名及子域名指向127.0.0.1，有关请求会先到达Nginx代理服务器。Nginx代理服务器会与目标服务器建立加密连接，并将实际的SNI信息传递给目标服务器。" FontSize="18">
+                                    <Run Text="     通过本地DNS服务或系统hosts文件将被封锁的域名及子域名指向127.0.0.1，有关请求会先到达Nginx本地代理服务器。Nginx本地代理服务器会直接与目标服务器建立连接，并不发送或发送虚假的SNI信息给目标服务器。" FontSize="18">
                                         <Run.Foreground>
                                             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                                                 <LinearGradientBrush.RelativeTransform>
@@ -413,7 +413,7 @@
                                         </Run.Foreground>
                                     </Run>
                                     <LineBreak/>
-                                    <Run Text="     这时，GFW只能看到加密流量，而无法直接看到真实的SNI信息，因为握手已经发生在Nginx和目标服务器之间，而不是直接在浏览器和目标服务器之间。因此，GFW不会基于SNI阻止请求，即域前置。" FontSize="18">
+                                    <Run Text="     这时，GFW就不会因为读取到SNI中含有被封锁的域名从而阻断连接，即域前置；此种方法也同时避免了DNS污染与劫持。" FontSize="18">
                                         <Run.Foreground>
                                             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                                                 <LinearGradientBrush.RelativeTransform>

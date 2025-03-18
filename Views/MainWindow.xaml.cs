@@ -398,6 +398,7 @@ namespace SNIBypassGUI.Views
                 }
             }
 
+            // 如果背景文件夹为空，则释放默认背景
             if (!Directory.EnumerateFiles(BackgroundDirectory).GetEnumerator().MoveNext())
             {
                 int i = 1;
@@ -409,18 +410,33 @@ namespace SNIBypassGUI.Views
                 }
             }
 
-            if (!File.Exists(INIPath))
-            {
-                // 如果配置文件不存在，则创建配置文件
-                WriteLog($"配置文件 {INIPath} 不存在，创建。", LogLevel.Info);
+            // 如果配置文件不存在，则直接创建
+            if (!File.Exists(INIPath)) File.WriteAllText(INIPath, "");
 
-                // 写入初始配置
-                foreach (var config in InitialConfigurations)
+            Dictionary<string, List<string>> sectionKeys = [];
+
+            foreach (var config in InitialConfigurations)
+            {
+                var sections = config.Key.Split(':');
+                if (sections.Length != 2) continue;
+                string section = sections[0];
+                if (!sectionKeys.ContainsKey(section)) sectionKeys[section] = GetKeys(section, INIPath);
+            }
+
+            // 遍历配置项，检查是否需要写入
+            foreach (var config in InitialConfigurations)
+            {
+                var sections = config.Key.Split(':');
+                if (sections.Length != 2) continue;
+                string section = sections[0];
+                string key = sections[1];
+                if (!sectionKeys[section].Contains(key))
                 {
-                    var sections = config.Key.Split(':');
-                    if (sections.Length == 2) INIWrite(sections[0], sections[1], config.Value, INIPath);
+                    WriteLog($"配置键 {key} 不存在，写入默认值。", LogLevel.Info);
+                    INIWrite(section, key, config.Value, INIPath);
                 }
             }
+
             WriteLog("完成 InitializeDirectoriesAndFiles。", LogLevel.Debug);
         }
 
@@ -1451,7 +1467,26 @@ namespace SNIBypassGUI.Views
         private void DefaultBkgBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 DefaultBkgBtn_Click。", LogLevel.Debug);
-            INIWrite("程序设置", "Background", "Default", INIPath);
+
+            // 清空背景文件夹
+            ClearFolder(BackgroundDirectory);
+
+            // 释放默认背景图片
+            int i = 1;
+            foreach (var bkg in DefaultBackgrounds)
+            {
+                string filename = $"{i}.jpg";
+                ExtractResourceToFile(bkg, Path.Combine(BackgroundDirectory, filename));
+                i++;
+            }
+
+            // 写入配置文件
+            INIWrite("背景设置", "ChangeInterval", "15", INIPath);
+            INIWrite("背景设置", "ChangeMode", "Sequential", INIPath);
+
+            // 通知背景服务更新
+            BackgroundService.ReloadConfig();
+
             WriteLog("完成 DefaultBkgBtn_Click。", LogLevel.Debug);
         }
 
@@ -1557,8 +1592,6 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 菜单：启动服务点击事件
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void MenuItem_StartService_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 MenuItem_StartService_Click。", LogLevel.Debug);
@@ -2102,6 +2135,7 @@ namespace SNIBypassGUI.Views
         /// </summary>
         private async void ResetBtn_Click(object sender, RoutedEventArgs e)
         {
+            WriteLog("进入 ResetBtn_Click。", LogLevel.Debug);
             if (MessageBox.Show("还原数据功能用于将本程序关联的数据文件恢复为初始状态。\r\n当您认为本程序更新造成了关联的数据文件损坏，或您对有关规则做出了修改时可以使用此功能。\r\n是否还原数据？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 ResetBtn.IsEnabled = false;
@@ -2127,6 +2161,7 @@ namespace SNIBypassGUI.Views
                     ResetBtn.Content = "还原数据";
                 }
             }
+            WriteLog("完成 ResetBtn_Click。", LogLevel.Debug);
         }
 
         /// <summary>
@@ -2134,13 +2169,17 @@ namespace SNIBypassGUI.Views
         /// </summary>
         private void ThemeSwitchTB_Checked(object sender, RoutedEventArgs e)
         {
+            WriteLog("进入 ThemeSwitchTB_Checked。", LogLevel.Debug);
             SwitchTheme(true);
             INIWrite("程序设置", "ThemeMode", "Dark", INIPath);
+            WriteLog("完成 ThemeSwitchTB_Checked。", LogLevel.Debug);
         }
         private void ThemeSwitchTB_Unchecked(object sender, RoutedEventArgs e)
         {
+            WriteLog("进入 ThemeSwitchTB_Unchecked。", LogLevel.Debug);
             SwitchTheme(false);
             INIWrite("程序设置", "ThemeMode", "Light", INIPath);
+            WriteLog("完成 ThemeSwitchTB_Unchecked。", LogLevel.Debug);
         }
 
         /// <summary>

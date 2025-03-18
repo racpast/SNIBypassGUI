@@ -40,7 +40,6 @@ namespace SNIBypassGUI.Views
 
             DataContext = this;
             BackgroundService.PropertyChanged += OnBackgroundChanged;
-            BackgroundService._currentIndex = -1;
         }
 
         /// <summary>

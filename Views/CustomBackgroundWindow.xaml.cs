@@ -17,7 +17,6 @@ using static SNIBypassGUI.Utils.IniFileUtils;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Consts.PathConsts;
 using MessageBox = HandyControl.Controls.MessageBox;
-using System.Net.Http.Headers;
 
 namespace SNIBypassGUI.Views
 {
@@ -45,7 +44,6 @@ namespace SNIBypassGUI.Views
 
             LoadImagesToList();
             BackgroundService.PropertyChanged += OnBackgroundChanged;
-            BackgroundService._currentIndex = -1;
         }
 
         private void LoadImagesToList()
@@ -97,6 +95,12 @@ namespace SNIBypassGUI.Views
         private void RemoveBtn_Click(object sender, RoutedEventArgs e)
         {
             if (ImageListBox.SelectedItem is not ImageItem selectedItem) return;
+
+            if (ImageListBox.Items.Count == 1)
+            {
+                MessageBox.Show("至少要有一张背景图片！", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             var allFiles = Directory.GetFiles(BackgroundDirectory)
                 .Where(file => Path.GetExtension(file).ToLower() == ".jpg" || Path.GetExtension(file).ToLower() == ".png" || Path.GetExtension(file).ToLower() == ".jpeg")

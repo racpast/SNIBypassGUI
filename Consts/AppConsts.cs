@@ -41,12 +41,5 @@ namespace SNIBypassGUI.Consts
 
         // DNS 服务名
         public const string DnsServiceName = "AcrylicDNSProxySvc";
-
-        // 背景
-        public static ImageBrush PublicBackground = new()
-        {
-            ImageSource = new BitmapImage(new Uri("pack://application:,,,/SNIBypassGUI;component/Resources/DefaultBkg.png")),
-            Stretch = Stretch.UniformToFill
-        };
     }
 }
