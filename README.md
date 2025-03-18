@@ -2,7 +2,7 @@
 ## 📝 简介
 一个**通过 Nginx 反向代理实现绕过 SNI 阻断** 的工具，由 [Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI) 迁移开发。
 ## ☕ 使用演示（ 一键完成 Discord、Facebook、Instagram、Pixiv、Wikipedia 等的直连 ）
-https://github.com/user-attachments/assets/c3c93570-9637-4099-9802-87fa1b399301
+https://github.com/user-attachments/assets/924cf61c-0d60-4e9e-a512-c4505fe503df
 ## ✨ 功能预览
 ### 💻 多站点可开关支持
 ![image](https://github.com/user-attachments/assets/1f9f07c2-4217-4ca0-acf3-cd12675262b6)
