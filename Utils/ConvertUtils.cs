@@ -5,6 +5,14 @@ namespace SNIBypassGUI.Utils
     public static class ConvertUtils
     {
         /// <summary>
+        /// 将字符串转换为整数。
+        /// </summary>
+        public static int StringToInt(string input)
+        {
+            return int.TryParse(input, out int result) ? result : 0;
+        }
+
+        /// <summary>
         /// 将布尔值转换为"是"或"否"的字符串。
         /// </summary>
         /// <param name="value">布尔值</param>

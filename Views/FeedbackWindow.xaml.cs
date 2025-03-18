@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,9 +15,11 @@ namespace SNIBypassGUI.Views
 {
     public partial class FeedbackWindow : Window
     {
+        private int _remainingSeconds;
+        private bool _isFirstImage = true;
+        public ImageSwitcherService BackgroundService => MainWindow.BackgroundService;
         private HttpClient _client;
         private DispatcherTimer _timer;
-        private int _remainingSeconds;
 
         /// <summary>
         /// 窗口构造函数
@@ -34,6 +37,10 @@ namespace SNIBypassGUI.Views
 
             // 窗口可拖动
             TopBar.MouseLeftButtonDown += (o, e) => { DragMove(); };
+
+            DataContext = this;
+            BackgroundService.PropertyChanged += OnBackgroundChanged;
+            BackgroundService._currentIndex = -1;
         }
 
         /// <summary>
@@ -160,8 +167,14 @@ namespace SNIBypassGUI.Views
             }
         }
 
+        /// <summary>
+        /// 取消按钮点击事件
+        /// </summary>
         private async void CancelBtn_Click(object sender, RoutedEventArgs e) => await FadeOut();
 
+        /// <summary>
+        /// 验证邮箱地址是否合法
+        /// </summary>
         private bool IsValidEmail(string email)
         {
             try
@@ -189,6 +202,9 @@ namespace SNIBypassGUI.Views
             await FadeOut();
         }
 
+        /// <summary>
+        /// 渐入动画
+        /// </summary>
         private void FadeIn()
         {
             var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
@@ -198,6 +214,9 @@ namespace SNIBypassGUI.Views
             BeginAnimation(OpacityProperty, fadeIn);
         }
 
+        /// <summary>
+        /// 渐出动画
+        /// </summary>
         private async Task FadeOut(bool dialogResult = false)
         {
             var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromSeconds(0.8)))
@@ -208,6 +227,37 @@ namespace SNIBypassGUI.Views
             await Task.Delay(800);
             DialogResult = dialogResult;
             Close();
+        }
+
+        /// <summary>
+        /// 窗口动画逻辑
+        /// </summary>
+        private void OnBackgroundChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(ImageSwitcherService.CurrentImage)) return;
+
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (_isFirstImage)
+                {
+                    CurrentImage.Source = BackgroundService.CurrentImage;
+                    CurrentImage.Opacity = 1;
+                    NextImage.Opacity = 0;
+                    _isFirstImage = false;
+                    return;
+                }
+
+                NextImage.Opacity = 0;
+                NextImage.Source = BackgroundService.CurrentImage;
+
+                var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(1));
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromSeconds(1));
+
+                CurrentImage.BeginAnimation(OpacityProperty, fadeOut);
+                NextImage.BeginAnimation(OpacityProperty, fadeIn);
+
+                (NextImage, CurrentImage) = (CurrentImage, NextImage);
+            });
         }
     }
 }

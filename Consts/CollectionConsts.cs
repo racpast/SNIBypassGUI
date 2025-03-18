@@ -35,9 +35,19 @@ namespace SNIBypassGUI.Consts
             {SwitchData,Properties.Resources.SwitchData},
         });
 
+        public readonly static byte[][] DefaultBackgrounds = 
+        [
+            Properties.Resources._1,
+            Properties.Resources._2,
+            Properties.Resources._3,
+            Properties.Resources._4,
+            Properties.Resources._5
+        ];
+
         public readonly static ReadOnlyDictionary<string, string> InitialConfigurations = new(new Dictionary<string, string>
         {
-            { "程序设置:Background", "Default" },
+            { "背景设置:ChangeInterval", "15" },
+            { "背景设置:ChangeMode", "Sequential" },
             { "程序设置:ThemeMode", "Light" },
             { "程序设置:SpecifiedAdapter", "" },
             { "程序设置:PixivIPPreference", "false" },

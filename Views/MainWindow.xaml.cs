@@ -1,10 +1,10 @@
 ﻿using Hardcodet.Wpf.TaskbarNotification;
-using Microsoft.Win32;
 using Microsoft.Win32.TaskScheduler;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -18,7 +18,6 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using SNIBypassGUI.Models;
 using static SNIBypassGUI.Utils.LogManager;
@@ -47,10 +46,12 @@ namespace SNIBypassGUI.Views
     public partial class MainWindow : Window
     {
         public ICommand TaskbarIconLeftClickCommand { get; }
+        public static ImageSwitcherService BackgroundService { get; private set; }
         private readonly DispatcherTimer serviceStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(3) };
         private readonly DispatcherTimer adaptersComboUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
         private readonly DispatcherTimer tempFilesSizeUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
         private readonly DispatcherTimer controlsStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
+        private bool _isFirstImage = true;
 
         /// <summary>
         /// 窗口构造函数
@@ -88,8 +89,13 @@ namespace SNIBypassGUI.Views
                 return;
             }
 
+            // 初始化目录与文件
+            InitializeDirectoriesAndFiles();
+
             // 将 MainWindow 作为 DataContext 设置
             DataContext = this;
+            BackgroundService = new ImageSwitcherService();
+            BackgroundService.PropertyChanged += OnBackgroundChanged;
             TaskbarIconLeftClickCommand = new RelayCommand(() => TaskbarIcon_LeftClick());
 
             // 窗口可拖动
@@ -369,46 +375,6 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 更新背景图片
-        /// </summary>
-        public void UpdateBackground()
-        {
-            WriteLog("进入 UpdateBackground。", LogLevel.Debug);
-
-            // 设置图片源为默认背景图片并设置图片的拉伸模式为均匀填充，以适应背景区域
-            ImageBrush bg = new()
-            {
-                ImageSource = new BitmapImage(new Uri("pack://application:,,,/SNIBypassGUI;component/Resources/DefaultBkg.png")),
-                Stretch = Stretch.UniformToFill
-            };
-
-            if (INIRead("程序设置", "Background", INIPath) == "Custom")
-            {
-                // 程序设置中背景为自定义的情况
-                if (File.Exists(CustomBackground))
-                {
-                    // 如果找到了背景图片，用资源释放型的读取来获取背景图片
-                    bg.ImageSource = GetImage(CustomBackground);
-
-                    WriteLog($"背景图片将设置为自定义： {CustomBackground}。", LogLevel.Info);
-                }
-                else
-                {
-                    // 如果没有找到背景图片的路径
-                    WriteLog("背景图片设置为自定义但未在指定位置找到文件，或被删除？将恢复为默认。", LogLevel.Warning);
-
-                    // 将配置设置回默认背景
-                    INIWrite("程序设置", "Background", "Default", INIPath);
-                }
-            }
-
-            // 设置背景图片
-            MainPage.Background = bg;
-
-            WriteLog("完成 UpdateBackground。", LogLevel.Debug);
-        }
-
-        /// <summary>
         /// 检查必要目录、文件的存在性，并在缺失时创建或释放
         /// </summary>
         public void InitializeDirectoriesAndFiles()
@@ -429,6 +395,17 @@ namespace SNIBypassGUI.Views
                 {
                     WriteLog($"文件 {pair.Key} 不存在，释放。", LogLevel.Info);
                     ExtractResourceToFile(pair.Value, pair.Key);
+                }
+            }
+
+            if (!Directory.EnumerateFiles(BackgroundDirectory).GetEnumerator().MoveNext())
+            {
+                int i = 1;
+                foreach (var bkg in DefaultBackgrounds)
+                {
+                    string filename = $"{i}.jpg";
+                    ExtractResourceToFile(bkg, Path.Combine(BackgroundDirectory, filename));
+                    i++;
                 }
             }
 
@@ -563,7 +540,7 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 从配置文件同步有关控件
         /// </summary>
-        public void SyncControlsFromConfig()
+        private void SyncControlsFromConfig()
         {
             WriteLog("进入 SyncControlsFromConfig。", LogLevel.Debug);
 
@@ -1450,44 +1427,21 @@ namespace SNIBypassGUI.Views
         private async void CustomBkgBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 CustomBkgBtn_Click。", LogLevel.Debug);
-            OpenFileDialog openFileDialog = new()
+            var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromSeconds(0.8)))
             {
-                Title = "选择图片",
-                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                Filter = "图片 (*.jpg; *.jpeg; *.png)|*.jpg;*.jpeg;*.png"
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
             };
-            if (openFileDialog.ShowDialog() == true)
+            BeginAnimation(OpacityProperty, fadeOut);
+            await Task.Delay(800);
+            Hide();
+            CustomBackgroundWindow customBackgroundWindow = new();
+            customBackgroundWindow.ShowDialog();
+            Show();
+            var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
             {
-                string sourceFile = openFileDialog.FileName;
-                WriteLog($"用户在对话框中选择了 {sourceFile}。", LogLevel.Info);
-                try
-                {
-                    var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromSeconds(0.8)))
-                    {
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-                    };
-                    BeginAnimation(OpacityProperty, fadeOut);
-                    await Task.Delay(800);
-                    Hide();
-                    var result = new ImageClippingWindow(sourceFile).ShowDialog();
-                    Show();
-                    var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
-                    {
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-                    };
-                    BeginAnimation(OpacityProperty, fadeIn);
-                    if (result == true)
-                    {
-                        INIWrite("程序设置", "Background", "Custom", INIPath);
-                        UpdateBackground();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    WriteLog($"遇到异常。", LogLevel.Error, ex);
-                    MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
+            BeginAnimation(OpacityProperty, fadeIn);
             WriteLog("完成 CustomBkgBtn_Click。", LogLevel.Debug);
         }
 
@@ -1498,7 +1452,6 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 DefaultBkgBtn_Click。", LogLevel.Debug);
             INIWrite("程序设置", "Background", "Default", INIPath);
-            UpdateBackground();
             WriteLog("完成 DefaultBkgBtn_Click。", LogLevel.Debug);
         }
 
@@ -1645,7 +1598,7 @@ namespace SNIBypassGUI.Views
             {
                 foreach (Window window in Application.Current.Windows)
                 {
-                    if (window is FeedbackWindow || window is ImageClippingWindow) return true;
+                    if (window is FeedbackWindow || window is CustomBackgroundWindow) return true;
                 }
                 return false;
             }
@@ -1724,9 +1677,6 @@ namespace SNIBypassGUI.Views
             controlsStatusUpdateTimer.Tick += ControlsStatusUpdateTimer_Tick;
             MainTabControl.SelectionChanged += TabControl_SelectionChanged;
 
-            // 初始化目录与文件
-            InitializeDirectoriesAndFiles();
-
             // 将开关添加到列表
             await AddSwitchesToList();
 
@@ -1736,9 +1686,6 @@ namespace SNIBypassGUI.Views
             {
                 if (!ExistingKeys.Contains(item.SectionName)) INIWrite("代理开关", item.SectionName, "true", INIPath);
             }
-
-            // 更新背景
-            UpdateBackground();
 
             // 更新信息
             SyncControlsFromConfig();
@@ -2244,6 +2191,47 @@ namespace SNIBypassGUI.Views
             Application.Current.Resources["BackgroundBrush"] = newBackgroundBrush;
             Application.Current.Resources["BorderBrush"] = newBorderBrush;
             ThemeSwitchTBText.Foreground = newSwitchTextBrush;
+        }
+
+        /// <summary>
+        /// 窗口动画逻辑
+        /// </summary>
+        private void OnBackgroundChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(ImageSwitcherService.CurrentImage)) return;
+
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (_isFirstImage)
+                {
+                    CurrentImage.Source = BackgroundService.CurrentImage;
+                    CurrentImage.Opacity = 1;
+                    NextImage.Opacity = 0;
+                    _isFirstImage = false;
+                    return;
+                }
+
+                NextImage.Opacity = 0;
+                NextImage.Source = BackgroundService.CurrentImage;
+
+                var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(1));
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromSeconds(1));
+
+                CurrentImage.BeginAnimation(OpacityProperty, fadeOut);
+                NextImage.BeginAnimation(OpacityProperty, fadeIn);
+
+                (NextImage, CurrentImage) = (CurrentImage, NextImage);
+            });
+        }
+
+        /// <summary>
+        /// 窗口关闭事件
+        /// </summary>
+        protected override void OnClosed(EventArgs e)
+        {
+            BackgroundService.Cleanup();
+            BackgroundService.PropertyChanged -= OnBackgroundChanged;
+            base.OnClosed(e);
         }
 
         public class RelayCommand(Action execute, Func<bool> canExecute = null) : ICommand

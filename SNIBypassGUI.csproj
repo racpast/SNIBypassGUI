@@ -129,24 +129,25 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="Views\FeedbackWindow.xaml">
+    <Page Include="Views\CustomBackgroundWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ImageClippingWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
+    <Page Include="Views\FeedbackWindow.xaml">
       <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Utils\ImageSwitcherService.cs" />
+    <Compile Include="Views\CustomBackgroundWindow.xaml.cs">
+      <DependentUpon>CustomBackgroundWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\FeedbackWindow.xaml.cs">
       <DependentUpon>FeedbackWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\ImageClippingWindow.xaml.cs">
-      <DependentUpon>ImageClippingWindow.xaml</DependentUpon>
     </Compile>
     <Page Include="Views\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -193,8 +194,12 @@
     <None Include="Resources\AcrylicService.exe" />
     <None Include="Resources\AcrylicHosts.txt" />
     <Resource Include="Resources\MenuBkg.png" />
-    <Resource Include="Resources\DefaultBkg.png" />
     <None Include="Resources\AcrylicConfiguration.ini" />
+    <Resource Include="Resources\imgs\1.jpg" />
+    <Resource Include="Resources\imgs\2.jpg" />
+    <Resource Include="Resources\imgs\3.jpg" />
+    <Resource Include="Resources\imgs\4.jpg" />
+    <Resource Include="Resources\imgs\5.jpg" />
     <Content Include="Resources\libs\ImageCropper.dll" />
     <Compile Include="Utils\AcrylicServiceUtils.cs" />
     <Compile Include="Utils\CertificateUtils.cs" />

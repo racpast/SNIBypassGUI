@@ -24,7 +24,30 @@
     </Window.Resources>
     <Border x:Name="MainPage" CornerRadius="15" Padding="10">
         <Border.Background>
-            <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/DefaultBkg.png"/>
+            <VisualBrush Stretch="UniformToFill" AlignmentX="Center" AlignmentY="Center">
+                <VisualBrush.Visual>
+                    <Viewbox Stretch="UniformToFill">
+                        <Grid Width="{Binding ActualWidth, ElementName=MainPage}" Height="{Binding ActualHeight, ElementName=MainPage}" Background="White">
+                            <Image x:Name="CurrentImage" 
+                               Source="{Binding BackgroundService.CurrentImage}"
+                               Stretch="UniformToFill"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Width="{Binding ActualWidth, ElementName=MainPage}"
+                               Height="{Binding ActualHeight, ElementName=MainPage}"
+                               Opacity="1"/>
+
+                            <Image x:Name="NextImage"
+                               Stretch="UniformToFill"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Width="{Binding ActualWidth, ElementName=MainPage}"
+                               Height="{Binding ActualHeight, ElementName=MainPage}"
+                               Opacity="0"/>
+                        </Grid>
+                    </Viewbox>
+                </VisualBrush.Visual>
+            </VisualBrush>
         </Border.Background>
         <Grid>
             <Grid.RowDefinitions>
@@ -118,8 +141,7 @@
                 </tb:TaskbarIcon.ContextMenu>
             </tb:TaskbarIcon>
             <hc:TransitioningContentControl TransitionMode="Top2BottomWithFade" Grid.Row="0">
-                <Border x:Name="TopBar" Margin="10,10,10,5" Background="{DynamicResource BackgroundBrush}" 
-        BorderThickness="1.5" CornerRadius="12">
+                <Border x:Name="TopBar" Margin="10,10,10,5" Background="{DynamicResource BackgroundBrush}" BorderThickness="1.5" CornerRadius="12">
                     <Border.BorderBrush>
                         <LinearGradientBrush EndPoint="1,0">
                             <GradientStop Color="#FFCE00FF"/>
@@ -142,9 +164,6 @@
                 </Border>
             </hc:TransitioningContentControl>
             <Grid Grid.Row="1">
-                <Grid.Background>
-                    <ImageBrush/>
-                </Grid.Background>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition/>
@@ -565,7 +584,7 @@
                                         <Button x:Name="InstallCertBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource CertificateGeometry}" Click="InstallCertBtn_Click" Margin="10,0,10,0" HorizontalAlignment="Stretch" Content="安装证书"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4"  Foreground="#FF2100C3" BorderBrush="#FF2100C3"/>
                                         <Grid Margin="10,15,10,15" Background="{DynamicResource BackgroundBrush}">
                                             <Rectangle RadiusX="8" RadiusY="8" Stroke="{DynamicResource BorderBrush}" StrokeDashArray="4,2"/>
-                                            <TextBlock x:Name="ServiceStatusText" TextWrapping="Wrap" Text="主服务与DNS服务未运行" FontSize="21" Padding="5" Foreground="Red" TextAlignment="Center"/>
+                                            <TextBlock x:Name="ServiceStatusText" TextWrapping="Wrap" Text="主服务与DNS服务未运行" FontSize="20" Padding="5" Foreground="Red" TextAlignment="Center"/>
                                         </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -654,7 +673,7 @@
                             <hc:TabItem Header="设置" Background="Transparent">
                                 <ScrollViewer>
                                     <StackPanel>
-                                        <Border Height="204" Margin="10,10,10,0" BorderBrush="DeepSkyBlue" BorderThickness="1" CornerRadius="8" Background="{DynamicResource BackgroundBrush}">
+                                        <Border Height="200" Margin="10,10,10,0" BorderBrush="DeepSkyBlue" BorderThickness="1" CornerRadius="8" Background="{DynamicResource BackgroundBrush}">
                                             <StackPanel  Height="210">
                                                 <Viewbox Margin="10,10,10,0" Width="110" Height="110">
                                                     <hc:AnimationPath Data="{DynamicResource GithubGeometry}" Duration="00:00:08" Stretch="Uniform" StrokeThickness="40" Stroke="#FF1794F3" RepeatBehavior="Forever"/>

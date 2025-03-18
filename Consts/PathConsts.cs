@@ -11,6 +11,7 @@ namespace SNIBypassGUI.Consts
         public readonly static string dataDirectory = Path.Combine(currentDirectory, "data");
         public readonly static string NginxDirectory = Path.Combine(dataDirectory, "core");
         public readonly static string FaviconsDirectory = Path.Combine(dataDirectory, "favicons");
+        public readonly static string BackgroundDirectory = Path.Combine(dataDirectory, "backgrounds");
         public readonly static string nginxPath = Path.Combine(NginxDirectory, "SNIBypass.exe");
         public readonly static string nginxConfigDirectory = Path.Combine(NginxDirectory, "conf");
         public readonly static string nginxConfigFile = Path.Combine(nginxConfigDirectory, "nginx.conf");
@@ -41,6 +42,6 @@ namespace SNIBypassGUI.Consts
         public readonly static string SNIBypassGUIExeFilePath = System.Windows.Forms.Application.ExecutablePath;
         public readonly static List<string> TempFilesPaths = [nginxLogFile_A, nginxLogFile_B, AcrylicCacheFilePath];
         public readonly static List<string> TempFilesPathsIncludingGUILogs = [nginxLogFile_A, nginxLogFile_B, AcrylicCacheFilePath, LogDirectory];
-        public readonly static List<string> NeccesaryDirectories = [dataDirectory, NginxDirectory, nginxConfigDirectory, CADirectory, nginxLogDirectory, nginxTempDirectory, dnsDirectory, FaviconsDirectory];
+        public readonly static List<string> NeccesaryDirectories = [dataDirectory, NginxDirectory, nginxConfigDirectory, CADirectory, nginxLogDirectory, nginxTempDirectory, dnsDirectory, FaviconsDirectory, BackgroundDirectory];
     }
 }
