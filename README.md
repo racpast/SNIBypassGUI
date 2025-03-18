@@ -1,17 +1,17 @@
 ![social_compressed](https://github.com/user-attachments/assets/2cefa9c4-413f-4a61-91ee-891f3896b9d3)
 ## 📝 简介
 一个**通过 Nginx 反向代理实现绕过 SNI 阻断** 的工具，由 [Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI) 迁移开发。
-## ☕ 使用演示（ 一键完成 Facebook、X、Instagram、Pixiv、Wikipedia 等的直连 ）
+## ☕ 使用演示（ 一键完成 Discord、Facebook、Instagram、Pixiv、Wikipedia 等的直连 ）
 https://github.com/user-attachments/assets/c3c93570-9637-4099-9802-87fa1b399301
 ## ✨ 功能预览
 ### 💻 多站点可开关支持
-![image](https://github.com/user-attachments/assets/ab0aa829-67b4-4800-ad2b-6d0616b19bf5)
+![image](https://github.com/user-attachments/assets/1f9f07c2-4217-4ca0-acf3-cd12675262b6)
 ### 📰 可视化管理
-![image](https://github.com/user-attachments/assets/d97b3257-e4d7-497e-a696-9cef11c4f8bc)
+![image](https://github.com/user-attachments/assets/d4608546-c2b4-47dc-8672-9b05e2460e3b)
 ### 🌙 深色主题
-![image](https://github.com/user-attachments/assets/b0ed6b80-d7b3-4b60-8c4b-fb116d537122)
+![image](https://github.com/user-attachments/assets/05dbbed2-7098-4fb7-bd10-cb7503549505)
 ### 🧩 一键更新与更多设置
-![image](https://github.com/user-attachments/assets/c4b0673f-0d3c-4dde-a2a2-84266b5e1488)
+![image](https://github.com/user-attachments/assets/3347711b-3abb-4e8b-be02-ca36bcf774ec)
 ### 📋 详细原理见软件内左侧`说明`栏目
 ## 🌸 贡献者名单
 ### 🏆️ 特别感谢@[mashirozx](https://github.com/mashirozx)大佬还有@[c15412](https://github.com/c15412)大佬
