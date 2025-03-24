@@ -127,10 +127,11 @@ namespace SNIBypassGUI.Views
             }
 
             var postData = new Dictionary<string, string>
-                {
+            {
                     { "email", email },
                     { "code", enteredCode }
-                };
+            };
+
             var content = new FormUrlEncodedContent(postData);
             HttpResponseMessage response = await _client.PostAsync(VerifyLink, content);
             string responseBody = await response.Content.ReadAsStringAsync();

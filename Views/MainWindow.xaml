@@ -302,7 +302,7 @@
                                     <LineBreak/>
                                     <Run Text="➲ DNS劫持是什么？" FontSize="24" Foreground="#FF00D88E"/>
                                     <LineBreak/>
-                                    <Run Text="     DNS 劫持就像你问路时被人故意指错方向，让你误入假网站，甚至泄露个人信息。" FontSize="18">
+                                    <Run Text="     DNS劫持就像你问路时被人故意指错方向，让你误入假网站，甚至泄露个人信息。" FontSize="18">
                                         <Run.Foreground>
                                             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                                                 <LinearGradientBrush.RelativeTransform>

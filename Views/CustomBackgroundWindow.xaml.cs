@@ -372,6 +372,8 @@ namespace SNIBypassGUI.Views
 
         private async void DoneBtn_Click(object sender, RoutedEventArgs e)
         {
+            DoneBtn.IsEnabled = false;
+
             MainWindow.BackgroundService.ReloadConfig();
 
             ImageListBox.ItemsSource = null;

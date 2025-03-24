@@ -223,5 +223,54 @@ namespace SNIBypassGUI.Utils
                 WriteLog($"设置 {networkAdapter.FriendlyName} 的 IPv6 DNS 服务器时遇到错误。", LogLevel.Error, ex);
             }
         }
+
+        /// <summary>
+        /// 获取默认路由的接口索引。
+        /// </summary>
+        public static uint? GetDefaultRouteInterfaceIndex()
+        {
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_IP4RouteTable WHERE Destination='0.0.0.0' AND Mask='0.0.0.0'"))
+                {
+                    var routes = searcher.Get().Cast<ManagementObject>()
+                        .Where(r => r["Metric1"] != null && (int)r["Metric1"] != -1)
+                        .OrderBy(r => (int)r["Metric1"])
+                        .ToList();
+
+                    if (routes.Any())
+                    {
+                        var firstRoute = routes.First();
+                        var interfaceIndex = firstRoute["InterfaceIndex"];
+
+                        // 检查类型并转换
+                        if (interfaceIndex is int indexInt)
+                        {
+                            if (indexInt >= 0) return (uint)indexInt;
+                            else
+                            {
+                                WriteLog("InterfaceIndex 为负数，无法转换为 uint。", LogLevel.Error);
+                                return null;
+                            }
+                        }
+                        else
+                        {
+                            WriteLog($"InterfaceIndex 不是 int 类型，而是 {interfaceIndex?.GetType().ToString() ?? "null"}。", LogLevel.Error);
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        WriteLog("未找到符合条件的默认路由。", LogLevel.Debug);
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog("获取默认路由的接口索引时遇到错误。", LogLevel.Error, ex);
+                return null;
+            }
+        }
     }
 }

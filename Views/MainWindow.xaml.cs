@@ -48,7 +48,6 @@ namespace SNIBypassGUI.Views
         public ICommand TaskbarIconLeftClickCommand { get; }
         public static ImageSwitcherService BackgroundService { get; private set; }
         private readonly DispatcherTimer serviceStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(3) };
-        private readonly DispatcherTimer adaptersComboUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
         private readonly DispatcherTimer tempFilesSizeUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
         private readonly DispatcherTimer controlsStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
         private bool _isFirstImage = true;
@@ -915,6 +914,7 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 RefreshBtn_Click。", LogLevel.Debug);
             UpdateServiceStatus();
+            UpdateAdaptersCombo();
             WriteLog("完成 RefreshBtn_Click。", LogLevel.Debug);
         }
 
@@ -1102,14 +1102,7 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 ExitBtn_Click。", LogLevel.Debug);
 
-            var fadeOut = new DoubleAnimation
-            {
-                To = 0,
-                Duration = TimeSpan.FromSeconds(0.8),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-
-            fadeOut.Completed += async (s, _) =>
+            AnimateWindow(1, 0, async () =>
             {
                 // 先隐藏窗体，在后台退出程序
                 Hide();
@@ -1155,9 +1148,7 @@ namespace SNIBypassGUI.Views
 
                 // 退出程序
                 Environment.Exit(0);
-            };
-
-            BeginAnimation(OpacityProperty, fadeOut);
+            });
 
             // 不必要的日志记录
             WriteLog("完成 ExitBtn_Click。", LogLevel.Debug);
@@ -1351,7 +1342,6 @@ namespace SNIBypassGUI.Views
                         // 不 UpdateAdaptersCombo() 是因为会引发绑定异常
                         UpdateServiceStatus();
                         serviceStatusUpdateTimer?.Start();
-                        adaptersComboUpdateTimer?.Start();
                         controlsStatusUpdateTimer?.Stop();
                         tempFilesSizeUpdateTimer?.Stop();
                         break;
@@ -1359,7 +1349,6 @@ namespace SNIBypassGUI.Views
                         SyncControlsFromConfig();
                         controlsStatusUpdateTimer?.Stop();
                         serviceStatusUpdateTimer?.Stop();
-                        adaptersComboUpdateTimer?.Stop();
                         tempFilesSizeUpdateTimer?.Stop();
                         break;
                     case "设置":
@@ -1368,13 +1357,11 @@ namespace SNIBypassGUI.Views
                         controlsStatusUpdateTimer?.Start();
                         tempFilesSizeUpdateTimer?.Start();
                         serviceStatusUpdateTimer?.Stop();
-                        adaptersComboUpdateTimer?.Stop();
                         break;
                 }
             }
             WriteLog("完成 TabControl_SelectionChanged。", LogLevel.Debug);
         }
-
 
         /// <summary>
         /// 全部开启按钮点击事件
@@ -1440,24 +1427,19 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 自定义背景按钮点击事件
         /// </summary>
-        private async void CustomBkgBtn_Click(object sender, RoutedEventArgs e)
+        private void CustomBkgBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 CustomBkgBtn_Click。", LogLevel.Debug);
-            var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromSeconds(0.8)))
+            CustomBkgBtn.IsEnabled = false;
+            AnimateWindow(1, 0, () =>
             {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            BeginAnimation(OpacityProperty, fadeOut);
-            await Task.Delay(800);
-            Hide();
-            CustomBackgroundWindow customBackgroundWindow = new();
-            customBackgroundWindow.ShowDialog();
-            Show();
-            var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            BeginAnimation(OpacityProperty, fadeIn);
+                Hide();
+                CustomBackgroundWindow customBackgroundWindow = new();
+                customBackgroundWindow.ShowDialog();
+                Show();
+                AnimateWindow(0, 1);
+                CustomBkgBtn.IsEnabled = true;
+            });
             WriteLog("完成 CustomBkgBtn_Click。", LogLevel.Debug);
         }
 
@@ -1576,16 +1558,13 @@ namespace SNIBypassGUI.Views
         private void MenuItem_ShowMainWin_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 MenuItem_ShowMainWin_Click。", LogLevel.Debug);
+            if ((Math.Abs(Opacity) < 1e-6 || IsVisible == false || IsActive == false) && !IsAnyDialogOpen())
+            {
+                Hide();
+                AnimateWindow(0, 1);
+            }
             Show();
             Activate();
-            var fadeIn = new DoubleAnimation
-            {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromSeconds(0.8),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            BeginAnimation(OpacityProperty, fadeIn);
             WriteLog("完成 MenuItem_ShowMainWin_Click。", LogLevel.Debug);
         }
 
@@ -1627,28 +1606,7 @@ namespace SNIBypassGUI.Views
         public async void TaskbarIcon_LeftClick()
         {
             WriteLog("进入 TaskbarIcon_LeftClicsk。", LogLevel.Debug);
-            static bool isAnyDialogOpen()
-            {
-                foreach (Window window in Application.Current.Windows)
-                {
-                    if (window is FeedbackWindow || window is CustomBackgroundWindow) return true;
-                }
-                return false;
-            }
-            if ((Math.Abs(Opacity) < 1e-6 || IsVisible == false || IsActive == false) && !isAnyDialogOpen())
-            {
-                Hide();
-                var fadeIn = new DoubleAnimation
-                {
-                    From = 0,
-                    To = 1,
-                    Duration = TimeSpan.FromSeconds(0.8),
-                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-                };
-                BeginAnimation(OpacityProperty, fadeIn);
-            }
-            Show();
-            Activate();
+            MenuItem_ShowMainWin.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             await UpdateYiyan();
             WriteLog("完成 TaskbarIcon_LeftClick。", LogLevel.Debug);
         }
@@ -1659,18 +1617,13 @@ namespace SNIBypassGUI.Views
         private void TaskbarIconRunBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 TaskbarIconRunBtn_Click。", LogLevel.Debug);
-            var fadeOut = new DoubleAnimation
-            {
-                To = 0,
-                Duration = TimeSpan.FromSeconds(0.8),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            fadeOut.Completed += (s, _) =>
+            TaskbarIconRunBtn.IsEnabled = false;
+            AnimateWindow(1, 0, () =>
             {
                 Hide();
                 TaskbarIcon.ShowBalloonTip("已最小化运行", "点击图标显示主窗体或右键显示菜单", BalloonIcon.Info);
-            };
-            BeginAnimation(OpacityProperty, fadeOut);
+                TaskbarIconRunBtn.IsEnabled = true;
+            });
             WriteLog("完成 TaskbarIconRunBtn_Click。", LogLevel.Debug);
         }
 
@@ -1705,7 +1658,6 @@ namespace SNIBypassGUI.Views
 
             // 绑定事件
             serviceStatusUpdateTimer.Tick += ServiceStatusUpdateTimer_Tick;
-            adaptersComboUpdateTimer.Tick += AdaptersComboUpdateTimer_Tick;
             tempFilesSizeUpdateTimer.Tick += TempFilesSizeUpdateTimer_Tick;
             controlsStatusUpdateTimer.Tick += ControlsStatusUpdateTimer_Tick;
             MainTabControl.SelectionChanged += TabControl_SelectionChanged;
@@ -1763,7 +1715,6 @@ namespace SNIBypassGUI.Views
 
             // 启用有关计时器
             serviceStatusUpdateTimer.Start();
-            adaptersComboUpdateTimer.Start();
 
             // 区别由服务启动与用户启动，如果是由服务启动，则托盘运行并自动启动服务
             if (Environment.CurrentDirectory != Path.GetDirectoryName(currentDirectory))
@@ -1788,11 +1739,6 @@ namespace SNIBypassGUI.Views
         /// 临时文件大小更新计时器触发事件
         /// </summary>
         private void TempFilesSizeUpdateTimer_Tick(object sender, EventArgs e) => UpdateTempFilesSize();
-
-        /// <summary>
-        /// 适配器列表更新计时器触发事件
-        /// </summary>
-        private void AdaptersComboUpdateTimer_Tick(object sender, EventArgs e) => UpdateAdaptersCombo();
 
         /// <summary>
         /// 服务状态更新计时器触发事件
@@ -2014,15 +1960,12 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 GetActiveAdapterBtn_Click。", LogLevel.Debug);
             UpdateAdaptersCombo();
-            List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
+            uint? interfaceIndex = GetDefaultRouteInterfaceIndex();
             NetworkAdapter activeAdapter = null;
-            foreach (var adapter in adapters)
+            if (interfaceIndex.HasValue)
             {
-                if (adapter.NetConnectionStatus == 2)
-                {
-                    activeAdapter = adapter;
-                    break;
-                }
+                List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
+                activeAdapter = adapters.FirstOrDefault(a => a.InterfaceIndex == interfaceIndex.Value);
             }
             if (activeAdapter != null && AdaptersCombo.Items.OfType<string>().Contains(activeAdapter.FriendlyName))
             {
@@ -2087,25 +2030,19 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 反馈按钮点击事件
         /// </summary>
-        private async void FeedbackBtn_Click(object sender, RoutedEventArgs e)
+        private void FeedbackBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 FeedbackBtn_Click。", LogLevel.Debug);
-            var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromSeconds(0.8)))
+            FeedbackBtn.IsEnabled = false;
+            AnimateWindow(1, 0, () =>
             {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            BeginAnimation(OpacityProperty, fadeOut);
-            await Task.Delay(800);
-            Hide();
-            var feedbackWindow = new FeedbackWindow();
-            feedbackWindow.ShowDialog();
-            Opacity = 0;
-            Show();
-            var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromSeconds(0.8)))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            BeginAnimation(OpacityProperty, fadeIn);
+                Hide();
+                var feedbackWindow = new FeedbackWindow();
+                feedbackWindow.ShowDialog();
+                Show();
+                AnimateWindow(0, 1);
+                FeedbackBtn.IsEnabled = true;
+            });
             WriteLog("完成 FeedbackBtn_Click。", LogLevel.Debug);
         }
 
@@ -2271,6 +2208,37 @@ namespace SNIBypassGUI.Views
             BackgroundService.Cleanup();
             BackgroundService.PropertyChanged -= OnBackgroundChanged;
             base.OnClosed(e);
+        }
+
+        /// <summary>
+        /// 指示是否有任何对话框打开
+        /// </summary>
+        /// <returns></returns>
+        private static bool IsAnyDialogOpen()
+        {
+            foreach (Window window in Application.Current.Windows) if (window is FeedbackWindow || window is CustomBackgroundWindow) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 播放窗口动画
+        /// </summary>
+        private void AnimateWindow(double from, double to, Action onCompleted = null)
+        {
+            var animation = new DoubleAnimation
+            {
+                From = from,
+                To = to,
+                Duration = TimeSpan.FromSeconds(0.8),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            if (onCompleted != null)
+            {
+                animation.Completed += (s, e) => onCompleted();
+            }
+
+            BeginAnimation(OpacityProperty, animation);
         }
 
         public class RelayCommand(Action execute, Func<bool> canExecute = null) : ICommand
