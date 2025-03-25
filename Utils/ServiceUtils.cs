@@ -1,8 +1,8 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Runtime.InteropServices;
-using static SNIBypassGUI.Utils.WinApiUtils;
 using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Utils.WinApiUtils;
 
 namespace SNIBypassGUI.Utils
 {

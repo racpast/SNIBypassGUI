@@ -164,7 +164,7 @@ namespace SNIBypassGUI.Utils
                 }
                 catch (Exception ex)
                 {
-                    WriteLog("获取适配器信息时遇到错误。", LogLevel.Error, ex);
+                    WriteLog("获取适配器信息时遇到异常。", LogLevel.Error, ex);
                     continue;
                 }
             }
@@ -192,7 +192,7 @@ namespace SNIBypassGUI.Utils
                 }
                 catch (Exception ex)
                 {
-                    WriteLog($"设置 {networkAdapter.FriendlyName} 的 IPv4 DNS 服务器时遇到错误。", LogLevel.Error, ex);
+                    WriteLog($"设置 {networkAdapter.FriendlyName} 的 IPv4 DNS 服务器时遇到异常。", LogLevel.Error, ex);
                 }
             }
         }
@@ -220,7 +220,7 @@ namespace SNIBypassGUI.Utils
             }
             catch (Exception ex)
             {
-                WriteLog($"设置 {networkAdapter.FriendlyName} 的 IPv6 DNS 服务器时遇到错误。", LogLevel.Error, ex);
+                WriteLog($"设置 {networkAdapter.FriendlyName} 的 IPv6 DNS 服务器时遇到异常。", LogLevel.Error, ex);
             }
         }
 
@@ -268,7 +268,7 @@ namespace SNIBypassGUI.Utils
             }
             catch (Exception ex)
             {
-                WriteLog("获取默认路由的接口索引时遇到错误。", LogLevel.Error, ex);
+                WriteLog("获取默认路由的接口索引时遇到异常。", LogLevel.Error, ex);
                 return null;
             }
         }

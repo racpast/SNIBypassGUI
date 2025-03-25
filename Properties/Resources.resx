@@ -151,19 +151,13 @@
   <data name="SystemHosts_All" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\SystemHosts_All.dat;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="_1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\1.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="_101462661" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\101462661.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="_2" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\2.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="_95945966" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\95945966.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="_3" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\3.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="_4" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\4.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="_5" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\5.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="_98797564" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\98797564.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

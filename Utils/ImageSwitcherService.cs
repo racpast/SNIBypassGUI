@@ -3,302 +3,341 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using static SNIBypassGUI.Utils.ConvertUtils;
-using static SNIBypassGUI.Utils.IniFileUtils;
+using static SNIBypassGUI.Consts.AppConsts;
+using static SNIBypassGUI.Consts.ConfigConsts;
 using static SNIBypassGUI.Consts.PathConsts;
+using static SNIBypassGUI.Utils.ConvertUtils;
+using static SNIBypassGUI.Utils.FileUtils;
+using static SNIBypassGUI.Utils.IniFileUtils;
+using static SNIBypassGUI.Utils.LogManager;
 
-public class ImageSwitcherService : INotifyPropertyChanged
+namespace SNIBypassGUI.Utils
 {
-    public int _currentIndex = -1;
-    private bool isFirstLoad = true;
-    private int preloadIndex = -1;
-    private const int MaxDecodeSize = 1400;
-    public event PropertyChangedEventHandler PropertyChanged;
-    private readonly Random _random = new();
-    private DispatcherTimer _timer;
-    private FileSystemWatcher _fileWatcher;
-    private List<string> _imagePaths = [];
-    private Dictionary<string, BitmapImage> _imageCache = [];
-    public ImageSource CurrentImage { get; private set; }
-    public string ChangeMode { get; private set; }
-    public int ChangeInterval { get; private set; }
-
-    /// <summary>
-    /// 服务构造函数
-    /// </summary>
-    public ImageSwitcherService()
+    public class ImageSwitcherService : INotifyPropertyChanged
     {
-        InitializeService();
-        StartFileWatcher();
-    }
+        // 存储文件哈希到图片路径的映射
+        private readonly Dictionary<string, string> hashToImagePath = [];
+        // 存储图片路径到已加载图片的缓存
+        private readonly Dictionary<string, BitmapImage> pathToImageCache = [];
+        // 用于同步重载操作的锁对象
+        private readonly object _reloadLock = new();
+        // 随机数生成器，用于随机选择图片
+        private readonly Random _random = new();
+        // 定时器，用于定期更换图片
+        private DispatcherTimer _timer;
+        // 预加载图片的索引
+        private int preloadIndex = -1;
+        // 图片解码的最大尺寸
+        private const int MaxDecodeSize = 1400;
+        // 图片顺序列表
+        private List<string> imageOrder = [];
+        // 当前显示的图片索引
+        public int _currentIndex = -1;
+        // 属性变更事件
+        public event PropertyChangedEventHandler PropertyChanged;
+        // 当前显示的图片
+        public ImageSource CurrentImage { get; private set; }
+        // 更换图片的模式（顺序或随机）
+        public string changeMode { get; private set; }
+        // 更换图片的时间间隔
+        public int changeInterval { get; private set; }
 
-    /// <summary>
-    /// 初始化服务核心逻辑
-    /// </summary>
-    private void InitializeService()
-    {
-        ReloadConfig();
-        LoadImagePaths();
+        /// <summary>
+        /// 服务构造函数
+        /// </summary>
+        public ImageSwitcherService() => InitializeService();
 
-        if (_imagePaths.Count > 1)
+        /// <summary>
+        /// 初始化服务核心逻辑
+        /// </summary>
+        private void InitializeService()
         {
-            _timer = new DispatcherTimer();
-            UpdateTimerInterval();
-            _timer.Tick += Timer_Tick;
-            _timer.Start();
-        }
+            ReloadConfig();
 
-        if (_imagePaths.Any())
-        {
-            if (ChangeMode == "Sequential") CurrentImage = LoadImage(_imagePaths.First());
-            else
+            // 如果有多张图片，启动定时器
+            if (imageOrder.Count > 1)
             {
-                preloadIndex = _random.Next(_imagePaths.Count);
-                CurrentImage = LoadImage(_imagePaths[preloadIndex]);
+                _timer = new DispatcherTimer();
+                UpdateTimer();
+                _timer.Tick += Timer_Tick;
+                _timer.Start();
             }
-        }
-    }
 
-    /// <summary>
-    /// 重新加载配置
-    /// </summary>
-    public void ReloadConfig()
-    {
-        ChangeMode = INIRead("背景设置", "ChangeMode", INIPath);
-        ChangeInterval = Math.Max(1, StringToInt(INIRead("背景设置", "ChangeInterval", INIPath)));
-        LoadImagePaths();
-        UpdateTimerInterval();
-    }
-
-    /// <summary>
-    /// 更新定时器间隔
-    /// </summary>
-    private void UpdateTimerInterval()
-    {
-        if (_timer != null) _timer.Interval = TimeSpan.FromSeconds(ChangeInterval);
-    }
-
-    /// <summary>
-    /// 加载图片路径（按数字排序）
-    /// </summary>
-    private void LoadImagePaths()
-    {
-        try
-        {
-            var allowedExtensions = new[] { ".jpg", ".png", ".jpeg" };
-            _imagePaths = [.. Directory.GetFiles(BackgroundDirectory)
-                .Where(f => allowedExtensions.Contains(Path.GetExtension(f).ToLower()))
-                .OrderBy(f =>
-                {
-                    // 按文件名的数字排序
-                    var fileName = Path.GetFileNameWithoutExtension(f);
-                    return int.TryParse(fileName, out int num) ? num : int.MaxValue;
-                })];
-
-            // 重置索引到安全位置
-            _currentIndex = Math.Min(_currentIndex, _imagePaths.Count - 1);
-        }
-        catch { /*...*/ }
-    }
-
-    /// <summary>
-    /// 文件变化监控
-    /// </summary>
-    private void StartFileWatcher()
-    {
-        _fileWatcher = new FileSystemWatcher
-        {
-            Path = BackgroundDirectory,
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
-            Filter = "*.*"
-        };
-
-        _fileWatcher.Created += OnFilesChanged;
-        _fileWatcher.Deleted += OnFilesChanged;
-        _fileWatcher.Renamed += OnFilesChanged;
-        _fileWatcher.Changed += OnFilesChanged;
-        _fileWatcher.EnableRaisingEvents = true;
-    }
-
-    /// <summary>
-    /// 文件变化处理
-    /// </summary>
-    private void OnFilesChanged(object sender, FileSystemEventArgs e)
-    {
-        _timer?.Stop();
-
-        // 立即清除被修改文件的缓存
-        if (e.ChangeType != WatcherChangeTypes.Deleted) ReloadByPath(e.FullPath);
-
-        Task.Delay(100).ContinueWith(_ => // 缩短延迟确保文件完全写入
-        {
-            Application.Current.Dispatcher.Invoke(() =>
+            // 如果有图片，设置当前显示的图片
+            if (imageOrder.Any())
             {
-                LoadImagePaths();
-
-                // 如果路径仍然存在，强制重新加载当前图片
-                if (_currentIndex >= 0 && _currentIndex < _imagePaths.Count)
+                if (changeMode == SequentialMode)
                 {
-                    var currentPath = _imagePaths[_currentIndex];
-                    _imageCache.Remove(currentPath);
-                    CurrentImage = LoadImage(currentPath);
-                    OnPropertyChanged(nameof(CurrentImage));
+                    if (hashToImagePath.TryGetValue(imageOrder.First(), out string firstPath))
+                    {
+                        CurrentImage = LoadImage(firstPath);
+                        _currentIndex = 0;
+                    }
+                    else
+                    {
+                        var first = hashToImagePath.First();
+                        CurrentImage = LoadImage(first.Value);
+                        _currentIndex = imageOrder.IndexOf(first.Key);
+                    }
+                }
+                else
+                {
+                    preloadIndex = _random.Next(imageOrder.Count);
+                    if (hashToImagePath.TryGetValue(imageOrder[preloadIndex], out string preloadPath))
+                    {
+                        CurrentImage = LoadImage(preloadPath);
+                        _currentIndex = preloadIndex;
+                    }
+                    else
+                    {
+                        var first = hashToImagePath.First();
+                        CurrentImage = LoadImage(first.Value);
+                        _currentIndex = imageOrder.IndexOf(first.Key);
+                    }
                 }
 
-                if (_imagePaths.Count > 1) _timer?.Start();
-            });
-        });
-    }
-
-    /// <summary>
-    /// 计时器触发事件
-    /// </summary>
-    private void Timer_Tick(object sender, EventArgs e)
-    {
-        if (!_imagePaths.Any()) return;
-
-        var nextIndex = CalculateNextIndex();
-        var nextImage = LoadImage(_imagePaths[nextIndex]);
-
-        Application.Current.Dispatcher.Invoke(() =>
-        {
-            CurrentImage = nextImage;
-            OnPropertyChanged(nameof(CurrentImage));
-            _currentIndex = nextIndex;
-        });
-    }
-
-    /// <summary>
-    /// 计算下一个索引
-    /// </summary>
-    private int CalculateNextIndex()
-    {
-        const int MAX_ATTEMPTS = 100;
-
-        if (ChangeMode == "Sequential") return (_currentIndex + 1) % _imagePaths.Count;
-        else if (isFirstLoad)
-        {
-            isFirstLoad = false;
-            return preloadIndex;
-        }
-        if (_imagePaths.Count <= 1) return 0;
-
-        int newIndex;
-        int attempts = 0;
-
-        do
-        {
-            newIndex = _random.Next(_imagePaths.Count);
-            attempts++;
-        } while (newIndex == _currentIndex && attempts < MAX_ATTEMPTS);
-
-        // 超过尝试次数后强制返回非当前值
-        return newIndex == _currentIndex
-            ? (newIndex + 1) % _imagePaths.Count
-            : newIndex;
-    }
-
-    /// <summary>
-    /// 清理资源
-    /// </summary>
-    public void Cleanup()
-    {
-        _timer?.Stop();
-        _fileWatcher?.Dispose();
-
-        // 强制释放所有图片资源
-        CurrentImage = null;
-        _imagePaths.ForEach(p =>
-        {
-            var img = (BitmapImage)LoadImage(p);
-            img.StreamSource?.Dispose();
-            img.UriSource = null;
-        });
-        _imagePaths.Clear();
-    }
-
-    /// <summary>
-    /// 重载指定路径的图片
-    /// </summary>
-    public void ReloadByPath(string path)
-    {
-        if (string.IsNullOrEmpty(path)) return;
-
-        // 强制移除缓存
-        var key = _imageCache.Keys.FirstOrDefault(k =>
-            string.Equals(k, path, StringComparison.OrdinalIgnoreCase));
-        if (key != null) _imageCache.Remove(key);
-
-        // 如果当前显示的是该路径
-        if (_imagePaths.Count > 0 &&
-            _currentIndex >= 0 &&
-            _currentIndex < _imagePaths.Count &&
-            string.Equals(_imagePaths[_currentIndex], path, StringComparison.OrdinalIgnoreCase))
-        {
-            // 创建新实例
-            var newImage = LoadImage(path);
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                CurrentImage = newImage;
+                // 触发属性变更事件，确保窗口能接收到初始图像
                 OnPropertyChanged(nameof(CurrentImage));
-            });
+            }
         }
-    }
 
-    /// <summary>
-    /// 加载图片
-    /// </summary>
-    private BitmapImage LoadImage(string path)
-    {
-        if (_imageCache.TryGetValue(path, out var cached)) return cached;
-
-        var image = new BitmapImage();
-
-        try
+        /// <summary>
+        /// 验证当前图片是否存在
+        /// </summary>
+        public void ValidateCurrentImage()
         {
-            image.BeginInit();
-            image.UriSource = new Uri(path);
-            image.CacheOption = BitmapCacheOption.OnLoad;
-            image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-
-            // 动态设置解码尺寸
-            var (w, h) = GetImageSize(path);
-            if (w > MaxDecodeSize || h > MaxDecodeSize)
+            if (CurrentImage == null) return;
+            string currentPath = ((BitmapImage)CurrentImage).UriSource.AbsolutePath;
+            if (!hashToImagePath.Values.Contains(currentPath))
             {
-                var ratio = Math.Min((double)MaxDecodeSize / w, (double)MaxDecodeSize / h);
-                image.DecodePixelWidth = (int)(w * ratio);
+                if (imageOrder.Any())
+                {
+                    string firstPath = hashToImagePath[imageOrder[0]];
+                    CurrentImage = LoadImage(firstPath);
+                    OnPropertyChanged(nameof(CurrentImage));
+                }
+                else
+                {
+                    CurrentImage = null;
+                    OnPropertyChanged(nameof(CurrentImage));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 重新加载所有配置
+        /// </summary>
+        public void ReloadConfig()
+        {
+            lock (_reloadLock)
+            {
+                // 从配置文件读取更换模式和间隔
+                changeMode = INIRead(BackgroundSettings, ChangeMode, INIPath);
+                changeInterval = Math.Max(1, StringToInt(INIRead(BackgroundSettings, ChangeInterval, INIPath)));
+
+                // 从配置文件读取图片顺序
+                imageOrder = [.. INIRead(BackgroundSettings, ImageOrder, INIPath).Split([','], StringSplitOptions.RemoveEmptyEntries)];
+                preloadIndex = _random.Next(imageOrder.Count);
+                hashToImagePath.Clear();
+
+                // 遍历背景目录，获取所有图片文件的哈希值和路径
+                foreach (var filePath in Directory.EnumerateFiles(BackgroundDirectory, "*.*", SearchOption.AllDirectories).Where(file => ImageExtensions.Any(ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase))))
+                {
+                    string hash = CalculateFileHash(filePath);
+                    hashToImagePath[hash] = filePath;
+                }
+
+                // 重置索引到安全位置
+                _currentIndex = Math.Min(_currentIndex, imageOrder.Count - 1);
+
+                UpdateTimer();
+            }
+        }
+
+        /// <summary>
+        /// 更新定时器间隔
+        /// </summary>
+        private void UpdateTimer()
+        {
+            if (_timer != null) _timer.Interval = TimeSpan.FromSeconds(changeInterval);
+            if (imageOrder.Count > 1) _timer?.Start();
+            else _timer?.Stop();
+        }
+
+        /// <summary>
+        /// 重置图片顺序
+        /// </summary>
+        private void ResetImageOrder()
+        {
+            var files = ImageExtensions.SelectMany(ext => Directory.GetFiles(BackgroundDirectory, $"*{ext}"));
+            var hashes = files.Select(CalculateFileHash);
+            string imageOrder = string.Join(",", hashes);
+            INIWrite(BackgroundSettings, ImageOrder, imageOrder, INIPath);
+        }
+
+        /// <summary>
+        /// 计时器触发事件
+        /// </summary>
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            if (!imageOrder.Any()) return;
+            var nextIndex = CalculateNextIndex();
+            if (hashToImagePath.TryGetValue(imageOrder[nextIndex], out string nextImagePath))
+            {
+                var nextImage = LoadImage(nextImagePath);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    CurrentImage = nextImage;
+                    OnPropertyChanged(nameof(CurrentImage));
+                    _currentIndex = nextIndex;
+                });
+            }
+            else
+            {
+                ResetImageOrder();
+                ReloadConfig();
+            }
+        }
+
+        /// <summary>
+        /// 计算下一个索引
+        /// </summary>
+        private int CalculateNextIndex()
+        {
+            const int MAX_ATTEMPTS = 100;
+
+            if (changeMode == SequentialMode) return (_currentIndex + 1) % imageOrder.Count;
+
+            if (imageOrder.Count <= 1) return 0;
+
+            int newIndex;
+            int attempts = 0;
+
+            do
+            {
+                newIndex = _random.Next(imageOrder.Count);
+                attempts++;
+            } while (newIndex == _currentIndex && attempts < MAX_ATTEMPTS);
+
+            return newIndex == _currentIndex ? (newIndex + 1) % imageOrder.Count : newIndex;
+        }
+
+        /// <summary>
+        /// 清理资源
+        /// </summary>
+        public void Cleanup()
+        {
+            _timer?.Stop();
+            CurrentImage = null;
+            pathToImageCache.Clear();
+        }
+
+        /// <summary>
+        /// 清空所有图片的缓存
+        /// </summary>
+        public void CleanAllCache() => pathToImageCache.Clear();
+
+        /// <summary>
+        /// 清理指定路径图片的缓存
+        /// </summary>
+        public void CleanCacheByPath(string path)
+        {
+            var key = pathToImageCache.Keys.FirstOrDefault(k => k.Equals(path, StringComparison.OrdinalIgnoreCase));
+            if (key != null) pathToImageCache.Remove(key);
+        }
+
+        /// <summary>
+        /// 重载指定路径的图片
+        /// </summary>
+        public void ReloadByPath(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+
+            // 强制移除缓存
+            CleanCacheByPath(path);
+
+            if (imageOrder.Count > 0 && _currentIndex >= 0 && _currentIndex < imageOrder.Count)
+            {
+                // 如果当前显示的是该路径
+                if (string.Equals(hashToImagePath[imageOrder[_currentIndex]], path, StringComparison.OrdinalIgnoreCase))
+                {
+                    // 创建新实例
+                    var newImage = LoadImage(path);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        CurrentImage = newImage;
+                        OnPropertyChanged(nameof(CurrentImage));
+                    });
+                }
+                else
+                {
+                    if (pathToImageCache.ContainsKey(path)) pathToImageCache.Remove(path);
+                    pathToImageCache.Add(path, LoadImage(path));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 加载图片
+        /// </summary>
+        private BitmapImage LoadImage(string path)
+        {
+            if (pathToImageCache.TryGetValue(path, out var cached)) return cached;
+
+            var image = new BitmapImage();
+
+            try
+            {
+                image.BeginInit();
+                image.UriSource = new Uri(path);
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+
+                // 动态设置解码尺寸
+                var (w, h) = GetImageSize(path);
+                if (w > MaxDecodeSize || h > MaxDecodeSize)
+                {
+                    var ratio = Math.Min((double)MaxDecodeSize / w, (double)MaxDecodeSize / h);
+                    image.DecodePixelWidth = (int)(w * ratio);
+                }
+
+                image.EndInit();
+                image.Freeze();
+                pathToImageCache[path] = image;
+            }
+            catch(Exception ex)
+            {
+                WriteLog("加载图片时遇到异常。", LogLevel.Error, ex);
             }
 
-            image.EndInit();
-            image.Freeze();
-            _imageCache[path] = image;
+            return image;
         }
-        catch { /*...*/ }
 
-        return image;
-    }
-
-    /// <summary>
-    /// 获取图片尺寸
-    /// </summary>
-    private (int, int) GetImageSize(string path)
-    {
-        try
+        /// <summary>
+        /// 获取图片尺寸
+        /// </summary>
+        private (int, int) GetImageSize(string path)
         {
-            using var stream = File.OpenRead(path);
-            var frame = BitmapFrame.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
-            return (frame.PixelWidth, frame.PixelHeight);
+            try
+            {
+                using var stream = File.OpenRead(path);
+                var frame = BitmapFrame.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                return (frame.PixelWidth, frame.PixelHeight);
+            }
+            catch(Exception ex)
+            {
+                WriteLog("获取图像尺寸时遇到异常。", LogLevel.Error, ex);
+                return (0, 0);
+            }
         }
-        catch { return (0, 0); }
-    }
 
-    /// <summary>
-    /// 属性变更通知
-    /// </summary>
-    protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        /// <summary>
+        /// 属性变更通知
+        /// </summary>
+        protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
 }

@@ -3,8 +3,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Consts.GitHubConsts;
+using static SNIBypassGUI.Utils.LogManager;
 
 namespace SNIBypassGUI.Utils
 {

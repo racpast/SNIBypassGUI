@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using SNIBypassGUI.Models;
+using static SNIBypassGUI.Consts.ConfigConsts;
 using static SNIBypassGUI.Consts.PathConsts;
 
 namespace SNIBypassGUI.Consts
@@ -35,29 +36,27 @@ namespace SNIBypassGUI.Consts
             {SwitchData,Properties.Resources.SwitchData},
         });
 
-        public readonly static byte[][] DefaultBackgrounds = 
-        [
-            Properties.Resources._1,
-            Properties.Resources._2,
-            Properties.Resources._3,
-            Properties.Resources._4,
-            Properties.Resources._5
-        ];
+        public readonly static ReadOnlyDictionary<string, byte[]> DefaultBackgrounds = new(new Dictionary<string, byte[]>
+        {
+            {"101462661.jpg", Properties.Resources._101462661},
+            {"95945966.jpg", Properties.Resources._95945966},
+            {"98797564.jpg", Properties.Resources._98797564}
+        });
 
         public readonly static ReadOnlyDictionary<string, string> InitialConfigurations = new(new Dictionary<string, string>
         {
-            { "背景设置:ChangeInterval", "15" },
-            { "背景设置:ChangeMode", "Sequential" },
-            { "程序设置:ThemeMode", "Light" },
-            { "程序设置:SpecifiedAdapter", "" },
-            { "程序设置:PixivIPPreference", "false" },
-            { "高级设置:DebugMode", "false" },
-            { "高级设置:GUIDebug", "false" },
-            { "高级设置:DomainNameResolutionMethod", "DnsService" },
-            { "高级设置:AcrylicDebug", "false" },
-            { "暂存数据:PreviousDNS1", "" },
-            { "暂存数据:PreviousDNS2", "" },
-            { "暂存数据:IsPreviousDnsAutomatic", "true" }
+            { $"{BackgroundSettings}:{ChangeInterval}", "15" },
+            { $"{BackgroundSettings}:{ChangeMode}", $"{SequentialMode}" },
+            { $"{ProgramSettings}:{ThemeMode}", $"{LightMode}" },
+            { $"{ProgramSettings}:{SpecifiedAdapter}", "" },
+            { $"{ProgramSettings}:{PixivIPPreference}", "false" },
+            { $"{AdvancedSettings}:{DebugMode}", "false" },
+            { $"{AdvancedSettings}:{GUIDebug}", "false" },
+            { $"{AdvancedSettings}:{DomainNameResolutionMethod}", $"{DnsServiceMode}" },
+            { $"{AdvancedSettings}:{AcrylicDebug}", "false" },
+            { $"{TemporaryData}:{PreviousPrimaryDNS}", "" },
+            { $"{TemporaryData}:{PreviousAlternativeDNS}", "" },
+            { $"{TemporaryData}:{IsPreviousDnsAutomatic}", "true" }
         });
 
         public static ObservableCollection<SwitchItem> Switchs = [];

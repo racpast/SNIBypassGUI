@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using SNIBypassGUI.Utils;
 using static SNIBypassGUI.Consts.LinksConsts;
 using static SNIBypassGUI.Utils.LogManager;
 using MessageBox = HandyControl.Controls.MessageBox;
@@ -16,10 +17,12 @@ namespace SNIBypassGUI.Views
     public partial class FeedbackWindow : Window
     {
         private int _remainingSeconds;
-        private bool _isFirstImage = true;
         public ImageSwitcherService BackgroundService => MainWindow.BackgroundService;
-        private HttpClient _client;
-        private DispatcherTimer _timer;
+        private HttpClient _client = new();
+        private DispatcherTimer _timer = new()
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
 
         /// <summary>
         /// 窗口构造函数
@@ -27,19 +30,17 @@ namespace SNIBypassGUI.Views
         public FeedbackWindow()
         {
             InitializeComponent();
+
             Opacity = 0;
-            _client = new HttpClient();
-            _timer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1)
-            };
-            _timer.Tick += Timer_Tick;
 
             // 窗口可拖动
             TopBar.MouseLeftButtonDown += (o, e) => { DragMove(); };
 
             DataContext = this;
+
+            _timer.Tick += Timer_Tick;
             BackgroundService.PropertyChanged += OnBackgroundChanged;
+            CurrentImage.Source = BackgroundService.CurrentImage;
         }
 
         /// <summary>
@@ -238,15 +239,6 @@ namespace SNIBypassGUI.Views
 
             Dispatcher.BeginInvoke(() =>
             {
-                if (_isFirstImage)
-                {
-                    CurrentImage.Source = BackgroundService.CurrentImage;
-                    CurrentImage.Opacity = 1;
-                    NextImage.Opacity = 0;
-                    _isFirstImage = false;
-                    return;
-                }
-
                 NextImage.Opacity = 0;
                 NextImage.Source = BackgroundService.CurrentImage;
 

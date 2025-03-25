@@ -41,8 +41,7 @@ namespace SNIBypassGUI.Consts
             "gh.xx9527.cn",
             "gh-proxy.linioi.com",
             "gitproxy.mrhjx.cn",
-            "github.wuzhij.com",
-            "gh.rpnet.us.kg"
+            "github.wuzhij.com"
             ];
     }
 }

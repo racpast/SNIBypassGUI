@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace SNIBypassGUI.Consts
 {
@@ -14,7 +12,7 @@ namespace SNIBypassGUI.Consts
         public const string CertificateThumbprint = "263961dd1800f3513b1e7818881683889c92aa1a";
 
         // 版本号，更新时需要修改
-        public const string CurrentVersion = "V4.1";
+        public const string CurrentVersion = "V4.2";
 
         // 日志头
         public readonly static string[] LogHead =
@@ -41,5 +39,8 @@ namespace SNIBypassGUI.Consts
 
         // DNS 服务名
         public const string DnsServiceName = "AcrylicDNSProxySvc";
+
+        // 图像后缀名
+        public readonly static string[] ImageExtensions = [".jpg", ".jpeg", ".png"];
     }
 }

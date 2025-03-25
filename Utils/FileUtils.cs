@@ -213,12 +213,12 @@ namespace SNIBypassGUI.Utils
         {
             try
             {
-                FileInfo fileInfo = new FileInfo(filePath);
+                FileInfo fileInfo = new(filePath);
                 return fileInfo.Length;
             }
             catch (Exception ex)
             {
-                WriteLog($"获取 {filePath} 文件大小时遇到错误。", LogLevel.Error, ex);
+                WriteLog($"获取 {filePath} 文件大小时遇到异常。", LogLevel.Error, ex);
                 throw;
             }
         }
@@ -240,7 +240,7 @@ namespace SNIBypassGUI.Utils
             }
             catch (Exception ex)
             {
-                WriteLog($"获取 {directoryPath} 目录大小时遇到错误。", LogLevel.Error, ex);
+                WriteLog($"获取 {directoryPath} 目录大小时遇到异常。", LogLevel.Error, ex);
                 throw;
             }
             return size;
@@ -264,7 +264,7 @@ namespace SNIBypassGUI.Utils
             }
             catch (Exception ex)
             {
-                WriteLog("获取总大小时遇到错误。", LogLevel.Error, ex);
+                WriteLog("获取总大小时遇到异常。", LogLevel.Error, ex);
                 throw;
             }
             return totalSize;

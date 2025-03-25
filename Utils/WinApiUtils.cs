@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using static SNIBypassGUI.Utils.ServiceUtils;
 
 namespace SNIBypassGUI.Utils
 {

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.IO;
-using static SNIBypassGUI.Utils.FileUtils;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.PathConsts;
+using static SNIBypassGUI.Utils.FileUtils;
 
 namespace SNIBypassGUI.Utils
 {

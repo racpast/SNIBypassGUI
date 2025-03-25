@@ -20,45 +20,47 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using SNIBypassGUI.Models;
-using static SNIBypassGUI.Utils.LogManager;
+using SNIBypassGUI.Utils;
+using static SNIBypassGUI.Consts.AppConsts;
+using static SNIBypassGUI.Consts.ConfigConsts;
+using static SNIBypassGUI.Consts.CollectionConsts;
+using static SNIBypassGUI.Consts.LinksConsts;
+using static SNIBypassGUI.Consts.PathConsts;
+using static SNIBypassGUI.Utils.AcrylicServiceUtils;
+using static SNIBypassGUI.Utils.CertificateUtils;
 using static SNIBypassGUI.Utils.ConvertUtils;
 using static SNIBypassGUI.Utils.ConvertUtils.FileSizeConverter;
 using static SNIBypassGUI.Utils.FileUtils;
-using static SNIBypassGUI.Utils.WinApiUtils;
-using static SNIBypassGUI.Utils.NetworkUtils;
-using static SNIBypassGUI.Utils.IniFileUtils;
 using static SNIBypassGUI.Utils.GitHubUtils;
-using static SNIBypassGUI.Utils.ProcessUtils;
-using static SNIBypassGUI.Utils.CertificateUtils;
-using static SNIBypassGUI.Utils.AcrylicServiceUtils;
-using static SNIBypassGUI.Utils.ServiceUtils;
-using static SNIBypassGUI.Consts.AppConsts;
-using static SNIBypassGUI.Consts.PathConsts;
-using static SNIBypassGUI.Consts.CollectionConsts;
-using static SNIBypassGUI.Consts.LinksConsts;
+using static SNIBypassGUI.Utils.IniFileUtils;
+using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.NetworkAdapterUtils;
-using Task = System.Threading.Tasks.Task;
+using static SNIBypassGUI.Utils.NetworkUtils;
+using static SNIBypassGUI.Utils.ProcessUtils;
+using static SNIBypassGUI.Utils.ServiceUtils;
+using static SNIBypassGUI.Utils.WinApiUtils;
 using Action = System.Action;
 using MessageBox = HandyControl.Controls.MessageBox;
+using Task = System.Threading.Tasks.Task;
 
 namespace SNIBypassGUI.Views
 {
     public partial class MainWindow : Window
     {
-        public ICommand TaskbarIconLeftClickCommand { get; }
-        public static ImageSwitcherService BackgroundService { get; private set; }
+        private readonly DispatcherTimer controlsStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
         private readonly DispatcherTimer serviceStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(3) };
         private readonly DispatcherTimer tempFilesSizeUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
-        private readonly DispatcherTimer controlsStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
-        private bool _isFirstImage = true;
+        public ICommand TaskbarIconLeftClickCommand { get; }
+        public static ImageSwitcherService BackgroundService { get; private set; }
 
         /// <summary>
         /// 窗口构造函数
         /// </summary>
         public MainWindow()
         {
-            if (StringToBool(INIRead("高级设置", "GUIDebug", INIPath))) EnableLog();
+            if (StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath))) EnableLog();
             WriteLog("进入 MainWindow。", LogLevel.Debug);
+
             InitializeComponent();
 
             var args = Environment.GetCommandLineArgs();
@@ -93,8 +95,13 @@ namespace SNIBypassGUI.Views
 
             // 将 MainWindow 作为 DataContext 设置
             DataContext = this;
+
             BackgroundService = new ImageSwitcherService();
             BackgroundService.PropertyChanged += OnBackgroundChanged;
+
+            // 手动设置初始图像
+            CurrentImage.Source = BackgroundService.CurrentImage;
+
             TaskbarIconLeftClickCommand = new RelayCommand(() => TaskbarIcon_LeftClick());
 
             // 窗口可拖动
@@ -288,7 +295,7 @@ namespace SNIBypassGUI.Views
             WriteLog("进入 UpdateAdaptersCombo。", LogLevel.Debug);
 
             // 从配置文件中读取上次选中的适配器
-            string PreviousSelectedAdapter = INIRead("程序设置", "SpecifiedAdapter", INIPath);
+            string PreviousSelectedAdapter = INIRead(ProgramSettings, SpecifiedAdapter, INIPath);
 
             // 获取友好名称不为空的适配器
             List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
@@ -400,13 +407,7 @@ namespace SNIBypassGUI.Views
             // 如果背景文件夹为空，则释放默认背景
             if (!Directory.EnumerateFiles(BackgroundDirectory).GetEnumerator().MoveNext())
             {
-                int i = 1;
-                foreach (var bkg in DefaultBackgrounds)
-                {
-                    string filename = $"{i}.jpg";
-                    ExtractResourceToFile(bkg, Path.Combine(BackgroundDirectory, filename));
-                    i++;
-                }
+                foreach (var pair in DefaultBackgrounds) ExtractResourceToFile(pair.Value, Path.Combine(BackgroundDirectory, pair.Key));
             }
 
             // 如果配置文件不存在，则直接创建
@@ -434,6 +435,15 @@ namespace SNIBypassGUI.Views
                     WriteLog($"配置键 {key} 不存在，写入默认值。", LogLevel.Info);
                     INIWrite(section, key, config.Value, INIPath);
                 }
+            }
+
+            // 背景顺序配置
+            if (!sectionKeys[BackgroundSettings].Contains(ImageOrder) || string.IsNullOrEmpty(INIRead(BackgroundSettings, ImageOrder, INIPath)))
+            {
+                var files = ImageExtensions.SelectMany(ext => Directory.GetFiles(BackgroundDirectory, $"*{ext}"));
+                var hashes = files.Select(CalculateFileHash);
+                string imageOrder = string.Join(",", hashes);
+                INIWrite(BackgroundSettings, ImageOrder, imageOrder, INIPath);
             }
 
             WriteLog("完成 InitializeDirectoriesAndFiles。", LogLevel.Debug);
@@ -481,7 +491,7 @@ namespace SNIBypassGUI.Views
             WriteLog("进入 UpdateHostsFromConfig。", LogLevel.Debug);
 
             // 根据域名解析模式判断要更新的文件
-            bool IsDnsService = INIRead("高级设置", "DomainNameResolutionMethod", INIPath) == "DnsService";
+            bool IsDnsService = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode;
             string FileShouldUpdate = IsDnsService ? AcrylicHostsPath : SystemHosts;
 
             // 根据域名解析模式获取应该添加的条目数据
@@ -496,7 +506,7 @@ namespace SNIBypassGUI.Views
                 // 遍历条目部分名称
                 foreach (SwitchItem pair in Switchs)
                 {
-                    if (StringToBool(INIRead("代理开关", pair.SectionName, INIPath)) == true)
+                    if (StringToBool(INIRead(ProxySettings, pair.SectionName, INIPath)) == true)
                     {
                         // 条目部分名称对应的开关是打开的情况
                         WriteLog($"{pair.SectionName} 的代理开关为开启，将添加记录。", LogLevel.Info);
@@ -527,7 +537,7 @@ namespace SNIBypassGUI.Views
             WriteLog("进入RemoveHosts。", LogLevel.Debug);
 
             // 根据域名解析模式判断要更新的文件
-            bool IsDnsService = INIRead("高级设置", "DomainNameResolutionMethod", INIPath) == "DnsService";
+            bool IsDnsService = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode;
             string FileShouldUpdate = IsDnsService ? AcrylicHostsPath : SystemHosts;
 
             WriteLog($"当前域名解析方法是否为 DNS 服务： {BoolToYesNo(IsDnsService)}，将更新的文件为 {FileShouldUpdate}。", LogLevel.Info);
@@ -559,8 +569,8 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 SyncControlsFromConfig。", LogLevel.Debug);
 
-            string themeMode = INIRead("程序设置", "ThemeMode", INIPath);
-            if (themeMode == "Light")
+            string themeMode = INIRead(ProgramSettings, ThemeMode, INIPath);
+            if (themeMode == LightMode)
             {
                 SwitchTheme(false);
                 ThemeSwitchTB.IsChecked = false;
@@ -575,7 +585,7 @@ namespace SNIBypassGUI.Views
             foreach (SwitchItem pair in Switchs)
             {
                 ToggleButton toggleButtonInstance = (ToggleButton)FindName(pair.ToggleButtonName);
-                bool isEnabled = StringToBool(INIRead("代理开关", pair.SectionName, INIPath));
+                bool isEnabled = StringToBool(INIRead(ProxySettings, pair.SectionName, INIPath));
                 if (toggleButtonInstance != null)
                 {
                     // 更新代理开关状态
@@ -586,14 +596,14 @@ namespace SNIBypassGUI.Views
             }
 
             // 判断调试模式是否开启
-            bool isDebugModeOn = StringToBool(INIRead("高级设置", "DebugMode", INIPath));
+            bool isDebugModeOn = StringToBool(INIRead(AdvancedSettings, DebugMode, INIPath));
 
             // 更新调试有关按钮文本
             DebugModeBtn.Content = isDebugModeOn ? "调试模式：\n开" : "调试模式：\n关";
-            GUIDebugBtn.Content = StringToBool(INIRead("高级设置", "GUIDebug", INIPath)) ? "GUI调试：\n开" : "GUI调试：\n关";
-            SwitchDomainNameResolutionMethodBtn.Content = INIRead("高级设置", "DomainNameResolutionMethod", INIPath) == "DnsService" ? "域名解析：\nDNS服务" : "域名解析：\n系统hosts";
-            AcrylicDebugBtn.Content = StringToBool(INIRead("高级设置", "AcrylicDebug", INIPath)) ? "DNS服务调试：\n开" : "DNS服务调试：\n关";
-            PixivIPPreferenceBtn.Content = StringToBool(INIRead("程序设置", "PixivIPPreference", INIPath)) ? "Pixiv IP优选：开" : "Pixiv IP优选：关";
+            GUIDebugBtn.Content = StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath)) ? "GUI调试：\n开" : "GUI调试：\n关";
+            SwitchDomainNameResolutionMethodBtn.Content = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode ? "域名解析：\nDNS服务" : "域名解析：\n系统hosts";
+            AcrylicDebugBtn.Content = StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath)) ? "DNS服务调试：\n开" : "DNS服务调试：\n关";
+            PixivIPPreferenceBtn.Content = StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) ? "Pixiv IP优选：开" : "Pixiv IP优选：关";
 
             // 根据调试模式是否开启决定有关按钮是否启用
             SwitchDomainNameResolutionMethodBtn.IsEnabled = AcrylicDebugBtn.IsEnabled = GUIDebugBtn.IsEnabled = isDebugModeOn;
@@ -617,8 +627,8 @@ namespace SNIBypassGUI.Views
                 ToggleButton toggleButtonInstance = (ToggleButton)FindName(pair.ToggleButtonName);
                 if (toggleButtonInstance != null)
                 {
-                    if (toggleButtonInstance.IsChecked == true) INIWrite("代理开关", pair.SectionName, "true", INIPath);
-                    else INIWrite("代理开关", pair.SectionName, "false", INIPath);
+                    if (toggleButtonInstance.IsChecked == true) INIWrite(ProxySettings, pair.SectionName, "true", INIPath);
+                    else INIWrite(ProxySettings, pair.SectionName, "false", INIPath);
                     WriteLog($"配置键 {pair.SectionName} 从开关 {toggleButtonInstance.Name} 同步状态： {BoolToYesNo(toggleButtonInstance.IsChecked)}。", LogLevel.Debug);
                 }
             }
@@ -684,9 +694,9 @@ namespace SNIBypassGUI.Views
                     WriteLog($"将暂存的DNS服务器为： {PreviousDNS1}， {PreviousDNS2}", LogLevel.Debug);
 
                     // 将停止服务时恢复适配器所需要的信息写入配置文件备用
-                    INIWrite("暂存数据", "PreviousDNS1", PreviousDNS1, INIPath);
-                    INIWrite("暂存数据", "PreviousDNS2", PreviousDNS2, INIPath);
-                    INIWrite("暂存数据", "IsPreviousDnsAutomatic", isIPv4DNSAuto.ToString(), INIPath);
+                    INIWrite(TemporaryData, PreviousPrimaryDNS, PreviousDNS1, INIPath);
+                    INIWrite(TemporaryData, PreviousAlternativeDNS, PreviousDNS2, INIPath);
+                    INIWrite(TemporaryData, IsPreviousDnsAutomatic, isIPv4DNSAuto.ToString(), INIPath);
                 }
             }
             catch (Exception ex)
@@ -709,7 +719,7 @@ namespace SNIBypassGUI.Views
                 if (Adapter.IPv4DNSServer.Length > 0 && Adapter.IPv4DNSServer[0] == "127.0.0.1")
                 {
                     // 指定适配器的首选DNS为环回地址的情况，需要从配置文件还原回去
-                    if (StringToBool(INIRead("暂存数据", "IsPreviousDnsAutomatic", INIPath)))
+                    if (StringToBool(INIRead(TemporaryData, IsPreviousDnsAutomatic, INIPath)))
                     {
                         // 指定适配器DNS服务器之前是自动获取的情况，设置指定适配器DNS服务器为自动获取
                         SetIPv4DNS(Adapter, []);
@@ -718,8 +728,8 @@ namespace SNIBypassGUI.Views
                     }
                     else
                     {
-                        string PreviousDNS1 = INIRead("暂存数据", "PreviousDNS1", INIPath);
-                        string PreviousDNS2 = INIRead("暂存数据", "PreviousDNS2", INIPath);
+                        string PreviousDNS1 = INIRead(TemporaryData, PreviousPrimaryDNS, INIPath);
+                        string PreviousDNS2 = INIRead(TemporaryData, PreviousAlternativeDNS, INIPath);
                         if (string.IsNullOrEmpty(PreviousDNS1) || !IsValidIPv4(PreviousDNS1))
                         {
                             SetIPv4DNS(Adapter, []);
@@ -782,7 +792,7 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 StartService。", LogLevel.Debug);
 
-            if (INIRead("高级设置", "DomainNameResolutionMethod", INIPath) == "DnsService")
+            if (INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode)
             {
                 // 域名解析模式是 DNS 服务的情况，需要启动主服务、 DNS 服务与设置适配器
 
@@ -928,9 +938,9 @@ namespace SNIBypassGUI.Views
             // 禁用按钮，防手贱重复启动，此时指定适配器也不可以更改
             StartBtn.IsEnabled = StopBtn.IsEnabled = AdaptersCombo.IsEnabled = GetActiveAdapterBtn.IsEnabled = false;
 
-            if (AdaptersCombo.SelectedItem != null) INIWrite("程序设置", "SpecifiedAdapter", AdaptersCombo.SelectedItem.ToString(), INIPath);
+            if (AdaptersCombo.SelectedItem != null) INIWrite(ProgramSettings, SpecifiedAdapter, AdaptersCombo.SelectedItem.ToString(), INIPath);
 
-            if (INIRead("高级设置", "DomainNameResolutionMethod", INIPath) == "DnsService" && string.IsNullOrEmpty(AdaptersCombo.SelectedItem?.ToString()))
+            if (INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode && string.IsNullOrEmpty(AdaptersCombo.SelectedItem?.ToString()))
             {
                 // 域名解析为DNS模式但没有选择网络适配器的情况
                 MessageBox.Show("请先在下拉框中选择当前正在使用的适配器！您可以尝试点击“自动获取”按钮。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -945,7 +955,7 @@ namespace SNIBypassGUI.Views
                 await StartService();
 
                 // 实验性功能：Pixiv IP优选
-                if (StringToBool(INIRead("程序设置", "PixivIPPreference", INIPath))) PixivIPPreference();
+                if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath))) PixivIPPreferenceEx();
 
                 FlushDNSCache();
             }
@@ -974,7 +984,7 @@ namespace SNIBypassGUI.Views
             await StopService();
 
             // 实验性功能：Pixiv IP优选
-            if (StringToBool(INIRead("程序设置", "PixivIPPreference", INIPath)))
+            if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)))
             {
                 try
                 {
@@ -1120,7 +1130,7 @@ namespace SNIBypassGUI.Views
                 await StopService();
 
                 // 实验性功能： Pixiv IP 优选
-                if (StringToBool(INIRead("程序设置", "PixivIPPreference", INIPath)))
+                if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)))
                 {
                     try
                     {
@@ -1142,9 +1152,9 @@ namespace SNIBypassGUI.Views
                 FlushDNSCache();
 
                 // 清空暂存数据
-                INIWrite("暂存数据", "PreviousDNS1", "", INIPath);
-                INIWrite("暂存数据", "PreviousDNS2", "", INIPath);
-                INIWrite("暂存数据", "IsPreviousDnsAutomatic", "True", INIPath);
+                INIWrite(TemporaryData, PreviousPrimaryDNS, "", INIPath);
+                INIWrite(TemporaryData, PreviousAlternativeDNS, "", INIPath);
+                INIWrite(TemporaryData, IsPreviousDnsAutomatic, "true", INIPath);
 
                 // 退出程序
                 Environment.Exit(0);
@@ -1454,20 +1464,21 @@ namespace SNIBypassGUI.Views
             ClearFolder(BackgroundDirectory);
 
             // 释放默认背景图片
-            int i = 1;
-            foreach (var bkg in DefaultBackgrounds)
-            {
-                string filename = $"{i}.jpg";
-                ExtractResourceToFile(bkg, Path.Combine(BackgroundDirectory, filename));
-                i++;
-            }
+            foreach (var pair in DefaultBackgrounds) ExtractResourceToFile(pair.Value, Path.Combine(BackgroundDirectory, pair.Key));
+
+            var files = ImageExtensions.SelectMany(ext => Directory.GetFiles(BackgroundDirectory, $"*{ext}"));
+            var hashes = files.Select(CalculateFileHash);
+            string imageOrder = string.Join(",", hashes);
 
             // 写入配置文件
-            INIWrite("背景设置", "ChangeInterval", "15", INIPath);
-            INIWrite("背景设置", "ChangeMode", "Sequential", INIPath);
+            INIWrite(BackgroundSettings, ImageOrder, imageOrder, INIPath);
+            INIWrite(BackgroundSettings, ChangeInterval, "15", INIPath);
+            INIWrite(BackgroundSettings, ChangeMode, SequentialMode, INIPath);
 
             // 通知背景服务更新
+            BackgroundService.CleanAllCache();
             BackgroundService.ReloadConfig();
+            BackgroundService.ValidateCurrentImage();
 
             WriteLog("完成 DefaultBkgBtn_Click。", LogLevel.Debug);
         }
@@ -1666,10 +1677,10 @@ namespace SNIBypassGUI.Views
             await AddSwitchesToList();
 
             // 如果有配置中不存在的项，则开启
-            List<String> ExistingKeys = GetKeys("代理开关", INIPath);
+            List<String> ExistingKeys = GetKeys(ProxySettings, INIPath);
             foreach (SwitchItem item in Switchs)
             {
-                if (!ExistingKeys.Contains(item.SectionName)) INIWrite("代理开关", item.SectionName, "true", INIPath);
+                if (!ExistingKeys.Contains(item.SectionName)) INIWrite(ProxySettings, item.SectionName, "true", INIPath);
             }
 
             // 更新信息
@@ -1800,13 +1811,13 @@ namespace SNIBypassGUI.Views
         private void DebugModeBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 DebugModeBtn_Click。", LogLevel.Debug);
-            if (!StringToBool(INIRead("高级设置", "DebugMode", INIPath)) && MessageBox.Show("调试模式仅供测试和开发使用，强烈建议您在没有开发者明确指示的情况下不要随意打开。\r\n是否打开调试模式？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) INIWrite("高级设置", "DebugMode", "true", INIPath);
+            if (!StringToBool(INIRead(AdvancedSettings, DebugMode, INIPath)) && MessageBox.Show("调试模式仅供测试和开发使用，强烈建议您在没有开发者明确指示的情况下不要随意打开。\r\n是否打开调试模式？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, DebugMode, "true", INIPath);
             else
             {
-                INIWrite("高级设置", "DebugMode", "false", INIPath);
-                INIWrite("高级设置", "GUIDebug", "false", INIPath);
-                INIWrite("高级设置", "DomainNameResolutionMethod", "DnsService", INIPath);
-                INIWrite("高级设置", "AcrylicDebug", "false", INIPath);
+                INIWrite(AdvancedSettings, DebugMode, "false", INIPath);
+                INIWrite(AdvancedSettings, GUIDebug, "false", INIPath);
+                INIWrite(AdvancedSettings, DomainNameResolutionMethod, DnsServiceMode, INIPath);
+                INIWrite(AdvancedSettings, AcrylicDebug, "false", INIPath);
             }
             SyncControlsFromConfig();
             WriteLog("完成 DebugModeBtn_Click。", LogLevel.Debug);
@@ -1818,8 +1829,8 @@ namespace SNIBypassGUI.Views
         private void SwitchDomainNameResolutionMethodBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
-            if (INIRead("高级设置", "DomainNameResolutionMethod", INIPath) != "SystemHosts" && MessageBox.Show("在 DNS 服务无法正常启动的情况下，系统 Hosts 可以作为备选方案使用，\r\n但具有一定局限性（例如 pixivFANBOX 的作者页面需要手动向系统 Hosts 添加记录）。\r\n是否切换域名解析模式为系统 Hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite("高级设置", "DomainNameResolutionMethod", "SystemHosts", INIPath);
-            else INIWrite("高级设置", "DomainNameResolutionMethod", "DnsService", INIPath);
+            if (INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) != SystemHostsMode && MessageBox.Show("在 DNS 服务无法正常启动的情况下，系统 Hosts 可以作为备选方案使用，\r\n但具有一定局限性（例如 pixivFANBOX 的作者页面需要手动向系统 Hosts 添加记录）。\r\n是否切换域名解析模式为系统 Hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, DomainNameResolutionMethod, SystemHostsMode, INIPath);
+            else INIWrite(AdvancedSettings, DomainNameResolutionMethod, DnsServiceMode, INIPath);
             SyncControlsFromConfig();
             WriteLog("完成 SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
         }
@@ -1830,8 +1841,8 @@ namespace SNIBypassGUI.Views
         private void AcrylicDebugBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 AcrylicDebugBtn_Click。", LogLevel.Debug);
-            if (!StringToBool(INIRead("高级设置", "AcrylicDebug", INIPath)) && MessageBox.Show("开启 DNS 服务调试可以诊断某些问题，重启服务后生效。\r\n请在重启直到程序出现问题后，将 \\data\\dns 目录下的 AcrylicDebug.txt 提交给开发者。\r\n是否打开 DNS 服务调试？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite("高级设置", "AcrylicDebug", "true", INIPath);
-            else INIWrite("高级设置", "AcrylicDebug", "false", INIPath);
+            if (!StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath)) && MessageBox.Show("开启 DNS 服务调试可以诊断某些问题，重启服务后生效。\r\n请在重启直到程序出现问题后，将 \\data\\dns 目录下的 AcrylicDebug.txt 提交给开发者。\r\n是否打开 DNS 服务调试？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, AcrylicDebug, "true", INIPath);
+            else INIWrite(AdvancedSettings, AcrylicDebug, "false", INIPath);
             SyncControlsFromConfig();
             WriteLog("完成 AcrylicDebugBtn_Click。", LogLevel.Debug);
         }
@@ -1842,13 +1853,13 @@ namespace SNIBypassGUI.Views
         private void GUIDebugBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 GUIDebugBtn_Click。", LogLevel.Debug);
-            if (!StringToBool(INIRead("高级设置", "GUIDebug", INIPath)) && MessageBox.Show("开启 GUI 调试模式可以更准确地诊断问题，但生成日志会产生额外的性能开销，请在不需要时关闭。\r\n开启后将自动关闭程序，重启程序后生效。\r\n请在重启直到程序出现问题后，将 \\data\\logs 目录下的 GUI.log 提交给开发者。\r\n是否打开 GUI 调试模式并重启？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (!StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath)) && MessageBox.Show("开启 GUI 调试模式可以更准确地诊断问题，但生成日志会产生额外的性能开销，请在不需要时关闭。\r\n开启后将自动关闭程序，重启程序后生效。\r\n请在重启直到程序出现问题后，将 \\data\\logs 目录下的 GUI.log 提交给开发者。\r\n是否打开 GUI 调试模式并重启？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                INIWrite("高级设置", "GUIDebug", "true", INIPath);
+                INIWrite(AdvancedSettings, GUIDebug, "true", INIPath);
                 StartProcess(CurrentExe, $"/waitForParent {Process.GetCurrentProcess().Id}");
                 ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             }
-            else INIWrite("高级设置", "GUIDebug", "false", INIPath);
+            else INIWrite(AdvancedSettings, GUIDebug, "false", INIPath);
             SyncControlsFromConfig();
             WriteLog("完成 GUIDebugBtn_Click。", LogLevel.Debug);
         }
@@ -1893,7 +1904,7 @@ namespace SNIBypassGUI.Views
                     // 遍历所有适配器
                     foreach (var adapter in adapters)
                     {
-                        if (adapter.FriendlyName == INIRead("程序设置", "SpecifiedAdapter", INIPath))
+                        if (adapter.FriendlyName == INIRead(ProgramSettings, SpecifiedAdapter, INIPath))
                         {
                             activeAdapter = adapter;
                             break;
@@ -1948,7 +1959,7 @@ namespace SNIBypassGUI.Views
         private void AdaptersCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             WriteLog("进入 AdaptersCombo_SelectionChanged。", LogLevel.Debug);
-            if (AdaptersCombo.SelectedItem != null) INIWrite("程序设置", "SpecifiedAdapter", AdaptersCombo.SelectedItem.ToString(), INIPath);
+            if (AdaptersCombo.SelectedItem != null) INIWrite(ProgramSettings, SpecifiedAdapter, AdaptersCombo.SelectedItem.ToString(), INIPath);
             e.Handled = true;
             WriteLog("完成 AdaptersCombo_SelectionChanged。", LogLevel.Debug);
         }
@@ -1970,7 +1981,7 @@ namespace SNIBypassGUI.Views
             if (activeAdapter != null && AdaptersCombo.Items.OfType<string>().Contains(activeAdapter.FriendlyName))
             {
                 AdaptersCombo.SelectedItem = activeAdapter.FriendlyName;
-                INIWrite("程序设置", "SpecifiedAdapter", activeAdapter.FriendlyName, INIPath);
+                INIWrite(ProgramSettings, SpecifiedAdapter, activeAdapter.FriendlyName, INIPath);
             }
             else
             {
@@ -1993,9 +2004,9 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 实验性功能：Pixiv IP 优选
         /// </summary>
-        private void PixivIPPreference()
+        private void PixivIPPreferenceEx()
         {
-            WriteLog("进入 PixivIPPreference。", LogLevel.Debug);
+            WriteLog("进入 PixivIPPreferenceEx。", LogLevel.Debug);
             try
             {
                 RemoveSection(SystemHosts, "s.pximg.net");
@@ -2024,7 +2035,7 @@ namespace SNIBypassGUI.Views
                 WriteLog($"遇到异常。", LogLevel.Error, ex);
                 MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            WriteLog("完成 PixivIPPreference。", LogLevel.Debug);
+            WriteLog("完成 PixivIPPreferenceEx。", LogLevel.Debug);
         }
 
         /// <summary>
@@ -2053,14 +2064,14 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 PixivIPPreferenceBtn_Click。", LogLevel.Debug);
             PixivIPPreferenceBtn.IsEnabled = false;
-            if (!StringToBool(INIRead("程序设置", "PixivIPPreference", INIPath)) && MessageBox.Show("Pixiv IP 优选是实验性功能。\r\n当您遇到服务正常运行，但打开 Pixiv 白屏时可以尝试使用此功能。\r\n您要打开该功能吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (!StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) && MessageBox.Show("Pixiv IP 优选是实验性功能。\r\n当您遇到服务正常运行，但打开 Pixiv 白屏时可以尝试使用此功能。\r\n您要打开该功能吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                INIWrite("程序设置", "PixivIPPreference", "true", INIPath);
-                PixivIPPreference();
+                INIWrite(ProgramSettings, PixivIPPreference, "true", INIPath);
+                PixivIPPreferenceEx();
             }
             else
             {
-                INIWrite("程序设置", "PixivIPPreference", "false", INIPath);
+                INIWrite(ProgramSettings, PixivIPPreference, "false", INIPath);
                 RemoveSection(SystemHosts, "s.pximg.net");
             }
             PixivIPPreferenceBtn.IsEnabled = true;
@@ -2108,14 +2119,14 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 ThemeSwitchTB_Checked。", LogLevel.Debug);
             SwitchTheme(true);
-            INIWrite("程序设置", "ThemeMode", "Dark", INIPath);
+            INIWrite(ProgramSettings, ThemeMode, DarkMode, INIPath);
             WriteLog("完成 ThemeSwitchTB_Checked。", LogLevel.Debug);
         }
         private void ThemeSwitchTB_Unchecked(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 ThemeSwitchTB_Unchecked。", LogLevel.Debug);
             SwitchTheme(false);
-            INIWrite("程序设置", "ThemeMode", "Light", INIPath);
+            INIWrite(ProgramSettings, ThemeMode, LightMode, INIPath);
             WriteLog("完成 ThemeSwitchTB_Unchecked。", LogLevel.Debug);
         }
 
@@ -2178,15 +2189,6 @@ namespace SNIBypassGUI.Views
 
             Dispatcher.BeginInvoke(() =>
             {
-                if (_isFirstImage)
-                {
-                    CurrentImage.Source = BackgroundService.CurrentImage;
-                    CurrentImage.Opacity = 1;
-                    NextImage.Opacity = 0;
-                    _isFirstImage = false;
-                    return;
-                }
-
                 NextImage.Opacity = 0;
                 NextImage.Source = BackgroundService.CurrentImage;
 

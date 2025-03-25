@@ -6,8 +6,8 @@ using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Linq;
 using System.Threading.Tasks;
-using static SNIBypassGUI.Utils.WinApiUtils;
 using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Utils.WinApiUtils;
 
 namespace SNIBypassGUI.Utils
 {

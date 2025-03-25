@@ -10,26 +10,29 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using static SNIBypassGUI.Consts.AppConsts;
+using static SNIBypassGUI.Consts.ConfigConsts;
+using static SNIBypassGUI.Consts.PathConsts;
 using SNIBypassGUI.Utils;
 using static SNIBypassGUI.Utils.ConvertUtils.FileSizeConverter;
 using static SNIBypassGUI.Utils.FileUtils;
 using static SNIBypassGUI.Utils.IniFileUtils;
 using static SNIBypassGUI.Utils.LogManager;
-using static SNIBypassGUI.Consts.PathConsts;
 using MessageBox = HandyControl.Controls.MessageBox;
 
 namespace SNIBypassGUI.Views
 {
     public partial class CustomBackgroundWindow : Window
     {
-        private bool _isFirstImage = true;
         public ImageSwitcherService BackgroundService => MainWindow.BackgroundService;
         private string currentImagePath;
+        private readonly Dictionary<string, string> hashToPathMap = [];
 
         public class ImageItem
         {
             public BitmapImage ImageObj { get; set; }
             public string ImageName { get; set; }
+            public string ImagePath { get; set; }
             public string ImageResolution { get; set; }
             public string ImageSize { get; set; }
         }
@@ -44,42 +47,45 @@ namespace SNIBypassGUI.Views
 
             LoadImagesToList();
             BackgroundService.PropertyChanged += OnBackgroundChanged;
+            CurrentImage.Source = BackgroundService.CurrentImage;
         }
 
         private void LoadImagesToList()
         {
             ImageListBox.ItemsSource = null;
 
-            // 获取文件夹中的所有图像文件
-            var imageFiles = Directory.GetFiles(BackgroundDirectory, "*.*", SearchOption.TopDirectoryOnly)
-                                            .Where(file => Path.GetExtension(file).ToLower() == ".jpg" || Path.GetExtension(file).ToLower() == ".png" || Path.GetExtension(file).ToLower() == ".jpeg")
-                                            .OrderBy(file => int.Parse(Path.GetFileNameWithoutExtension(file))) // 按数字排序
-                                            .ToList();
+            // 获取文件夹中所有的图像文件并按照 ImageOrder 中的哈希值顺序
+            string[] imageOrder = INIRead(BackgroundSettings, ImageOrder, INIPath).Split([','], StringSplitOptions.RemoveEmptyEntries);
+            foreach (var filePath in Directory.EnumerateFiles(BackgroundDirectory, "*.*", SearchOption.AllDirectories).Where(file => ImageExtensions.Any(ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase))))
+            {
+                string hash = CalculateFileHash(filePath);
+                hashToPathMap[hash] = filePath;
+            }
 
             // 创建一个图像项的列表
             var imageList = new List<ImageItem>();
-
-            foreach (var imagePath in imageFiles)
+            foreach (var hash in imageOrder)
             {
-                // 获取文件名
-                string fileName = Path.GetFileName(imagePath);
-
-                // 仅加载缩略图降低内存用量
-                BitmapImage bitmapImage = LoadThumbnail(imagePath);
-
-                (int, int) imageSize = GetImageSize(Path.Combine(BackgroundDirectory, fileName));
-
-                // 创建 ImageItem 对象
-                var imageItem = new ImageItem
+                if (hashToPathMap.TryGetValue(hash, out string path))
                 {
-                    ImageName = fileName,
-                    ImageObj = bitmapImage,
-                    ImageResolution = $"{imageSize.Item1} x {imageSize.Item2}",
-                    ImageSize = $"{ConvertBetweenUnits(GetFileSize(imagePath), SizeUnit.B, SizeUnit.MB):0.00} MB"
-                };
+                    // 仅加载缩略图降低内存用量
+                    BitmapImage bitmapImage = LoadThumbnail(path);
 
-                // 添加到列表中
-                imageList.Add(imageItem);
+                    (int, int) imageSize = GetImageSize(path);
+
+                    // 创建 ImageItem 对象
+                    var imageItem = new ImageItem
+                    {
+                        ImageName = Path.GetFileName(path),
+                        ImagePath = path,
+                        ImageObj = bitmapImage,
+                        ImageResolution = $"{imageSize.Item1} x {imageSize.Item2}",
+                        ImageSize = $"{ConvertBetweenUnits(GetFileSize(path), SizeUnit.B, SizeUnit.MB):0.00} MB"
+                    };
+
+                    // 添加到列表中
+                    imageList.Add(imageItem);
+                }
             }
 
             // 设置 ImageListBox 的 ItemSource
@@ -102,63 +108,28 @@ namespace SNIBypassGUI.Views
                 return;
             }
 
-            var allFiles = Directory.GetFiles(BackgroundDirectory)
-                .Where(file => Path.GetExtension(file).ToLower() == ".jpg" || Path.GetExtension(file).ToLower() == ".png" || Path.GetExtension(file).ToLower() == ".jpeg")
-                .Select(f => new {
-                    Path = f,
-                    Index = int.Parse(Path.GetFileNameWithoutExtension(f))
-                })
-                .OrderBy(x => x.Index)
-                .ToList();
-
-            int deleteIndex = allFiles.FindIndex(x => x.Path == Path.Combine(BackgroundDirectory, selectedItem.ImageName));
-            if (deleteIndex == -1) return;
-
-            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
-
             try
             {
-                int newIndex = 1;
-                foreach (var file in allFiles)
-                {
-                    if (file.Index == deleteIndex + 1) continue;
-
-                    string newName = $"{newIndex}{Path.GetExtension(file.Path)}";
-                    File.Copy(file.Path, Path.Combine(tempDir, newName));
-                    newIndex++;
-                }
-
-                allFiles.ForEach(f => TryDelete(f.Path));
-
-                foreach (var tempFile in Directory.GetFiles(tempDir))
-                {
-                    string dest = Path.Combine(BackgroundDirectory, Path.GetFileName(tempFile));
-                    File.Move(tempFile, dest);
-                }
+                string hashString = INIRead(BackgroundSettings, ImageOrder, INIPath);
+                string hashToRemove = CalculateFileHash(selectedItem.ImagePath);
+                hashString = string.Join(",", hashString.Split([','], StringSplitOptions.RemoveEmptyEntries).Where(hash => hash != hashToRemove));
+                INIWrite(BackgroundSettings, ImageOrder, hashString, INIPath);
+                TryDelete(selectedItem.ImagePath);
 
                 ImageCropperControl.Source = null;
                 ImageCropperControl.ResetDrawThumb();
                 ImageListBox.SelectedItem = null;
 
-                BackgroundService.ReloadByPath(currentImagePath);
+                BackgroundService.CleanCacheByPath(currentImagePath);
+                BackgroundService.ReloadConfig();
+                BackgroundService.ValidateCurrentImage();
 
                 LoadImagesToList();
             }
             catch (Exception ex)
             {
-                int newIndex = 1;
-                foreach (var tempFile in Directory.GetFiles(tempDir))
-                {
-                    string originalName = allFiles[newIndex - 1].Path;
-                    File.Copy(tempFile, originalName);
-                }
                 WriteLog("遇到异常。", LogLevel.Error, ex);
-                MessageBox.Show($"操作失败，已恢复文件。\r\n{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+                MessageBox.Show($"操作失败。\r\n{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -173,13 +144,20 @@ namespace SNIBypassGUI.Views
             };
             if (openFileDialog.ShowDialog() == true)
             {
-                int existingFileCount = Directory.GetFiles(BackgroundDirectory, "*.*", SearchOption.TopDirectoryOnly).Count(file => new[] { ".jpg", ".jpeg", ".png" }.Contains(Path.GetExtension(file).ToLower()));
                 foreach(var file in openFileDialog.FileNames)
                 {
                     try
                     {
-                        File.Copy(file, Path.Combine(BackgroundDirectory, existingFileCount + 1 + Path.GetExtension(file)));
-                        existingFileCount++;
+                        File.Copy(file, Path.Combine(BackgroundDirectory, Path.GetFileName(file)));
+                        string hashString = INIRead(BackgroundSettings, ImageOrder, INIPath);
+                        string hashToRemove = CalculateFileHash(file);
+
+                        // 移除旧哈希值，追加新哈希值
+                        hashString = string.Join(",", hashString.Split([','], StringSplitOptions.RemoveEmptyEntries).Where(hash => hash != hashToRemove));
+                        hashString = string.IsNullOrEmpty(hashString) ? hashToRemove : $"{hashString},{hashToRemove}";
+
+                        INIWrite(BackgroundSettings, ImageOrder, hashString, INIPath);
+                        BackgroundService.ReloadConfig();
                     }
                     catch (Exception ex)
                     {
@@ -199,26 +177,16 @@ namespace SNIBypassGUI.Views
             int currentIndex = ImageListBox.SelectedIndex;
             if (currentIndex <= 0) return;
 
-            // 释放UI资源
-            ImageCropperControl.Source = null;
-            GC.Collect();
-
-            string prevName = ((ImageItem)ImageListBox.Items[currentIndex - 1]).ImageName;
-            string currentName = selectedItem.ImageName;
-
             try
             {
-                // 使用临时文件交换
-                string temp1 = Path.Combine(BackgroundDirectory, Guid.NewGuid() + ".tmp");
-                string temp2 = Path.Combine(BackgroundDirectory, Guid.NewGuid() + ".tmp");
-
-                File.Move(Path.Combine(BackgroundDirectory, currentName), temp1);
-                File.Move(Path.Combine(BackgroundDirectory, prevName), temp2);
-                File.Move(temp1, Path.Combine(BackgroundDirectory, Path.GetFileNameWithoutExtension(prevName) + Path.GetExtension(currentName)));
-                File.Move(temp2, Path.Combine(BackgroundDirectory, Path.GetFileNameWithoutExtension(currentName) + Path.GetExtension(prevName)));
-
-                BackgroundService.ReloadByPath(Path.Combine(BackgroundDirectory, currentName));
-                BackgroundService.ReloadByPath(Path.Combine(BackgroundDirectory, prevName));
+                string prevName = ((ImageItem)ImageListBox.Items[currentIndex - 1]).ImagePath;
+                string currentName = selectedItem.ImagePath;
+                string hashString = INIRead(BackgroundSettings, ImageOrder, INIPath);
+                string prevHash = CalculateFileHash(prevName);
+                string currentHash = CalculateFileHash(currentName);
+                string updatedHashString = SwapHashPositions(hashString, prevHash, currentHash);
+                INIWrite(BackgroundSettings, ImageOrder, updatedHashString, INIPath);
+                BackgroundService.ReloadConfig();
 
                 // 更新列表显示
                 LoadImagesToList();
@@ -243,22 +211,16 @@ namespace SNIBypassGUI.Views
             ImageCropperControl.Source = null;
             GC.Collect();
 
-            string currentName = selectedItem.ImageName;
-            string nextName = ((ImageItem)ImageListBox.Items[currentIndex + 1]).ImageName;
-
             try
             {
-                // 使用临时文件交换
-                string temp1 = Path.Combine(BackgroundDirectory, Guid.NewGuid() + ".tmp");
-                string temp2 = Path.Combine(BackgroundDirectory, Guid.NewGuid() + ".tmp");
-
-                File.Move(Path.Combine(BackgroundDirectory, currentName), temp1);
-                File.Move(Path.Combine(BackgroundDirectory, nextName), temp2);
-                File.Move(temp1, Path.Combine(BackgroundDirectory, Path.GetFileNameWithoutExtension(nextName) + Path.GetExtension(currentName)));
-                File.Move(temp2, Path.Combine(BackgroundDirectory, Path.GetFileNameWithoutExtension(currentName) + Path.GetExtension(nextName)));
-
-                BackgroundService.ReloadByPath(Path.Combine(BackgroundDirectory, currentName));
-                BackgroundService.ReloadByPath(Path.Combine(BackgroundDirectory, nextName));
+                string nextName = ((ImageItem)ImageListBox.Items[currentIndex + 1]).ImagePath;
+                string currentName = selectedItem.ImagePath;
+                string hashString = INIRead(BackgroundSettings, ImageOrder, INIPath);
+                string nextHash = CalculateFileHash(nextName);
+                string currentHash = CalculateFileHash(currentName);
+                string updatedHashString = SwapHashPositions(hashString, nextHash, currentHash);
+                INIWrite(BackgroundSettings, ImageOrder, updatedHashString, INIPath);
+                BackgroundService.ReloadConfig();
 
                 // 更新列表显示
                 LoadImagesToList();
@@ -278,34 +240,38 @@ namespace SNIBypassGUI.Views
             else if (ConvertUtils.StringToInt(TimeTb.Text) < 1) MessageBox.Show("时间间隔不能小于一秒！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             else
             {
-                INIWrite("背景设置", "ChangeInterval", TimeTb.Text, INIPath);
+                INIWrite(BackgroundSettings, ChangeInterval, TimeTb.Text, INIPath);
                 MessageBox.Show("设置成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 SyncControlsFromConfig();
 
                 // 通知服务重载
-                MainWindow.BackgroundService.ReloadConfig();
+                BackgroundService.ReloadConfig();
             }
         }
 
         private void ToggleModeBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (INIRead("背景设置", "ChangeMode", INIPath) == "Sequential") INIWrite("背景设置", "ChangeMode", "Random", INIPath);
-            else INIWrite("背景设置", "ChangeMode", "Sequential", INIPath);
+            if (INIRead(BackgroundSettings, ChangeMode, INIPath) == SequentialMode) INIWrite(BackgroundSettings, ChangeMode, RandomMode, INIPath);
+            else INIWrite(BackgroundSettings, ChangeMode, SequentialMode, INIPath);
             SyncControlsFromConfig();
 
             // 通知服务重载
-            MainWindow.BackgroundService.ReloadConfig();
+            BackgroundService.ReloadConfig();
         }
 
         private void CutBtn_Click(object sender, RoutedEventArgs e)
         {
             if (!string.IsNullOrEmpty(currentImagePath))
             {
+                CutBtn.IsEnabled = false;
+
                 // 定义裁剪区域             
                 Rectangle cropArea = new((int)ImageCropperControl.CroppedRegion.X, (int)ImageCropperControl.CroppedRegion.Y, (int)ImageCropperControl.CroppedRegion.Width, (int)ImageCropperControl.CroppedRegion.Height);
 
                 try
                 {
+                    string originHash = CalculateFileHash(currentImagePath);
+
                     // 使用 GetImage 获取 BitmapImage
                     BitmapImage bitmapImage = GetImage(currentImagePath);
 
@@ -340,6 +306,10 @@ namespace SNIBypassGUI.Views
                     // 删除原始文件并替换
                     File.Replace(tempImagePath, currentImagePath, null);
 
+                    string newHash = CalculateFileHash(currentImagePath);
+                    string hashString = INIRead(BackgroundSettings, ImageOrder, INIPath);
+                    hashString = string.Join(",", hashString.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(hash => hash == originHash ? newHash : hash));
+                    INIWrite(BackgroundSettings, ImageOrder, hashString, INIPath);
                     BackgroundService.ReloadByPath(currentImagePath);
 
                     ImageCropperControl.Source = null;
@@ -374,11 +344,10 @@ namespace SNIBypassGUI.Views
         {
             DoneBtn.IsEnabled = false;
 
-            MainWindow.BackgroundService.ReloadConfig();
+            BackgroundService.ReloadConfig();
 
             ImageListBox.ItemsSource = null;
             ImageCropperControl.Source = null;
-
             GC.Collect();
             GC.WaitForPendingFinalizers();
 
@@ -389,9 +358,10 @@ namespace SNIBypassGUI.Views
         {
             if (ImageListBox.SelectedItem is not ImageItem imageItem) {
                 currentImagePath = null;
+                CutBtn.IsEnabled = false;
                 return;
             }
-            currentImagePath = Path.Combine(BackgroundDirectory, imageItem.ImageName);
+            currentImagePath = imageItem.ImagePath;
 
             // 将文件内容复制到内存流
             using (var fileStream = new FileStream(currentImagePath, FileMode.Open, FileAccess.Read))
@@ -402,6 +372,7 @@ namespace SNIBypassGUI.Views
 
                 // 加载图片
                 ImageCropperControl.LoadImageFromStream(memoryStream);
+                CutBtn.IsEnabled = true;
             }
             ImageCropperControl.ResetDrawThumb();
         }
@@ -429,8 +400,8 @@ namespace SNIBypassGUI.Views
 
         private void SyncControlsFromConfig()
         {
-            TimeTb.Text = INIRead("背景设置", "ChangeInterval", INIPath);
-            if (INIRead("背景设置", "ChangeMode", INIPath) == "Random") ToggleModeBtn.Content = "随机模式";
+            TimeTb.Text = INIRead(BackgroundSettings, ChangeInterval, INIPath);
+            if (INIRead(BackgroundSettings, ChangeMode, INIPath) == RandomMode) ToggleModeBtn.Content = "随机模式";
             else ToggleModeBtn.Content = "顺序模式";
         }
 
@@ -455,7 +426,10 @@ namespace SNIBypassGUI.Views
                 image.EndInit();
                 image.Freeze();
             }
-            catch { /*...*/ }
+            catch(Exception ex)
+            {
+                WriteLog("加载缩略图时遇到异常。", LogLevel.Error, ex);
+            }
             return image;
         }
 
@@ -476,15 +450,6 @@ namespace SNIBypassGUI.Views
 
             Dispatcher.BeginInvoke(() =>
             {
-                if (_isFirstImage)
-                {
-                    CurrentImage.Source = BackgroundService.CurrentImage;
-                    CurrentImage.Opacity = 1;
-                    NextImage.Opacity = 0;
-                    _isFirstImage = false;
-                    return;
-                }
-
                 NextImage.Opacity = 0;
                 NextImage.Source = BackgroundService.CurrentImage;
 
@@ -496,6 +461,21 @@ namespace SNIBypassGUI.Views
 
                 (NextImage, CurrentImage) = (CurrentImage, NextImage);
             });
+        }
+
+        static string SwapHashPositions(string hashString, string hashA, string hashB)
+        {
+            var hashList = hashString.Split([','], StringSplitOptions.RemoveEmptyEntries).ToList();
+
+            int indexA = hashList.IndexOf(hashA);
+            int indexB = hashList.IndexOf(hashB);
+
+            if (indexA != -1 && indexB != -1)
+            {
+                (hashList[indexA], hashList[indexB]) = (hashList[indexB], hashList[indexA]); // 交换
+            }
+
+            return string.Join(",", hashList);
         }
     }
 }

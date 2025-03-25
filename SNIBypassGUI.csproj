@@ -137,6 +137,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Compile Include="Consts\ConfigConsts.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -193,13 +194,11 @@
     <Resource Include="Resources\nginx\SNIBypass.exe" />
     <None Include="Resources\dns\AcrylicService.exe" />
     <None Include="Resources\dns\AcrylicHosts.txt" />
-    <Resource Include="Resources\imgs\MenuBkg.png" />
     <None Include="Resources\dns\AcrylicConfiguration.ini" />
-    <Resource Include="Resources\imgs\1.jpg" />
-    <Resource Include="Resources\imgs\2.jpg" />
-    <Resource Include="Resources\imgs\3.jpg" />
-    <Resource Include="Resources\imgs\4.jpg" />
-    <Resource Include="Resources\imgs\5.jpg" />
+    <None Include="Resources\imgs\101462661.jpg" />
+    <None Include="Resources\imgs\95945966.jpg" />
+    <None Include="Resources\imgs\98797564.jpg" />
+    <Resource Include="Resources\imgs\MenuBkg.png" />
     <Content Include="Resources\libs\ImageCropper.dll" />
     <Compile Include="Utils\AcrylicServiceUtils.cs" />
     <Compile Include="Utils\CertificateUtils.cs" />

@@ -127,7 +127,7 @@
                             <ColumnDefinition/>
                         </Grid.ColumnDefinitions>
                         <Button x:Name="ResetBtn" hc:BorderElement.CornerRadius="8" Grid.Column="0" Click="ResetBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource RefreshGeometry}" Content="重置" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#FF003AED" BorderBrush="#FF003AED" VerticalContentAlignment="Center"/>
-                        <Button x:Name="CutBtn" hc:BorderElement.CornerRadius="8" Grid.Column="1" Click="CutBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" hc:IconElement.Geometry="{StaticResource CropGeometry}" Content="裁剪" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" VerticalContentAlignment="Center" Foreground="#FF00ED66" BorderBrush="#FF00ED66"/>
+                        <Button x:Name="CutBtn" hc:BorderElement.CornerRadius="8" Grid.Column="1" Click="CutBtn_Click" Height="30" Margin="10,0,10,10" HorizontalAlignment="Stretch" IsEnabled="False" hc:IconElement.Geometry="{StaticResource CropGeometry}" Content="裁剪" Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" VerticalContentAlignment="Center" Foreground="#FF00ED66" BorderBrush="#FF00ED66"/>
                     </Grid>
                 </Grid>
             </Grid>
