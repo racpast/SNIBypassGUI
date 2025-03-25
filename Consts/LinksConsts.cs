@@ -2,7 +2,7 @@
 {
     public static class LinksConsts
     {
-        public const string MainServer = "https://snibypassgui.rpnet.us.kg/";
+        public const string MainServer = "https://syliawru.serv00.net/";
         public const string VerifyLink = MainServer + "verify.php";
         public const string FeedbackLink = MainServer + "feedback.php";
         public const string MainLatest = MainServer + "latest.json";

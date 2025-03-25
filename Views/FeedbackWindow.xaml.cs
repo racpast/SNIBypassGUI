@@ -192,15 +192,17 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 窗口加载完成事件
         /// </summary>
-        private async void Window_Loaded(object sender, RoutedEventArgs e)
+        private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             FadeIn();
 
             /// <summary>
             /// 暂时停用反馈功能
             /// </summary>
+            /*
             MessageBox.Show("反馈功能已暂时停用，如果需要反馈请加群 946813204 或发送邮件反馈！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             await FadeOut();
+            */
         }
 
         /// <summary>
