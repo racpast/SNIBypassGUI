@@ -5,13 +5,13 @@
 https://github.com/user-attachments/assets/8d29e300-99e5-46cc-a678-acc5bed94649
 ## ✨ 功能预览
 ### 💻 多站点可开关支持
-![image](https://github.com/user-attachments/assets/1f9f07c2-4217-4ca0-acf3-cd12675262b6)
+![image](https://github.com/user-attachments/assets/cf4e9fc5-20c9-45ee-affa-55e56a67713c)
 ### 📰 可视化管理
-![image](https://github.com/user-attachments/assets/d4608546-c2b4-47dc-8672-9b05e2460e3b)
+![image](https://github.com/user-attachments/assets/04666c42-464a-4ed1-81f0-d41af4932cea)
 ### 🌙 深色主题
-![image](https://github.com/user-attachments/assets/05dbbed2-7098-4fb7-bd10-cb7503549505)
+![image](https://github.com/user-attachments/assets/b9905809-0ae3-4073-a904-404ae2b5f1e7)
 ### 🧩 一键更新与更多设置
-![image](https://github.com/user-attachments/assets/3347711b-3abb-4e8b-be02-ca36bcf774ec)
+![image](https://github.com/user-attachments/assets/0e8dc81f-3fc4-4ed9-9c8a-44fc01747751)
 ## 📚 维基百科 
 ### [🏠️ 首页](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%8F%A0%EF%B8%8F-%E9%A6%96%E9%A1%B5) | [🏷️ 关于SNIBypassGUI](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%8F%B7%EF%B8%8F-%E5%85%B3%E4%BA%8ESNIBypassGUI) | [🔑 具体实现原理](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%94%91-%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86) | [🌐 关于本地DNS服务与泛域名解析](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%8C%90-%E5%85%B3%E4%BA%8E%E6%9C%AC%E5%9C%B0DNS%E6%9C%8D%E5%8A%A1%E4%B8%8E%E6%B3%9B%E5%9F%9F%E5%90%8D%E8%A7%A3%E6%9E%90) | [❓️ 使用时遇到问题](https://github.com/racpast/SNIBypassGUI/wiki/%E2%9D%93%EF%B8%8F-%E4%BD%BF%E7%94%A8%E6%97%B6%E9%81%87%E5%88%B0%E9%97%AE%E9%A2%98) | [🔗 联系我们](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%94%97-%E8%81%94%E7%B3%BB%E6%88%91%E4%BB%AC)
 ## 🌸 贡献者名单
