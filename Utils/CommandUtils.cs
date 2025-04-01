@@ -34,7 +34,7 @@ namespace SNIBypassGUI.Utils
             }
             catch (Exception ex)
             {
-                WriteLog($"执行 PowerShell 命令时遇到异常。", LogLevel.Error, ex);
+                WriteLog($"执行 PowerShell 命令 {command} 时遇到异常。", LogLevel.Error, ex);
                 throw;
             }
         }

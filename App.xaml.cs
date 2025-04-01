@@ -3,6 +3,10 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using static SNIBypassGUI.Consts.ConfigConsts;
+using static SNIBypassGUI.Consts.PathConsts;
+using static SNIBypassGUI.Utils.ConvertUtils;
+using static SNIBypassGUI.Utils.IniFileUtils;
 using static SNIBypassGUI.Utils.LogManager;
 
 namespace SNIBypassGUI
@@ -11,7 +15,9 @@ namespace SNIBypassGUI
     {
         public App()
         {
-            this.DispatcherUnhandledException += App_DispatcherUnhandledException;
+            if (StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath))) EnableLog();
+
+            DispatcherUnhandledException += App_DispatcherUnhandledException;
 
             // 捕获非 UI 线程中的未处理异常
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;

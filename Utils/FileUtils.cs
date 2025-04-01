@@ -187,7 +187,7 @@ namespace SNIBypassGUI.Utils
             else
             {
                 DirectoryNotFoundException ex = new($"无法找到指定的文件夹路径：{folderPath}");
-                WriteLog($"指定的文件夹路径不存在。", LogLevel.Error, ex);
+                WriteLog("指定的文件夹路径不存在。", LogLevel.Error, ex);
                 throw ex;
             }
         }
@@ -277,28 +277,53 @@ namespace SNIBypassGUI.Utils
         public static long GetTotalSize(List<string> paths) => GetTotalSize(paths.ToArray());
 
         /// <summary>
-        /// 释放资源型的获取图像
+        /// 释放资源型加载图像，支持缓存和动态调整解码尺寸
         /// </summary>
-        /// <param name="imagePath">指定图像的路径</param>
-        public static BitmapImage GetImage(string imagePath)
+        /// <param name="imagePath">图像路径</param>
+        /// <param name="cache">缓存字典（可选）</param>
+        /// <param name="maxDecodeSize">最大解码尺寸（可选）</param>
+        public static BitmapImage LoadImage(string imagePath, Dictionary<string, BitmapImage> cache = null, int? maxDecodeSize = null)
         {
-            BitmapImage bitmap = new();
-            if (File.Exists(imagePath))
+            // 检查缓存
+            if (cache != null && cache.TryGetValue(imagePath, out BitmapImage cachedImage)) return cachedImage;
+
+            BitmapImage image = new();
+
+            try
             {
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                using (Stream ms = new MemoryStream(File.ReadAllBytes(imagePath)))
+                image.BeginInit();
+                image.UriSource = new Uri(imagePath);
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+
+                // 动态调整解码尺寸
+                if (maxDecodeSize.HasValue)
                 {
-                    bitmap.StreamSource = ms;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
+                    var (w, h) = GetImageSize(imagePath);
+                    if (w > maxDecodeSize || h > maxDecodeSize)
+                    {
+                        double ratio = Math.Min((double)maxDecodeSize.Value / w, (double)maxDecodeSize.Value / h);
+                        image.DecodePixelWidth = (int)(w * ratio);
+                        image.DecodePixelHeight = (int)(h * ratio);
+                    }
                 }
+
+                image.EndInit();
+                image.Freeze();
+
+                // 写入缓存
+                if (cache != null) cache[imagePath] = image;
             }
-            else
+            catch (FileNotFoundException)
             {
                 WriteLog($"文件 {imagePath} 不存在！", LogLevel.Warning);
             }
-            return bitmap;
+            catch (Exception ex)
+            {
+                WriteLog("加载图像时发生异常。", LogLevel.Error, ex);
+            }
+
+            return image;
         }
 
         /// <summary>
@@ -415,7 +440,6 @@ namespace SNIBypassGUI.Utils
         /// 尝试删除指定文件
         /// </summary>
         /// <param name="filePaths">包含文件路径的列表</param>
-
         public static void TryDelete(List<string> filePaths) => TryDelete(filePaths.ToArray());
 
         /// <summary>
@@ -470,7 +494,7 @@ namespace SNIBypassGUI.Utils
             try
             {
                 using var sha256 = SHA256.Create();
-                using var stream = File.OpenRead(filePath);
+                using var stream = new BufferedStream(File.OpenRead(filePath), 1024 * 1024); // 1MB 缓冲区
                 byte[] hashBytes = sha256.ComputeHash(stream);
                 StringBuilder hashStringBuilder = new(64);
                 foreach (byte b in hashBytes) hashStringBuilder.Append(b.ToString("x2"));
@@ -479,7 +503,25 @@ namespace SNIBypassGUI.Utils
             catch (Exception ex)
             {
                 WriteLog("计算文件哈希值时出现异常。", LogLevel.Error, ex);
-                throw;
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 获取图片尺寸
+        /// </summary>
+        public static (int, int) GetImageSize(string path)
+        {
+            try
+            {
+                using var stream = File.OpenRead(path);
+                var frame = BitmapFrame.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                return (frame.PixelWidth, frame.PixelHeight);
+            }
+            catch (Exception ex)
+            {
+                WriteLog("获取图像尺寸时遇到异常。", LogLevel.Error, ex);
+                return (0, 0);
             }
         }
     }

@@ -34,6 +34,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
     <SignManifests>false</SignManifests>
+    <!-- 此项目中使用了C# 8.0中的递归模式和using 声明，C# 9.0中的创建目标类型对象和"not"模式以及C# 12.0中的集合表达式和主构造函数，但这些都是纯编译时特性，直接忽略错误，但应该避免使用依赖运行时的特性，例如异步流和默认接口方法 -->
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <!-- FodyWeavers.xml -->
@@ -143,7 +144,9 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Utils\CommandLineUtils.cs" />
     <Compile Include="Utils\ImageSwitcherService.cs" />
+    <Compile Include="Utils\StringUtils.cs" />
     <Compile Include="Views\CustomBackgroundWindow.xaml.cs">
       <DependentUpon>CustomBackgroundWindow.xaml</DependentUpon>
     </Compile>
@@ -195,10 +198,11 @@
     <None Include="Resources\dns\AcrylicService.exe" />
     <None Include="Resources\dns\AcrylicHosts.txt" />
     <None Include="Resources\dns\AcrylicConfiguration.ini" />
-    <None Include="Resources\imgs\101462661.jpg" />
-    <None Include="Resources\imgs\95945966.jpg" />
-    <None Include="Resources\imgs\98797564.jpg" />
     <Resource Include="Resources\imgs\MenuBkg.png" />
+    <Resource Include="Resources\imgs\116538352.jpg" />
+    <Resource Include="Resources\imgs\117397102.jpg" />
+    <Resource Include="Resources\imgs\122289031.jpg" />
+    <Resource Include="Resources\imgs\95215205.jpg" />
     <Content Include="Resources\libs\ImageCropper.dll" />
     <Compile Include="Utils\AcrylicServiceUtils.cs" />
     <Compile Include="Utils\CertificateUtils.cs" />

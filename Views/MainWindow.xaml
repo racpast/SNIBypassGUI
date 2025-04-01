@@ -8,7 +8,7 @@
         xmlns:local="clr-namespace:SNIBypassGUI.Views"
         mc:Ignorable="d"
         Loaded="Window_Loaded"
-        Title="SNIBypassGUI" Height="500" Width="800" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
+        Title="SNIBypassGUI" Height="500" Width="800" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" Opacity="0" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
     <Window.Resources>
         <Style TargetType="RichTextBox">
             <Setter Property="Template">
@@ -63,8 +63,8 @@
 			                <Run Foreground="#FF00FFED" Text="服务状态："/>
 			                <Run x:Name="TaskbarIconServiceST"  Text="主服务和DNS服务未运行" Foreground="Red"/>
                             </TextBlock>
-                            <TextBlock Foreground="DeepPink" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="天地之功不可仓促，艰难之业当累日月。" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}"/>
-                            <TextBlock Foreground="DarkViolet" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 「后汉书」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
+                            <TextBlock Foreground="DeepPink" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="休对故人思故国，且将新火试新茶。诗酒趁年华。" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}"/>
+                            <TextBlock Foreground="DarkViolet" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 苏轼「望江南·超然台作」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
                         </StackPanel>
                     </Border>
                 </tb:TaskbarIcon.TrayToolTip>

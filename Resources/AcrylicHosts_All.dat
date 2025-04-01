@@ -241,6 +241,10 @@
 #	Steam Store Start
 127.0.0.1       store.steampowered.com
 #	Steam Store End
+#	Tails Start
+127.0.0.1       tails.net
+127.0.0.1       *.tails.net
+#	Tails End
 #	Telegram Start
 127.0.0.1       t.me
 127.0.0.1       *.t.me

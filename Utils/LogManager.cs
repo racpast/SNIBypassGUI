@@ -11,7 +11,6 @@ namespace SNIBypassGUI.Utils
         private static readonly object LockObject = new();
         private static bool OutputLog = false;
         private static readonly LogLevel CurrentLogLevel = LogLevel.Debug;
-        private static string LogPath;
 
         /// <summary>
         /// 是否启用日志
@@ -25,8 +24,7 @@ namespace SNIBypassGUI.Utils
         {
             OutputLog = true;
             EnsureDirectoryExists(LogDirectory);
-            LogPath = GetLogPath();
-            AppendToFile(LogPath, LogHead);
+            AppendToFile(GetLogPath(), LogHead);
         }
 
         /// <summary>
@@ -52,13 +50,13 @@ namespace SNIBypassGUI.Utils
         /// <param name="ex">异常</param>
         public static void WriteLog(string message, LogLevel logLevel = LogLevel.Info, Exception ex = null)
         {
-            if (!OutputLog || string.IsNullOrEmpty(LogPath) || logLevel > CurrentLogLevel) return;
+            if (!OutputLog || string.IsNullOrEmpty(GetLogPath()) || logLevel > CurrentLogLevel) return;
             lock (LockObject)
             {
                 string logMessage = $"{DateTime.Now} [{logLevel}] {message}";
                 if (ex != null) logMessage += $" | 异常：{ex.Message} | 调用堆栈：{ex.StackTrace}";
                 logMessage += $"{Environment.NewLine}";
-                AppendToFile(LogPath, logMessage );
+                AppendToFile(GetLogPath(), logMessage );
             }
         }
 

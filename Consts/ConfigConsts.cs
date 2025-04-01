@@ -2,29 +2,29 @@
 {
     public static class ConfigConsts
     {
-        public readonly static string BackgroundSettings = "背景设置";
-        public readonly static string ChangeInterval = "ChangeInterval";
-        public readonly static string ChangeMode = "ChangeMode";
-        public readonly static string SequentialMode = "Sequential";
-        public readonly static string RandomMode = "Random";
-        public readonly static string ImageOrder = "ImageOrder";
-        public readonly static string ProgramSettings = "程序设置";
-        public readonly static string ThemeMode = "ThemeMode";
-        public readonly static string LightMode = "Light";
-        public readonly static string DarkMode = "Dark";
-        public readonly static string SpecifiedAdapter = "SpecifiedAdapter";
-        public readonly static string PixivIPPreference = "PixivIPPreference";
-        public readonly static string ProxySettings = "代理开关";
-        public readonly static string AdvancedSettings = "高级设置";
-        public readonly static string DebugMode = "DebugMode";
-        public readonly static string GUIDebug = "GUIDebug";
-        public readonly static string DomainNameResolutionMethod = "DomainNameResolutionMethod";
-        public readonly static string DnsServiceMode = "DnsService";
-        public readonly static string SystemHostsMode = "SystemHosts";
-        public readonly static string AcrylicDebug = "AcrylicDebug";
-        public readonly static string TemporaryData = "暂存数据";
-        public readonly static string PreviousPrimaryDNS = "PreviousDNS1";
-        public readonly static string PreviousAlternativeDNS = "PreviousDNS2";
-        public readonly static string IsPreviousDnsAutomatic = "IsPreviousDnsAutomatic";
+        public static readonly string BackgroundSettings = "背景设置";
+        public static readonly string ChangeInterval = "ChangeInterval";
+        public static readonly string ChangeMode = "ChangeMode";
+        public static readonly string SequentialMode = "Sequential";
+        public static readonly string RandomMode = "Random";
+        public static readonly string ImageOrder = "ImageOrder";
+        public static readonly string ProgramSettings = "程序设置";
+        public static readonly string ThemeMode = "ThemeMode";
+        public static readonly string LightMode = "Light";
+        public static readonly string DarkMode = "Dark";
+        public static readonly string SpecifiedAdapter = "SpecifiedAdapter";
+        public static readonly string PixivIPPreference = "PixivIPPreference";
+        public static readonly string ProxySettings = "代理开关";
+        public static readonly string AdvancedSettings = "高级设置";
+        public static readonly string DebugMode = "DebugMode";
+        public static readonly string GUIDebug = "GUIDebug";
+        public static readonly string DomainNameResolutionMethod = "DomainNameResolutionMethod";
+        public static readonly string DnsServiceMode = "DnsService";
+        public static readonly string SystemHostsMode = "SystemHosts";
+        public static readonly string AcrylicDebug = "AcrylicDebug";
+        public static readonly string TemporaryData = "暂存数据";
+        public static readonly string PreviousPrimaryDNS = "PreviousDNS1";
+        public static readonly string PreviousAlternativeDNS = "PreviousDNS2";
+        public static readonly string IsPreviousDnsAutomatic = "IsPreviousDnsAutomatic";
     }
 }

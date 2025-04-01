@@ -13,7 +13,6 @@ using static SNIBypassGUI.Consts.PathConsts;
 using static SNIBypassGUI.Utils.ConvertUtils;
 using static SNIBypassGUI.Utils.FileUtils;
 using static SNIBypassGUI.Utils.IniFileUtils;
-using static SNIBypassGUI.Utils.LogManager;
 
 namespace SNIBypassGUI.Utils
 {
@@ -21,28 +20,37 @@ namespace SNIBypassGUI.Utils
     {
         // 存储文件哈希到图片路径的映射
         private readonly Dictionary<string, string> hashToImagePath = [];
+
         // 存储图片路径到已加载图片的缓存
         private readonly Dictionary<string, BitmapImage> pathToImageCache = [];
+
         // 用于同步重载操作的锁对象
         private readonly object _reloadLock = new();
+
         // 随机数生成器，用于随机选择图片
         private readonly Random _random = new();
+
         // 定时器，用于定期更换图片
         private DispatcherTimer _timer;
+
         // 预加载图片的索引
         private int preloadIndex = -1;
-        // 图片解码的最大尺寸
-        private const int MaxDecodeSize = 1400;
+
         // 图片顺序列表
         private List<string> imageOrder = [];
+
         // 当前显示的图片索引
         public int _currentIndex = -1;
+
         // 属性变更事件
         public event PropertyChangedEventHandler PropertyChanged;
+
         // 当前显示的图片
         public ImageSource CurrentImage { get; private set; }
+
         // 更换图片的模式（顺序或随机）
         public string changeMode { get; private set; }
+
         // 更换图片的时间间隔
         public int changeInterval { get; private set; }
 
@@ -74,13 +82,13 @@ namespace SNIBypassGUI.Utils
                 {
                     if (hashToImagePath.TryGetValue(imageOrder.First(), out string firstPath))
                     {
-                        CurrentImage = LoadImage(firstPath);
+                        CurrentImage = LoadImage(firstPath, pathToImageCache, MaxDecodeSize);
                         _currentIndex = 0;
                     }
                     else
                     {
                         var first = hashToImagePath.First();
-                        CurrentImage = LoadImage(first.Value);
+                        CurrentImage = LoadImage(first.Value, pathToImageCache, MaxDecodeSize);
                         _currentIndex = imageOrder.IndexOf(first.Key);
                     }
                 }
@@ -89,13 +97,13 @@ namespace SNIBypassGUI.Utils
                     preloadIndex = _random.Next(imageOrder.Count);
                     if (hashToImagePath.TryGetValue(imageOrder[preloadIndex], out string preloadPath))
                     {
-                        CurrentImage = LoadImage(preloadPath);
+                        CurrentImage = LoadImage(preloadPath, pathToImageCache, MaxDecodeSize);
                         _currentIndex = preloadIndex;
                     }
                     else
                     {
                         var first = hashToImagePath.First();
-                        CurrentImage = LoadImage(first.Value);
+                        CurrentImage = LoadImage(first.Value, pathToImageCache, MaxDecodeSize);
                         _currentIndex = imageOrder.IndexOf(first.Key);
                     }
                 }
@@ -111,13 +119,14 @@ namespace SNIBypassGUI.Utils
         public void ValidateCurrentImage()
         {
             if (CurrentImage == null) return;
+
             string currentPath = ((BitmapImage)CurrentImage).UriSource.AbsolutePath;
             if (!hashToImagePath.Values.Contains(currentPath))
             {
                 if (imageOrder.Any())
                 {
                     string firstPath = hashToImagePath[imageOrder[0]];
-                    CurrentImage = LoadImage(firstPath);
+                    CurrentImage = LoadImage(firstPath, pathToImageCache, MaxDecodeSize);
                     OnPropertyChanged(nameof(CurrentImage));
                 }
                 else
@@ -154,6 +163,7 @@ namespace SNIBypassGUI.Utils
                 // 重置索引到安全位置
                 _currentIndex = Math.Min(_currentIndex, imageOrder.Count - 1);
 
+                // 更新定时器间隔
                 UpdateTimer();
             }
         }
@@ -188,7 +198,7 @@ namespace SNIBypassGUI.Utils
             var nextIndex = CalculateNextIndex();
             if (hashToImagePath.TryGetValue(imageOrder[nextIndex], out string nextImagePath))
             {
-                var nextImage = LoadImage(nextImagePath);
+                var nextImage = LoadImage(nextImagePath, pathToImageCache, MaxDecodeSize);
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     CurrentImage = nextImage;
@@ -210,6 +220,7 @@ namespace SNIBypassGUI.Utils
         {
             const int MAX_ATTEMPTS = 100;
 
+            // 顺序模式下，直接返回下一个索引
             if (changeMode == SequentialMode) return (_currentIndex + 1) % imageOrder.Count;
 
             if (imageOrder.Count <= 1) return 0;
@@ -217,6 +228,7 @@ namespace SNIBypassGUI.Utils
             int newIndex;
             int attempts = 0;
 
+            // 随机模式下，避免重复
             do
             {
                 newIndex = _random.Next(imageOrder.Count);
@@ -246,8 +258,11 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         public void CleanCacheByPath(string path)
         {
-            var key = pathToImageCache.Keys.FirstOrDefault(k => k.Equals(path, StringComparison.OrdinalIgnoreCase));
-            if (key != null) pathToImageCache.Remove(key);
+            if (string.IsNullOrEmpty(path)) return;
+            var keysToRemove = pathToImageCache.Keys
+                .Where(k => string.Equals(k, path, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            foreach (var key in keysToRemove) pathToImageCache.Remove(key);
         }
 
         /// <summary>
@@ -266,72 +281,14 @@ namespace SNIBypassGUI.Utils
                 if (string.Equals(hashToImagePath[imageOrder[_currentIndex]], path, StringComparison.OrdinalIgnoreCase))
                 {
                     // 创建新实例
-                    var newImage = LoadImage(path);
+                    var newImage = LoadImage(path, pathToImageCache, MaxDecodeSize);
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         CurrentImage = newImage;
                         OnPropertyChanged(nameof(CurrentImage));
                     });
                 }
-                else
-                {
-                    if (pathToImageCache.ContainsKey(path)) pathToImageCache.Remove(path);
-                    pathToImageCache.Add(path, LoadImage(path));
-                }
-            }
-        }
-
-        /// <summary>
-        /// 加载图片
-        /// </summary>
-        private BitmapImage LoadImage(string path)
-        {
-            if (pathToImageCache.TryGetValue(path, out var cached)) return cached;
-
-            var image = new BitmapImage();
-
-            try
-            {
-                image.BeginInit();
-                image.UriSource = new Uri(path);
-                image.CacheOption = BitmapCacheOption.OnLoad;
-                image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-
-                // 动态设置解码尺寸
-                var (w, h) = GetImageSize(path);
-                if (w > MaxDecodeSize || h > MaxDecodeSize)
-                {
-                    var ratio = Math.Min((double)MaxDecodeSize / w, (double)MaxDecodeSize / h);
-                    image.DecodePixelWidth = (int)(w * ratio);
-                }
-
-                image.EndInit();
-                image.Freeze();
-                pathToImageCache[path] = image;
-            }
-            catch(Exception ex)
-            {
-                WriteLog("加载图片时遇到异常。", LogLevel.Error, ex);
-            }
-
-            return image;
-        }
-
-        /// <summary>
-        /// 获取图片尺寸
-        /// </summary>
-        private (int, int) GetImageSize(string path)
-        {
-            try
-            {
-                using var stream = File.OpenRead(path);
-                var frame = BitmapFrame.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
-                return (frame.PixelWidth, frame.PixelHeight);
-            }
-            catch(Exception ex)
-            {
-                WriteLog("获取图像尺寸时遇到异常。", LogLevel.Error, ex);
-                return (0, 0);
+                else pathToImageCache[path] = LoadImage(path, pathToImageCache, MaxDecodeSize);
             }
         }
 

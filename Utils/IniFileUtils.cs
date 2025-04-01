@@ -32,8 +32,8 @@ namespace SNIBypassGUI.Utils
             StringBuilder temp = new(size);
             int ret = GetPrivateProfileString(section, key, "", temp, size, path);
 
-            // 如果返回值是 size - 2 且未达到最大限制，则增加缓冲区并重试
-            while (ret == size - 2 && size < 65536)
+            // 如果返回值是 size - 1 且未达到最大限制，则增加缓冲区并重试
+            while (ret == size - 1 && size < 65536)
             {
                 size *= 2; // 缓冲区大小加倍
                 temp.Capacity = size; // 调整 StringBuilder 的容量
@@ -41,7 +41,7 @@ namespace SNIBypassGUI.Utils
             }
 
             // 如果达到最大大小仍被截断，记录日志
-            if (ret == size - 2) WriteLog("INI 文件的值过长，无法完整读取", LogLevel.Warning);
+            if (ret == size - 2) WriteLog("INI 文件的值过长，无法完整读取！", LogLevel.Warning);
 
             return temp.ToString();
         }
