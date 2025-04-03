@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.PathConsts;
 using static SNIBypassGUI.Utils.FileUtils;
@@ -23,7 +24,6 @@ namespace SNIBypassGUI.Utils
         public static void EnableLog()
         {
             OutputLog = true;
-            EnsureDirectoryExists(LogDirectory);
             AppendToFile(GetLogPath(), LogHead);
         }
 
@@ -31,11 +31,6 @@ namespace SNIBypassGUI.Utils
         /// 停用日志
         /// </summary>
         public static void DisableLog() => OutputLog = false;
-
-        /// <summary>
-        /// 删除所有日志
-        /// </summary>
-        public static void DeleteLogs() => ClearFolder(LogDirectory);
 
         /// <summary>
         /// 获取日志文件路径
@@ -56,7 +51,7 @@ namespace SNIBypassGUI.Utils
                 string logMessage = $"{DateTime.Now} [{logLevel}] {message}";
                 if (ex != null) logMessage += $" | 异常：{ex.Message} | 调用堆栈：{ex.StackTrace}";
                 logMessage += $"{Environment.NewLine}";
-                AppendToFile(GetLogPath(), logMessage );
+                AppendToFile(GetLogPath(), logMessage);
             }
         }
 

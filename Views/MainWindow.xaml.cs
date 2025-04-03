@@ -49,9 +49,9 @@ namespace SNIBypassGUI.Views
 {
     public partial class MainWindow : Window
     {
-        private readonly DispatcherTimer controlsStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
-        private readonly DispatcherTimer serviceStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(3) };
-        private readonly DispatcherTimer tempFilesSizeUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
+        private readonly DispatcherTimer controlsStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(8) };
+        private readonly DispatcherTimer serviceStatusUpdateTimer = new() { Interval = TimeSpan.FromSeconds(5) };
+        private readonly DispatcherTimer tempFilesSizeUpdateTimer = new() { Interval = TimeSpan.FromSeconds(10) };
         public ICommand TaskbarIconLeftClickCommand { get; }
         public static ImageSwitcherService BackgroundService { get; private set; }
 
@@ -78,7 +78,7 @@ namespace SNIBypassGUI.Views
                     }
                     catch (ArgumentException ex)
                     {
-                        WriteLog("旧进程不存在。", LogLevel.Error, ex);
+                        WriteLog("旧进程不存在。", LogLevel.Warning, ex);
                     }
                 }
             }
@@ -139,7 +139,7 @@ namespace SNIBypassGUI.Views
             {
                 Switchs.Add(new SwitchItem
                 {
-                    FaviconImageSource = Path.Combine(FaviconsDirectory, item.switchtitle + ".png"),
+                    FaviconImageSource = Path.Combine(FaviconsDirectory, item.sectionname + ".png"),
                     SwitchTitle = item.switchtitle,
                     LinksText = item.linkstext,
                     ToggleButtonName = item.togglebuttonname,
@@ -154,7 +154,7 @@ namespace SNIBypassGUI.Views
                 foreach (var item in items)
                 {
                     // 先保存 Base64 转换的图片
-                    SaveBase64AsImage(item.favicon, item.switchtitle, FaviconsDirectory);
+                    SaveBase64AsImage(item.favicon, item.sectionname, FaviconsDirectory);
 
                     // 立刻更新 UI
                     Application.Current.Dispatcher.Invoke(() =>
@@ -286,7 +286,13 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 更新临时文件大小
         /// </summary>
-        private void UpdateTempFilesSize() => CleanBtn.Content = $"清理临时文件 ({ConvertBetweenUnits(GetTotalSize(TempFilesPathsIncludingGUILogs), SizeUnit.B, SizeUnit.MB).ToString("0.00")}MB)";
+        private void UpdateTempFilesSize()
+        {
+            long logs = GetDirectorySize(LogDirectory);
+            long nginx = GetFileSize(nginxAccessLogPath) + GetFileSize(nginxErrorLogPath);
+            long dns = GetFileSize(AcrylicCacheFilePath);
+            CleanBtn.Content = $"清理临时文件 ({ConvertBetweenUnits(logs + nginx + dns, SizeUnit.B, SizeUnit.MB):0.00}MB)";
+        }
 
         /// <summary>
         /// 更新适配器列表
@@ -652,13 +658,28 @@ namespace SNIBypassGUI.Views
 
             // 更新调试有关按钮文本
             DebugModeBtn.Content = isDebugModeOn ? "调试模式：\n开" : "调试模式：\n关";
-            GUIDebugBtn.Content = StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath)) ? "GUI调试：\n开" : "GUI调试：\n关";
+            if (StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath))) GUIDebugBtn.Content = "GUI调试：\n开";
+            else
+            {
+                GUIDebugBtn.Content = "GUI调试：\n关";
+                StopTailProcesses(LogManager.GetLogPath());
+            }
+            if (StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath))) AcrylicDebugBtn.Content = "DNS调试：\n开";
+            else
+            {
+                AcrylicDebugBtn.Content = "DNS调试：\n关";
+                StopTailProcesses(AcrylicServiceUtils.GetLogPath());
+            }
+            if (!isDebugModeOn)
+            {
+                StopTailProcesses(nginxAccessLogPath);
+                StopTailProcesses(nginxErrorLogPath);
+            }
             SwitchDomainNameResolutionMethodBtn.Content = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode ? "域名解析：\nDNS服务" : "域名解析：\n系统hosts";
-            AcrylicDebugBtn.Content = StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath)) ? "DNS服务调试：\n开" : "DNS服务调试：\n关";
             PixivIPPreferenceBtn.Content = StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) ? "Pixiv IP优选：开" : "Pixiv IP优选：关";
 
             // 根据调试模式是否开启决定有关按钮是否启用
-            SwitchDomainNameResolutionMethodBtn.IsEnabled = AcrylicDebugBtn.IsEnabled = GUIDebugBtn.IsEnabled = isDebugModeOn;
+            SwitchDomainNameResolutionMethodBtn.IsEnabled = AcrylicDebugBtn.IsEnabled = GUIDebugBtn.IsEnabled = NginxLogTracingBtn.IsEnabled = isDebugModeOn;
 
             // 更新适配器列表及选中的适配器
             UpdateAdaptersCombo();
@@ -861,6 +882,11 @@ namespace SNIBypassGUI.Views
                     ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
                     try
                     {
+                        if (IsAcrylicServiceHitLogEnabled())
+                        {
+                            EnableAcrylicServiceHitLog();
+                            TailFile(AcrylicServiceUtils.GetLogPath(), "命中日志");
+                        }                       
                         StartAcrylicService();
                     }
                     catch (Exception ex)
@@ -940,6 +966,7 @@ namespace SNIBypassGUI.Views
                 ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 try
                 {
+                    if (IsAcrylicServiceHitLogEnabled()) StopTailProcesses(AcrylicServiceUtils.GetLogPath());
                     StopAcrylicService();
                 }
                 catch (Exception ex)
@@ -1163,10 +1190,7 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 ExitBtn_Click。", LogLevel.Debug);
 
-            AnimateWindow(1, 0, async () =>
-            {
-                await Exit();
-            });
+            Exit();
 
             // 不必要的日志记录
             WriteLog("完成 ExitBtn_Click。", LogLevel.Debug);
@@ -1175,52 +1199,61 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 退出并清理
         /// </summary>
-        private async Task Exit()
+        private void Exit(bool stopTail = true)
         {
-            // 先隐藏窗体，在后台退出程序
-            Hide();
-
-            // 隐藏托盘图标
-            TaskbarIcon.Visibility = Visibility.Collapsed;
-
-            // 刷新托盘图标
-            RefreshNotification();
-
-            // 移除所有条目以消除对系统的影响
-            RemoveHostsRecords();
-
-            // 停止服务
-            await StopService();
-
-            // 实验性功能： Pixiv IP 优选
-            if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)))
+            AnimateWindow(1, 0, async () =>
             {
-                try
-                {
-                    RemoveSection(SystemHosts, "s.pximg.net");
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    WriteLog("对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
-                    if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
-                }
-                catch (Exception ex)
-                {
-                    WriteLog("遇到异常。", LogLevel.Error, ex);
-                    MessageBox.Show($"更新 Hosts 文件时遇到异常。\r\n{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
+                // 先隐藏窗体，在后台退出程序
+                Hide();
 
-            // 刷新DNS缓存
-            FlushDNSCache();
+                // 隐藏托盘图标
+                TaskbarIcon.Visibility = Visibility.Collapsed;
 
-            // 清空暂存数据
-            INIWrite(TemporaryData, PreviousPrimaryDNS, "", INIPath);
-            INIWrite(TemporaryData, PreviousAlternativeDNS, "", INIPath);
-            INIWrite(TemporaryData, IsPreviousDnsAutomatic, "true", INIPath);
+                // 刷新托盘图标
+                RefreshNotification();
 
-            // 退出程序
-            Environment.Exit(0);
+                // 移除所有条目以消除对系统的影响
+                RemoveHostsRecords();
+
+                // 停止服务
+                await StopService();
+
+                // 停止所有文件追踪进程
+                if (stopTail) StopTailProcesses();
+
+                // 实验性功能： Pixiv IP 优选
+                if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)))
+                {
+                    try
+                    {
+                        RemoveSection(SystemHosts, "s.pximg.net");
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        WriteLog("对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
+                        if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteLog("遇到异常。", LogLevel.Error, ex);
+                        MessageBox.Show($"更新 Hosts 文件时遇到异常。\r\n{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+
+                // 刷新DNS缓存
+                FlushDNSCache();
+
+                // 清空暂存数据
+                INIWrite(TemporaryData, PreviousPrimaryDNS, "", INIPath);
+                INIWrite(TemporaryData, PreviousAlternativeDNS, "", INIPath);
+                INIWrite(TemporaryData, IsPreviousDnsAutomatic, "true", INIPath);
+
+                // 删除启动追踪的临时批处理文件
+                TryDelete(RunTailBatFiles);
+
+                // 退出程序
+                Environment.Exit(0);
+            });
         }
 
         /// <summary>
@@ -1359,17 +1392,30 @@ namespace SNIBypassGUI.Views
             tempFilesSizeUpdateTimer.Stop();
 
             CleanBtn.Content = "服务停止中…";
+
+            // 停止服务
             await StopService();
-            CleanBtn.Content = "服务运行日志及缓存清理中…";
+            CleanBtn.Content = "清理中…";
+
             try
             {
-                TryDelete(TempFilesPaths);
+                string[] tempfiles = [nginxAccessLogPath, nginxErrorLogPath, AcrylicCacheFilePath, AcrylicServiceUtils.GetLogPath()]; 
+                foreach (var path in tempfiles)
+                {
+                    StopTailProcesses(path);
+                    TryDelete(path);
+                }
                 if (IsLogEnabled)
                 {
                     WriteLog("GUI 调试开启，将不会删除调试日志。", LogLevel.Info);
                     MessageBox.Show("GUI 调试开启时将不会删除调试日志，请尝试关闭 GUI 调试。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    foreach (var file in Directory.GetFiles(LogDirectory)) if (file != LogManager.GetLogPath()) TryDelete(file);
                 }
-                else DeleteLogs();
+                else
+                {
+                    StopTailProcesses(LogManager.GetLogPath());
+                    ClearFolder(LogDirectory);
+                }
             }
             catch (Exception ex)
             {
@@ -1389,6 +1435,15 @@ namespace SNIBypassGUI.Views
             CleanBtn.IsEnabled = true;
 
             WriteLog("完成 CleanBtn_Click。", LogLevel.Debug);
+        }
+
+        // 主服务日志追踪按钮点击事件
+        private void NginxLogTracing_Click(object sender, RoutedEventArgs e)
+        {
+            StopTailProcesses(nginxAccessLogPath);
+            StopTailProcesses(nginxErrorLogPath);
+            TailFile(nginxAccessLogPath, "访问日志");
+            TailFile(nginxErrorLogPath, "错误日志");
         }
 
         /// <summary>
@@ -1724,7 +1779,7 @@ namespace SNIBypassGUI.Views
             if (ContainsArgument(cliargs, CleanUpArgument))
             {
                 WriteLog("程序启动为清理模式，还原适配器设置后自动退出。", LogLevel.Info);
-                await Exit();
+                Exit();
             }
 
             // 将版本号显示在标题
@@ -1749,8 +1804,7 @@ namespace SNIBypassGUI.Views
             // 更新信息
             SyncControlsFromConfig();
 
-            // 更新适配器列表和服务状态
-            UpdateAdaptersCombo();
+            // 更新服务状态
             UpdateServiceStatus();
 
             // 判断证书是否安装
@@ -1808,7 +1862,7 @@ namespace SNIBypassGUI.Views
                         if (action is ExecAction execAction)
                         {
                             // 获取参数
-                            string[] args = SplitStrings(" ", execAction.Arguments);
+                            string[] args = SplitStrings(execAction.Arguments, " ");
                             if (!ContainsArgument(args, AutoStartArgument) && !ContainsArgument(args, CleanUpArgument)) CreateTask(TaskName, "开机启动 SNIBypassGUI 并自动启动服务。", "SNIBypassGUI", SNIBypassGUIExeFilePath, AutoStartArgument);
                         }
                     }
@@ -1917,12 +1971,12 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// DNS 服务调试按钮点击事件
+        /// DNS 调试按钮点击事件
         /// </summary>
         private void AcrylicDebugBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 AcrylicDebugBtn_Click。", LogLevel.Debug);
-            if (!StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath)) && MessageBox.Show("开启 DNS 服务调试可以诊断某些问题，重启服务后生效。\r\n请在重启直到程序出现问题后，将 \\data\\dns 目录下的 AcrylicDebug.txt 提交给开发者。\r\n是否打开 DNS 服务调试？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, AcrylicDebug, "true", INIPath);
+            if (!StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath)) && MessageBox.Show("开启 DNS 服务调试可以诊断某些问题，重启服务后生效。\r\n请在重启直到出现问题后，将有关信息提交给开发者。\r\n是否打开 DNS 服务调试？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, AcrylicDebug, "true", INIPath);
             else INIWrite(AdvancedSettings, AcrylicDebug, "false", INIPath);
             SyncControlsFromConfig();
             WriteLog("完成 AcrylicDebugBtn_Click。", LogLevel.Debug);
@@ -1934,11 +1988,11 @@ namespace SNIBypassGUI.Views
         private void GUIDebugBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 GUIDebugBtn_Click。", LogLevel.Debug);
-            if (!StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath)) && MessageBox.Show("开启 GUI 调试模式可以更准确地诊断问题，但生成日志会产生额外的性能开销，请在不需要时关闭。\r\n开启后将自动关闭程序，重启程序后生效。\r\n请在重启直到程序出现问题后，将 \\data\\logs 目录下的 GUI.log 提交给开发者。\r\n是否打开 GUI 调试模式并重启？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (!StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath)) && MessageBox.Show("开启 GUI 调试模式可以更准确地诊断问题，但生成日志会产生额外的性能开销，请在不需要时关闭。\r\n开启后将自动关闭程序，重启程序后生效。\r\n请在重启直到程序出现问题后，将有关信息提交给开发者。\r\n是否打开 GUI 调试模式并重启？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 INIWrite(AdvancedSettings, GUIDebug, "true", INIPath);
                 StartProcess(CurrentExe, MergeStrings(" ", [WaitForParentArgument, Process.GetCurrentProcess().Id.ToString()]));
-                ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Exit(false);
             }
             else
             {
@@ -2008,6 +2062,9 @@ namespace SNIBypassGUI.Views
                     if (activeAdapter != null) await RestoreAdapterDNS(activeAdapter);
                     FlushDNSCache();
 
+                    // 停止所有文件追踪
+                    StopTailProcesses();
+
                     // 卸载 DNS 服务
                     await UninstallAcrylicService();
 
@@ -2018,22 +2075,23 @@ namespace SNIBypassGUI.Views
                     Directory.Delete(dataDirectory, true);
 
                     // 创建批处理文件并删除自身
-                    string bat = $"@echo off\r\n"
-                                         + "timeout /t 1 /nobreak >nul\r\n"
-                                         + $"taskkill /f /pid {Process.GetCurrentProcess().Id} >nul 2>&1\r\n"
-                                         + "timeout /t 1 /nobreak >nul\r\n"
-                                         + $"del /f /q \"{CurrentExe}\" >nul 2>&1\r\n"
-                                         + $"if exist \"{CurrentExe}\" (\r\n"
-                                         + "echo MsgBox \"卸载失败，请手动删除文件！\", 48, \"警告\" > \"%temp%\\temp.vbs\"\r\n"
-                                         + "cscript /nologo \"%temp%\\temp.vbs\" >nul\r\n"
-                                         + "del \"%temp%\\temp.vbs\"\r\n"
-                                         + ") else (\r\n"
-                                         + "echo MsgBox \"卸载成功！\", 64, \"提示\" > \"%temp%\\temp.vbs\"\r\n"
-                                         + "cscript /nologo \"%temp%\\temp.vbs\" >nul\r\n"
-                                         + "del \"%temp%\\temp.vbs\"\r\n"
-                                         + ")\r\n"
-                                         + "start /b cmd /c del \"%~f0\"";
-                    string batPath = Path.Combine(Path.GetTempPath(), "uninstall.bat");
+                    string bat = $"@echo off{Environment.NewLine}" +
+                                    $"timeout /t 1 /nobreak >nul{Environment.NewLine}" +
+                                    $"taskkill /f /pid {Process.GetCurrentProcess().Id} >nul 2>&1{Environment.NewLine}" +
+                                    $"taskkill /f /im \"tail.exe\" >nul 2>&1{Environment.NewLine}" +
+                                    $"timeout /t 1 /nobreak >nul{Environment.NewLine}" +
+                                    $"del /f /q \"{CurrentExe}\" >nul 2>&1{Environment.NewLine}" +
+                                    $"if exist \"{CurrentExe}\" ({Environment.NewLine}" +
+                                    $"echo MsgBox \"卸载失败，请手动删除文件！\", 48, \"警告\" > \"%temp%\\temp.vbs\"{Environment.NewLine}" +
+                                    $"cscript /nologo \"%temp%\\temp.vbs\" >nul{Environment.NewLine}" +
+                                    $"del \"%temp%\\temp.vbs\"{Environment.NewLine}" +
+                                    $") else ({Environment.NewLine}" +
+                                    $"echo MsgBox \"卸载成功！\", 64, \"提示\" > \"%temp%\\temp.vbs\"{Environment.NewLine}" +
+                                    $"cscript /nologo \"%temp%\\temp.vbs\" >nul{Environment.NewLine}" +
+                                    $"del \"%temp%\\temp.vbs\"{Environment.NewLine}" +
+                                    $"){Environment.NewLine}" +
+                                    $"start /b cmd /c del \"%~f0\"";
+                    string batPath = Path.Combine(Path.GetTempPath(), "uninstall_snibypassgui.bat");
                     File.WriteAllText(batPath, bat, Encoding.Default);
                     Process.Start(new ProcessStartInfo()
                     {
@@ -2043,7 +2101,7 @@ namespace SNIBypassGUI.Views
                     });
 
                     // 退出程序
-                    ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Exit();
                 }
                 catch (UnauthorizedAccessException ex)
                 {

@@ -16,6 +16,11 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <IsWebBootstrapper>false</IsWebBootstrapper>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
+    <SignManifests>false</SignManifests>
+    <!-- 此项目中使用了C# 8.0中的递归模式和using 声明，C# 9.0中的创建目标类型对象和"not"模式以及C# 12.0中的集合表达式和主构造函数，但这些都是纯编译时特性，直接忽略错误，但应该避免使用依赖运行时的特性，例如异步流和默认接口方法 -->
+    <LangVersion>preview</LangVersion>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -31,11 +36,6 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
-    <SignManifests>false</SignManifests>
-    <!-- 此项目中使用了C# 8.0中的递归模式和using 声明，C# 9.0中的创建目标类型对象和"not"模式以及C# 12.0中的集合表达式和主构造函数，但这些都是纯编译时特性，直接忽略错误，但应该避免使用依赖运行时的特性，例如异步流和默认接口方法 -->
-    <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <!-- FodyWeavers.xml -->
   <Target Name="SetFodyWeavers" BeforeTargets="BeforeBuild">
@@ -79,6 +79,9 @@
        -->
       .fuck
     </AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Costura, Version=6.0.0.0, Culture=neutral, PublicKeyToken=9919ef960d84173d, processorArchitecture=MSIL">
@@ -130,6 +133,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <None Include="Resources\tail.exe" />
     <Page Include="Views\CustomBackgroundWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -199,10 +203,9 @@
     <None Include="Resources\dns\AcrylicHosts.txt" />
     <None Include="Resources\dns\AcrylicConfiguration.ini" />
     <Resource Include="Resources\imgs\MenuBkg.png" />
-    <Resource Include="Resources\imgs\116538352.jpg" />
-    <Resource Include="Resources\imgs\117397102.jpg" />
-    <Resource Include="Resources\imgs\122289031.jpg" />
-    <Resource Include="Resources\imgs\95215205.jpg" />
+    <None Include="Resources\imgs\858k3j.jpg" />
+    <None Include="Resources\imgs\123872271.jpg" />
+    <None Include="Resources\imgs\rr8qoj.jpg" />
     <Content Include="Resources\libs\ImageCropper.dll" />
     <Compile Include="Utils\AcrylicServiceUtils.cs" />
     <Compile Include="Utils\CertificateUtils.cs" />

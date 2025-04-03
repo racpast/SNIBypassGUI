@@ -1,9 +1,13 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using static SNIBypassGUI.Consts.AppConsts;
+using static SNIBypassGUI.Consts.ConfigConsts;
 using static SNIBypassGUI.Consts.PathConsts;
+using static SNIBypassGUI.Utils.ConvertUtils;
 using static SNIBypassGUI.Utils.FileUtils;
+using static SNIBypassGUI.Utils.IniFileUtils;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.ProcessUtils;
 using static SNIBypassGUI.Utils.ServiceUtils;
@@ -80,9 +84,14 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 检查 Acrylic DNS Proxy 服务的调试日志是否启用
+        /// 获取命中日志路径
         /// </summary>
-        public static bool IsAcrylicServiceDebugLogEnabled() => File.Exists(AcrylicDebugLogFilePath);
+        public static string GetLogPath() => Path.Combine(LogDirectory, $"HitLog-{DateTime.Now:yyyy-MM-dd}.log");
+
+        /// <summary>
+        /// 检查 Acrylic DNS Proxy 服务的命中日志是否启用
+        /// </summary>
+        public static bool IsAcrylicServiceHitLogEnabled() => StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath));
 
         /// <summary>
         /// 清理 Acrylic DNS Proxy 服务的缓存文件
@@ -90,13 +99,26 @@ namespace SNIBypassGUI.Utils
         public static void RemoveAcrylicCacheFile() => TryDelete(AcrylicCacheFilePath);
 
         /// <summary>
-        /// 启用 Acrylic DNS Proxy 服务的调试日志
+        /// 启用 Acrylic DNS Proxy 服务的命中日志
         /// </summary>
-        public static void EnableAcrylicServiceDebugLog() => EnsureFileExists(AcrylicDebugLogFilePath);
+        public static void EnableAcrylicServiceHitLog()
+        {
+            // 记录所有内容
+            INIWrite("GlobalSection", "HitLogFileWhat", "XHCFRU", AcrylicConfigurationPath);
+
+            // 记录响应的完整转储
+            INIWrite("GlobalSection", "HitLogFullDump", "Yes", AcrylicConfigurationPath);
+
+            // 禁用日志缓冲
+            INIWrite("GlobalSection", "HitLogMaxPendingHits", "0", AcrylicConfigurationPath);
+
+            // 设置日志文件路径
+            INIWrite("GlobalSection", "HitLogFileName", GetLogPath(), AcrylicConfigurationPath);
+        }
 
         /// <summary>
-        /// 禁用 Acrylic DNS Proxy 服务的调试日志
+        /// 禁用 Acrylic DNS Proxy 服务的命中日志
         /// </summary>
-        public static void DisableAcrylicServiceDebugLog() => TryDelete(AcrylicDebugLogFilePath);
+        public static void DisableAcrylicServiceHitLog() => INIWrite("GlobalSection", "HitLogFileName", string.Empty, AcrylicConfigurationPath);
     }
 }

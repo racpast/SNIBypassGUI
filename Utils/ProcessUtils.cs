@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using static SNIBypassGUI.Utils.LogManager;
 
 namespace SNIBypassGUI.Utils
 {
-    public class ProcessUtils
+    public static class ProcessUtils
     {
         /// <summary>
         /// 检查进程是否正在运行
@@ -50,7 +51,7 @@ namespace SNIBypassGUI.Utils
         /// <param name="workingDirectory">工作目录</param>
         /// <param name="useShellExecute">指示是否使用操作系统 shell 启动进程</param>
         /// <param name="createNoWindow">指示是否在新窗口中启动进程</param>
-        public static void StartProcess(string fileName, string arguments = "", string workingDirectory = "", bool useShellExecute = false, bool createNoWindow = false)
+        public static Process StartProcess(string fileName, string arguments = "", string workingDirectory = "", bool useShellExecute = false, bool createNoWindow = false)
         {
             try
             {
@@ -67,6 +68,7 @@ namespace SNIBypassGUI.Utils
                 };
                 process.Start();
                 WriteLog($"成功启动 {fileName}。", LogLevel.Info);
+                return process;
             }
             catch (Exception ex)
             {
@@ -109,6 +111,53 @@ namespace SNIBypassGUI.Utils
             {
                 WriteLog($"结束进程 {processName} 时出现异常。", LogLevel.Error, ex);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// 同步等待进程初始化完成
+        /// </summary>
+        public static void WaitForProcessReady(this Process process, int timeout = 5000)
+        {
+            try
+            {
+                if (process == null || process.HasExited) return;
+
+                // 判断是否为 GUI 程序
+                if (!process.StartInfo.UseShellExecute && process.StartInfo.CreateNoWindow)
+                {
+                    int waited = 0;
+                    while (!process.HasExited && process.MainWindowHandle == IntPtr.Zero && waited < timeout)
+                    {
+                        Thread.Sleep(100);
+                        waited += 100;
+                    }
+
+                    if (process.MainWindowHandle != IntPtr.Zero)
+                    {
+                        WriteLog($"进程 {process.ProcessName} 已准备就绪。", LogLevel.Info);
+                    }
+                    else
+                    {
+                        WriteLog($"等待进程 {process.ProcessName} 准备超时。", LogLevel.Warning);
+                    }
+                }
+                else
+                {
+                    // GUI 程序，尝试等待空闲
+                    if (!process.WaitForInputIdle(timeout))
+                    {
+                        WriteLog($"进程 {process.ProcessName} 未进入空闲状态，可能是控制台程序。", LogLevel.Warning);
+                    }
+                    else
+                    {
+                        WriteLog($"进程 {process.ProcessName} 已进入空闲状态。", LogLevel.Info);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"等待进程 {process.ProcessName} 初始化时发生异常。", LogLevel.Error, ex);
             }
         }
     }

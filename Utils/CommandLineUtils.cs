@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
+using System.Management;
 
 namespace SNIBypassGUI.Utils
 {
@@ -28,6 +30,23 @@ namespace SNIBypassGUI.Utils
         public static bool ContainsArgument(string[] args, string argName)
         {
             return args.Contains(argName, StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 获取进程的命令行参数
+        /// </summary>
+        public static string GetCommandLine(Process process)
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher($"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {process.Id}");
+                foreach (var obj in searcher.Get()) return obj["CommandLine"]?.ToString() ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+            return string.Empty;
         }
     }
 }

@@ -1,15 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
+using static SNIBypassGUI.Consts.PathConsts;
+using static SNIBypassGUI.Utils.CommandLineUtils;
 using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Utils.ProcessUtils;
 
 namespace SNIBypassGUI.Utils
 {
     public static class FileUtils
     {
+        public static List<string> RunTailBatFiles = [];
+
         /// <summary>
         /// 将内容写到指定文件顶部
         /// </summary>
@@ -59,22 +67,18 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         /// <param name="filePath">指定的文件路径</param>
         /// <param name="linesToAdd">需要追加的内容（数组形式）</param>
-        public static void AppendToFile(string filePath, string[] linesToAdd)
+        public static void AppendToFile(string filePath, string[] linesToAdd, Encoding encoding = null)
         {
             try
             {
+                encoding ??= Encoding.UTF8;
                 if (!File.Exists(filePath))
                 {
                     File.WriteAllLines(filePath, linesToAdd);
                     return;
                 }
-                using (StreamWriter writer = new(filePath, true, Encoding.UTF8))
-                {
-                    foreach (string line in linesToAdd)
-                    {
-                        writer.WriteLine(line);
-                    }
-                }
+                using StreamWriter writer = new(filePath, true, encoding);
+                foreach (string line in linesToAdd) writer.WriteLine(line);
             }
             catch (Exception ex)
             {
@@ -88,14 +92,14 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         /// <param name="filePath">指定的文件路径</param>
         /// <param name="linesToAdd">需要追加的内容（列表形式）</param>
-        public static void AppendToFile(string filePath, List<string> linesToAdd) => AppendToFile(filePath, linesToAdd.ToArray());
+        public static void AppendToFile(string filePath, List<string> linesToAdd, Encoding encoding = null) => AppendToFile(filePath, linesToAdd.ToArray(), encoding);
 
         /// <summary>
         /// 将单行内容写入指定文件末尾
         /// </summary>
         /// <param name="filePath">指定的文件路径</param>
         /// <param name="lineToAdd">需要追加的内容（单行）</param>
-        public static void AppendToFile(string filePath, string lineToAdd) => AppendToFile(filePath, new[] { lineToAdd });
+        public static void AppendToFile(string filePath, string lineToAdd, Encoding encoding = null) => AppendToFile(filePath, new[] { lineToAdd }, encoding);
 
         /// <summary>
         /// 确保指定目录存在
@@ -199,10 +203,8 @@ namespace SNIBypassGUI.Utils
         /// <param name="path">指定释放的路径</param>
         public static void ExtractResourceToFile(byte[] resource, String path)
         {
-            using (FileStream file = new(path, FileMode.Create))
-            {
-                file.Write(resource, 0, resource.Length);
-            }
+            using FileStream file = new(path, FileMode.Create);
+            file.Write(resource, 0, resource.Length);
         }
 
         /// <summary>
@@ -213,6 +215,11 @@ namespace SNIBypassGUI.Utils
         {
             try
             {
+                if (!File.Exists(filePath))
+                {
+                    WriteLog($"指定的文件路径 {filePath} 不存在。", LogLevel.Warning);
+                    return 0;
+                }
                 FileInfo fileInfo = new(filePath);
                 return fileInfo.Length;
             }
@@ -232,11 +239,13 @@ namespace SNIBypassGUI.Utils
             long size = 0;
             try
             {
-                string[] files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
-                foreach (string file in files)
+                if (!Directory.Exists(directoryPath))
                 {
-                    size += GetFileSize(file);
+                    WriteLog($"指定的文件夹路径 {directoryPath} 不存在。", LogLevel.Warning);
+                    return 0;
                 }
+                string[] files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
+                foreach (string file in files) size += GetFileSize(file);
             }
             catch (Exception ex)
             {
@@ -450,6 +459,8 @@ namespace SNIBypassGUI.Utils
         {
             try
             {
+                string dir = Path.GetDirectoryName(filePath);
+                if (!Directory.Exists(dir)) EnsureDirectoryExists(dir);
                 if (!File.Exists(filePath)) File.Create(filePath).Dispose();
             }
             catch (Exception ex)
@@ -522,6 +533,132 @@ namespace SNIBypassGUI.Utils
             {
                 WriteLog("获取图像尺寸时遇到异常。", LogLevel.Error, ex);
                 return (0, 0);
+            }
+        }
+
+        /// <summary>
+        /// 停止所有对指定文件的追踪进程，若路径为空则终止所有追踪进程
+        /// </summary>
+        /// <param name="filePath">要停止监控的文件路径，空则终止所有</param>
+        /// <returns>成功终止的进程数量</returns>
+        public static int StopTailProcesses(string filePath = "")
+        {
+            int stoppedCount = 0;
+            try
+            {
+                // 获取所有名为 tail.exe 的进程
+                Process[] tailProcesses = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(TailExePath));
+
+                foreach (var process in tailProcesses)
+                {
+                    try
+                    {
+                        // 获取进程的完整命令行参数
+                        string commandLine = GetCommandLine(process);
+
+                        // 判断是否终止：路径为空时直接终止所有，非空时检查路径匹配
+                        if (string.IsNullOrEmpty(filePath) || commandLine.ToLower().Contains(filePath.ToLower()))
+                        {
+                           // 尝试结束进程
+                            process.Kill();
+                            process.WaitForExit();
+                            stoppedCount++;
+                            WriteLog($"成功结束 {(string.IsNullOrEmpty(filePath) ? "所有" : $"对文件 {filePath} 的")} 追踪进程，PID为 {process.Id}。", LogLevel.Info);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteLog($"尝试终止 PID为 {process.Id} 的文件追踪进程时遇到异常。", LogLevel.Error, ex);
+                    }
+                }
+
+                if (stoppedCount == 0) WriteLog($"{(string.IsNullOrEmpty(filePath) ? "未找到正在运行的" : $"未找到对文件 {filePath} 的")} 追踪进程。", LogLevel.Warning);
+                else WriteLog($"共结束 {stoppedCount} 个 {(string.IsNullOrEmpty(filePath) ? "正在运行的" : $"对文件 {filePath} 的")} 追踪进程。", LogLevel.Info);
+
+                return stoppedCount;
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"停止 {(string.IsNullOrEmpty(filePath) ? "所有" : $"对文件 {filePath} 的")} 追踪进程时遇到异常。", LogLevel.Error, ex);
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// 追踪文件实时变化，不等待启动时返回 null
+        /// </summary>
+        public static Process TailFile(string filePath, string title = "TailTracking", bool waitForStart = false)
+        {
+            try
+            {
+                if (!File.Exists(filePath)) EnsureFileExists(filePath);
+
+                // 确保 tail.exe 存在
+                if (!File.Exists(TailExePath)) ExtractResourceToFile(Properties.Resources.tail, TailExePath);
+
+                // 生成唯一标识符
+                string uniqueId = Guid.NewGuid().ToString("N");
+
+                // 创建唯一窗口标题
+                string expectedTitle = $"{title}_{uniqueId}";
+
+                // 创建临时批处理文件内容
+                string tempBatchFile = Path.Combine(Path.GetTempPath(), $"run_tail_{uniqueId}.bat");
+                string batchContent = $"@echo off{Environment.NewLine}" +
+                                            // 预先将含中文的变量以 ANSI 格式写入环境变量中
+                                            $"set \"expectedTitle={expectedTitle}\"{Environment.NewLine}" +
+                                            $"set \"TailExePath={TailExePath}\"{Environment.NewLine}" +
+                                            $"set \"filePath={filePath}\"{Environment.NewLine}" +
+                                            // 切换到 UTF-8，确保 tail 输出中文正常
+                                            $"chcp 65001>nul{Environment.NewLine}" +
+                                            // 后续引用预先定义好的环境变量
+                                            $"title %expectedTitle%{Environment.NewLine}" +
+                                            $"\"%TailExePath%\" -f -m 0 \"%filePath%\"{Environment.NewLine}";
+                File.WriteAllText(tempBatchFile, batchContent, Encoding.GetEncoding(936));
+                RunTailBatFiles.Add(tempBatchFile);
+
+                // 启动批处理文件，显示窗口
+                StartProcess(tempBatchFile, useShellExecute: true, createNoWindow: false);
+                WriteLog($"成功启动批处理文件 {tempBatchFile}。", LogLevel.Debug);
+
+                if (waitForStart)
+                {
+                    // 轮询查找具有唯一窗口标题的追踪进程
+                    const int timeout = 5000;
+                    int waited = 0;
+                    Process tailProcess = null;
+                    while (waited < timeout)
+                    {
+                        // 获取所有 tail.exe 进程
+                        Process[] tails = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(TailExePath));
+                        foreach (var proc in tails)
+                        {
+                            // 检查窗口标题中是否包含唯一标识符
+                            if (!string.IsNullOrEmpty(proc.MainWindowTitle) && proc.MainWindowTitle.Contains(expectedTitle))
+                            {
+                                tailProcess = proc;
+                                break;
+                            }
+                        }
+                        if (tailProcess != null) break;
+
+                        Thread.Sleep(50);
+                        waited += 50;
+                    }
+
+                    if (tailProcess != null) return tailProcess;
+                    else
+                    {
+                        WriteLog("追踪进程启动超时。", LogLevel.Warning);
+                        return null;
+                    }
+                }
+                else return null;
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"追踪文件 {filePath} 实时变化时遇到异常。", LogLevel.Error, ex);
+                throw;
             }
         }
     }
