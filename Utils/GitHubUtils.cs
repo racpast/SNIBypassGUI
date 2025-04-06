@@ -1,36 +1,44 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using static SNIBypassGUI.Consts.GitHubConsts;
+using static SNIBypassGUI.Consts.PathConsts;
+using static SNIBypassGUI.Utils.FileUtils;
 using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Utils.NetworkUtils;
 
 namespace SNIBypassGUI.Utils
 {
     public static class GitHubUtils
     {
-        /*
         /// <summary>
-        /// 确保 api.github.com 可以正常访问
+        /// GitHub API 优选
         /// </summary>
-        public static bool EnsureGitHubAPI()
+        public static async Task OptimizeGitHubAPIRouting()
         {
-            string IPAddress = FindFastestIP(GitHubAPIServerIPs);
-            if (!string.IsNullOrEmpty(IPAddress))
+            RemoveSection(SystemHosts, "api.github.com");
+            IPAddress ip = FindFastestIP([.. await ResolveAAsync("api.github.com")]);
+            if (ip != null)
             {
                 string[] NewAPIRecord =
                 [
-                    "#\tapi.github.com Start",
-                    $"{IPAddress}\tapi.github.com",
-                    "#\tapi.github.com End"
+                "#\tapi.github.com Start",
+                $"{ip}       api.github.com",
+                "#\tapi.github.com End",
                 ];
                 PrependToFile(SystemHosts, NewAPIRecord);
-                return true;
+                FlushDNSCache();
             }
-            return false;
+            else WriteLog("GitHub API 优选失败，没有找到最优 IP。", LogLevel.Warning);
         }
-        */
+
+        /// <summary>
+        /// 恢复原始 GitHub API DNS
+        /// </summary>
+        public static void RestoreOriginalGitHubAPIDNS() => RemoveSection(SystemHosts, "api.github.com");
 
         /// <summary>
         /// 寻找最优代理

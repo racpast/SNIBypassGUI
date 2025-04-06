@@ -6,9 +6,9 @@
         public const string VerifyLink = MainServer + "verify.php";
         public const string FeedbackLink = MainServer + "feedback.php";
         public const string MainLatest = MainServer + "latest.json";
-        public const string BackupServer = "https://raw.githubusercontent.com/racpast/SNIBypassGUIUpdate/main/";
-        public const string BackupLatest = BackupServer + "latest.json";
-        public const string DefaultProxy = "gh.rpnet.us.kg";
+        public const string GitHubRepo = "https://raw.githubusercontent.com/racpast/SNIBypassGUIUpdate/main/";
+        public const string GitHubLatest = GitHubRepo + "latest.json";
+        public const string DefaultProxy = "gh.rpnet.dpdns.org";
         public const string 如何使用自定义背景功能 = "https://dgithub.xyz/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#如何使用自定义背景功能";
         public const string 当您无法确定当前正在使用的适配器时 = "https://dgithub.xyz/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#当您无法确定当前正在使用的适配器时";
         public const string 当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时 = "https://dgithub.xyz/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#当您找不到当前正在使用的适配器，或启动时遇到适配器设置失败时";

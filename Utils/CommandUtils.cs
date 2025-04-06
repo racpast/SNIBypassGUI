@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Management.Automation;
 using System.Text;
 using System.Threading.Tasks;
 using static SNIBypassGUI.Utils.LogManager;
@@ -10,6 +8,7 @@ namespace SNIBypassGUI.Utils
 {
     public static class CommandUtils
     {
+        /*
         /// <summary>
         /// 执行指定的 PowerShell 命令
         /// </summary>
@@ -20,15 +19,13 @@ namespace SNIBypassGUI.Utils
             {
                 await Task.Run(() =>
                 {
-                    using (var powerShell = PowerShell.Create())
+                    using var powerShell = PowerShell.Create();
+                    powerShell.AddScript(command);
+                    var result = powerShell.Invoke();
+                    if (powerShell.HadErrors)
                     {
-                        powerShell.AddScript(command);
-                        var result = powerShell.Invoke();
-                        if (powerShell.HadErrors)
-                        {
-                            var errorMessages = powerShell.Streams.Error.Select(e => e.ToString()).ToList();
-                            throw new InvalidOperationException($"PowerShell 执行失败：{string.Join(Environment.NewLine, errorMessages)}");
-                        }
+                        var errorMessages = powerShell.Streams.Error.Select(e => e.ToString()).ToList();
+                        throw new InvalidOperationException($"PowerShell 执行失败：{string.Join(Environment.NewLine, errorMessages)}");
                     }
                 });
             }
@@ -38,6 +35,7 @@ namespace SNIBypassGUI.Utils
                 throw;
             }
         }
+        */
 
         /// <summary>
         /// 执行指定的 CMD 命令
@@ -47,6 +45,8 @@ namespace SNIBypassGUI.Utils
         /// <param name="timeoutMilliseconds">超时时间（以毫秒为单位）</param>
         public static async Task<(bool Success, string Output, string Error)> RunCommand(string command, string workingDirectory = "", int timeoutMilliseconds = 15000)
         {
+            if (string.IsNullOrWhiteSpace(command)) return (false, "", "命令不能为空。");
+
             var processStartInfo = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
@@ -58,13 +58,10 @@ namespace SNIBypassGUI.Utils
                 RedirectStandardError = true
             };
 
-            var process = new Process
-            {
-                StartInfo = processStartInfo,
-                EnableRaisingEvents = true
-            };
+            var process = new Process { StartInfo = processStartInfo };
 
-            StringBuilder output = new(), error = new();
+            StringBuilder output = new();
+            StringBuilder error = new();
 
             process.OutputDataReceived += (sender, e) =>
             {
@@ -88,17 +85,18 @@ namespace SNIBypassGUI.Utils
 
                 if (completedTask == timeoutTask)
                 {
-                    WriteLog($"执行命令 {command} 超时。", LogLevel.Warning);
                     process.Kill();
+                    WriteLog($"执行命令 {command} 超时。", LogLevel.Warning);
                     return (false, output.ToString(), "进程超时。");
                 }
 
+                await completionTask;
                 return (process.ExitCode == 0, output.ToString(), error.ToString());
             }
             catch (Exception ex)
             {
                 WriteLog($"执行命令 {command} 时遇到异常。", LogLevel.Error, ex);
-                throw;
+                return (false, output.ToString(), ex.Message);
             }
             finally
             {

@@ -12,7 +12,7 @@ namespace SNIBypassGUI.Consts
         public const string CertificateThumbprint = "263961dd1800f3513b1e7818881683889c92aa1a";
 
         // 版本号，更新时需要修改
-        public const string CurrentVersion = "V4.4";
+        public const string CurrentVersion = "V4.5";
 
         // 日志头
         public readonly static string[] LogHead =
@@ -54,5 +54,8 @@ namespace SNIBypassGUI.Consts
         public const string WaitForParentArgument = "/waitForParent";
         public const string AutoStartArgument = "/autoStart";
         public const string CleanUpArgument = "/cleanUp";
+
+        // DNSちゃんの定番設定だよ～(っ´ω`c)♡  // ＞▽＜ 114は中国の代表DNS
+        public const string DefaultDNS = "114.114.114.114";
     }
 }

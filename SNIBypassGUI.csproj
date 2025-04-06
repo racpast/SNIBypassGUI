@@ -87,6 +87,9 @@
     <Reference Include="Costura, Version=6.0.0.0, Culture=neutral, PublicKeyToken=9919ef960d84173d, processorArchitecture=MSIL">
       <HintPath>packages\Costura.Fody.6.0.0\lib\netstandard2.0\Costura.dll</HintPath>
     </Reference>
+    <Reference Include="DnsClient, Version=1.8.0.0, Culture=neutral, PublicKeyToken=4574bb5573c51424, processorArchitecture=MSIL">
+      <HintPath>packages\DnsClient.1.8.0\lib\net472\DnsClient.dll</HintPath>
+    </Reference>
     <Reference Include="HandyControl, Version=3.5.1.0, Culture=neutral, PublicKeyToken=45be8712787a1e5b, processorArchitecture=MSIL">
       <HintPath>packages\HandyControl.3.5.1\lib\net472\HandyControl.dll</HintPath>
     </Reference>
@@ -105,13 +108,13 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
+    </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.Management" />
-    <Reference Include="System.Management.Automation, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>packages\Microsoft.PowerShell.5.ReferenceAssemblies.1.1.0\lib\net4\System.Management.Automation.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
@@ -143,6 +146,7 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Compile Include="Consts\ConfigConsts.cs" />
+    <Compile Include="Models\DnsRecordResult.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -150,6 +154,7 @@
     </Compile>
     <Compile Include="Utils\CommandLineUtils.cs" />
     <Compile Include="Utils\ImageSwitcherService.cs" />
+    <Compile Include="Utils\PixivUtils.cs" />
     <Compile Include="Utils\StringUtils.cs" />
     <Compile Include="Views\CustomBackgroundWindow.xaml.cs">
       <DependentUpon>CustomBackgroundWindow.xaml</DependentUpon>
@@ -203,9 +208,9 @@
     <None Include="Resources\dns\AcrylicHosts.txt" />
     <None Include="Resources\dns\AcrylicConfiguration.ini" />
     <Resource Include="Resources\imgs\MenuBkg.png" />
-    <None Include="Resources\imgs\858k3j.jpg" />
-    <None Include="Resources\imgs\123872271.jpg" />
-    <None Include="Resources\imgs\rr8qoj.jpg" />
+    <None Include="Resources\imgs\97051135.jpg" />
+    <None Include="Resources\imgs\118532760.jpg" />
+    <None Include="Resources\imgs\125521081.jpg" />
     <Content Include="Resources\libs\ImageCropper.dll" />
     <Compile Include="Utils\AcrylicServiceUtils.cs" />
     <Compile Include="Utils\CertificateUtils.cs" />

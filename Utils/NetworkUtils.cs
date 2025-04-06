@@ -1,4 +1,6 @@
-﻿using System;
+﻿using DnsClient;
+using DnsClient.Protocol;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -6,8 +8,11 @@ using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Linq;
 using System.Threading.Tasks;
+using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.WinApiUtils;
+using SNIBypassGUI.Models;
+using System.Net.Sockets;
 
 namespace SNIBypassGUI.Utils
 {
@@ -19,27 +24,193 @@ namespace SNIBypassGUI.Utils
         public static UInt32 FlushDNSCache() => DnsFlushResolverCache();
 
         /// <summary>
-        /// 从域名获取 IP 地址
+        /// 通用 DNS 解析方法
         /// </summary>
-        /// <param name="domainName">指定的域名</param>
-        public static string GetIpAddressFromDomain(string domainName)
+        /// <param name="domain">域名</param>
+        /// <param name="queryType">记录类型</param>
+        /// <param name="dnsServer">DNS 服务器 IP（默认系统 DNS）</param>
+        /// <param name="timeoutMs">超时时间（毫秒）</param>
+        public static async Task<List<DnsRecordResult>> ResolveDnsAsync(string domain, DnsQueryType queryType = DnsQueryType.A, string dnsServer = null, int timeoutMs = 2000)
         {
+            var lookupClient = GetLookupClient(dnsServer, timeoutMs);
+            var queryTypeMapped = MapQueryType(queryType);
+
             try
             {
-                // 获取域名解析到的所有 IP 地址
-                IPAddress[] ipAddresses = Dns.GetHostAddresses(domainName);
+                IDnsQueryResponse response = await lookupClient.QueryAsync(domain, queryTypeMapped);
 
-                // 如果解析结果不为空，返回第一个 IP 地址
-                return ipAddresses.Length > 0 ? ipAddresses[0].ToString() : string.Empty;
+                if (response.HasError)
+                {
+                    WriteLog($"DNS 查询时遇到错误：{response.ErrorMessage}（响应码：{response.Header.ResponseCode}）。", LogLevel.Error);
+                    return [];
+                }
+
+                return [.. response.AllRecords
+                    .Select(ParseDnsRecord)
+                    .Where(record => record != null)];
+            }
+            catch (SocketException ex)
+            {
+                WriteLog($"解析域名时遇到网络错误。", LogLevel.Error, ex);
+                return [];
             }
             catch (Exception ex)
             {
-                WriteLog($"解析域名 {domainName} 时遇到异常。", LogLevel.Error, ex);
-
-                // 解析失败，返回空字符串
-                return string.Empty;
+                WriteLog($"解析域名时遇到异常。", LogLevel.Error, ex);
+                return [];
             }
         }
+
+        // 解析 A 记录（IPv4）
+        public static async Task<List<IPAddress>> ResolveAAsync(string domain, string dnsServer = DefaultDNS)
+        {
+            var records = await ResolveDnsAsync(domain, DnsQueryType.A, dnsServer);
+            return [.. records
+                .Where(r => r.RecordType == DnsQueryType.A)
+                .Select(r => (IPAddress)r.Value)];
+        }
+
+        // 解析 AAAA 记录（IPv6）
+        public static async Task<List<IPAddress>> ResolveAaaaAsync(string domain, string dnsServer = DefaultDNS)
+        {
+            var records = await ResolveDnsAsync(domain, DnsQueryType.AAAA, dnsServer);
+            return [.. records
+                .Where(r => r.RecordType == DnsQueryType.AAAA)
+                .Select(r => (IPAddress)r.Value)];
+        }
+
+        // 辅助方法：解析 DNS 记录到结构化数据
+        private static DnsRecordResult ParseDnsRecord(DnsResourceRecord record)
+        {
+            return record switch
+            {
+                ARecord a => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.A,
+                    Name = a.DomainName,
+                    TTL = TimeSpan.FromSeconds(a.TimeToLive),
+                    Value = a.Address
+                },
+                AaaaRecord aaaa => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.AAAA,
+                    Name = aaaa.DomainName,
+                    TTL = TimeSpan.FromSeconds(aaaa.TimeToLive),
+                    Value = aaaa.Address
+                },
+                CNameRecord cname => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.CNAME,
+                    Name = cname.DomainName,
+                    TTL = TimeSpan.FromSeconds(cname.TimeToLive),
+                    Value = cname.CanonicalName
+                },
+                MxRecord mx => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.MX,
+                    Name = mx.DomainName,
+                    TTL = TimeSpan.FromSeconds(mx.TimeToLive),
+                    Value = new { Priority = mx.Preference, Host = mx.Exchange }
+                },
+                TxtRecord txt => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.TXT,
+                    Name = txt.DomainName,
+                    TTL = TimeSpan.FromSeconds(txt.TimeToLive),
+                    Value = string.Join(" ", txt.Text)
+                },
+                NsRecord ns => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.NS,
+                    Name = ns.DomainName,
+                    TTL = TimeSpan.FromSeconds(ns.TimeToLive),
+                    Value = ns.NSDName
+                },
+                SoaRecord soa => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.SOA,
+                    Name = soa.DomainName,
+                    TTL = TimeSpan.FromSeconds(soa.TimeToLive),
+                    Value = new
+                    {
+                        soa.MName,
+                        soa.RName,
+                        soa.Serial,
+                        soa.Refresh,
+                        soa.Retry,
+                        soa.Expire,
+                        soa.Minimum
+                    }
+                },
+                PtrRecord ptr => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.PTR,
+                    Name = ptr.DomainName,
+                    TTL = TimeSpan.FromSeconds(ptr.TimeToLive),
+                    Value = ptr.PtrDomainName
+                },
+                SrvRecord srv => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.SRV,
+                    Name = srv.DomainName,
+                    TTL = TimeSpan.FromSeconds(srv.TimeToLive),
+                    Value = new
+                    {
+                        srv.Priority,
+                        srv.Weight,
+                        srv.Port,
+                        srv.Target
+                    }
+                },
+                CaaRecord caa => new DnsRecordResult
+                {
+                    RecordType = DnsQueryType.CAA,
+                    Name = caa.DomainName,
+                    TTL = TimeSpan.FromSeconds(caa.TimeToLive),
+                    Value = new
+                    {
+                        caa.Flags,
+                        caa.Tag,
+                        caa.Value
+                    }
+                },
+                _ => null // 忽略不支持的类型
+            };
+        }
+
+        // 创建 LookupClient 实例
+        private static LookupClient GetLookupClient(string dnsServer, int timeoutMs)
+        {
+            if (string.IsNullOrEmpty(dnsServer))
+                return new LookupClient(); // 使用系统默认 DNS
+
+            if (!IPAddress.TryParse(dnsServer, out var ip))
+                throw new ArgumentException("无效的 DNS 服务器地址");
+
+            var endpoint = new IPEndPoint(ip, 53);
+            return new LookupClient(new LookupClientOptions(endpoint)
+            {
+                Timeout = TimeSpan.FromMilliseconds(timeoutMs),
+                UseCache = false // 禁用缓存，强制实时查询
+            });
+        }
+
+        // 映射查询类型
+        private static QueryType MapQueryType(DnsQueryType queryType) => queryType switch
+        {
+            DnsQueryType.A => QueryType.A,
+            DnsQueryType.AAAA => QueryType.AAAA,
+            DnsQueryType.CNAME => QueryType.CNAME,
+            DnsQueryType.MX => QueryType.MX,
+            DnsQueryType.TXT => QueryType.TXT,
+            DnsQueryType.NS => QueryType.NS,
+            DnsQueryType.SOA => QueryType.SOA,
+            DnsQueryType.PTR => QueryType.PTR,
+            DnsQueryType.SRV => QueryType.SRV,
+            DnsQueryType.CAA => QueryType.CAA,
+            DnsQueryType.ANY => QueryType.ANY,
+            _ => throw new ArgumentOutOfRangeException(nameof(queryType))
+        };
 
         /// <summary>
         /// 检查主机是否可达
@@ -64,12 +235,12 @@ namespace SNIBypassGUI.Utils
         /// 查找最快的 IP 地址
         /// </summary>
         /// <param name="IP">包含 IP 地址的字符串数组</param>
-        public static string FindFastestIP(string[] IP)
+        public static IPAddress FindFastestIP(IPAddress[] IP)
         {
-            var PingResults = new Dictionary<string, long>();
+            var PingResults = new Dictionary<IPAddress, long>();
             var pingSender = new Ping();
             PingReply reply;
-            foreach (string ip in IP)
+            foreach (var ip in IP)
             {
                 try
                 {
@@ -82,7 +253,7 @@ namespace SNIBypassGUI.Utils
                     continue;
                 }
             }
-            return PingResults.Count == 0 ? string.Empty : PingResults.OrderBy(kv => kv.Value).FirstOrDefault().Key;
+            return PingResults.Count == 0 ? null : PingResults.OrderBy(kv => kv.Value).FirstOrDefault().Key;
         }
 
         /// <summary>

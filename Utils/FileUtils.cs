@@ -303,7 +303,7 @@ namespace SNIBypassGUI.Utils
                 image.BeginInit();
                 image.UriSource = new Uri(imagePath);
                 image.CacheOption = BitmapCacheOption.OnLoad;
-                image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                image.CreateOptions = BitmapCreateOptions.IgnoreImageCache | BitmapCreateOptions.IgnoreColorProfile;
 
                 // 动态调整解码尺寸
                 if (maxDecodeSize.HasValue)

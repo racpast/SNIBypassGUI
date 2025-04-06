@@ -4,16 +4,6 @@ namespace SNIBypassGUI.Consts
 {
     public static class GitHubConsts
     {
-        /*
-        public static string[] GitHubAPIServerIPs =
-        [
-                "20.205.243.168",
-                "140.82.113.5",
-                "140.82.116.6",
-                "4.237.22.34"
-        ];
-        */
-
         public static readonly List<string> ghproxyMirrors =
         [
             "gh.tryxd.cn",
@@ -41,7 +31,8 @@ namespace SNIBypassGUI.Consts
             "gh.xx9527.cn",
             "gh-proxy.linioi.com",
             "gitproxy.mrhjx.cn",
-            "github.wuzhij.com"
-            ];
+            "github.wuzhij.com",
+            "gh.rpnet.dpdns.org"
+        ];
     }
 }

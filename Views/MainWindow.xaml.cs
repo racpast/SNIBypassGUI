@@ -37,6 +37,7 @@ using static SNIBypassGUI.Utils.IniFileUtils;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.NetworkAdapterUtils;
 using static SNIBypassGUI.Utils.NetworkUtils;
+using static SNIBypassGUI.Utils.PixivUtils;
 using static SNIBypassGUI.Utils.ProcessUtils;
 using static SNIBypassGUI.Utils.ServiceUtils;
 using static SNIBypassGUI.Utils.StringUtils;
@@ -336,6 +337,7 @@ namespace SNIBypassGUI.Views
                 // 如果没有匹配的项，取消选中
                 AdaptersCombo.SelectedItem = null;
             }
+
             WriteLog("完成 UpdateAdaptersCombo。", LogLevel.Debug);
         }
 
@@ -606,6 +608,7 @@ namespace SNIBypassGUI.Views
                     WriteLog($"移除 {pair.SectionName} 的记录部分。", LogLevel.Info);
                     RemoveSection(FileShouldUpdate, pair.SectionName);
                 }
+                RestoreOriginalPixivDNS();
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -676,7 +679,7 @@ namespace SNIBypassGUI.Views
                 StopTailProcesses(nginxErrorLogPath);
             }
             SwitchDomainNameResolutionMethodBtn.Content = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode ? "域名解析：\nDNS服务" : "域名解析：\n系统hosts";
-            PixivIPPreferenceBtn.Content = StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) ? "Pixiv IP优选：开" : "Pixiv IP优选：关";
+            PixivIPPreferenceBtn.Content = StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) ? "Pixiv IP 优选：开" : "Pixiv IP 优选：关";
 
             // 根据调试模式是否开启决定有关按钮是否启用
             SwitchDomainNameResolutionMethodBtn.IsEnabled = AcrylicDebugBtn.IsEnabled = GUIDebugBtn.IsEnabled = NginxLogTracingBtn.IsEnabled = isDebugModeOn;
@@ -725,24 +728,19 @@ namespace SNIBypassGUI.Views
 
                     // 在设置DNS之前记录DNS服务器是否为自动获取
                     bool? isIPv4DNSAuto = Adapter.IsIPv4DNSAuto;
+                    bool? isIPv6DNSAuto = Adapter.IsIPv6DNSAuto;
 
                     // 用于暂存DNS服务器地址
-                    string PreviousDNS1 = string.Empty, PreviousDNS2 = string.Empty;
+                    List<string> PreviousDNSv4 = [], PreviousDNSv6 = [];
 
+                    // 遍历 DNS 地址并获取有效的 DNS
                     if (isIPv4DNSAuto != true)
                     {
-                        // 遍历 DNS 地址并获取有效的 DNS
-                        int validDnsCount = 0;
-                        foreach (var dns in Adapter.IPv4DNSServer)
-                        {
-                            if (IsValidIPv4(dns) && dns != "127.0.0.1")
-                            {
-                                if (validDnsCount == 0) PreviousDNS1 = dns;
-                                else if (validDnsCount == 1) PreviousDNS2 = dns;
-                                validDnsCount++;
-                                if (validDnsCount == 2) break;
-                            }
-                        }
+                        foreach (var dns in Adapter.IPv4DNSServer) if (IsValidIPv4(dns) && dns != "127.0.0.1") PreviousDNSv4.Add(dns);
+                    }
+                    if (isIPv6DNSAuto != true)
+                    {
+                        foreach (var dns in Adapter.IPv6DNSServer) if (IsValidIPv6(dns) && dns != "::1") PreviousDNSv6.Add(dns);
                     }
 
                     // 将指定适配器的IPv4 DNS服务器设置为首选127.0.0.1
@@ -764,12 +762,13 @@ namespace SNIBypassGUI.Views
                     string ipv6Dns = Adapter.IPv6DNSServer.Length > 0 ? Adapter.IPv6DNSServer[0] : "未设置";
                     WriteLog($"指定网络适配器是否为自动获取 DNS： {BoolToYesNo(isIPv4DNSAuto)}", LogLevel.Info);
                     WriteLog($"成功设置指定网络适配器的 IPv4 首选 DNS 为 {ipv4Dns}，IPv6 首选 DNS 为 {ipv6Dns}", LogLevel.Info);
-                    WriteLog($"将暂存的DNS服务器为： {PreviousDNS1}， {PreviousDNS2}", LogLevel.Debug);
+                    WriteLog($"将暂存的DNS服务器为： {MergeStrings("、", [.. PreviousDNSv4])}，{MergeStrings("、", [.. PreviousDNSv6])}", LogLevel.Debug);
 
                     // 将停止服务时恢复适配器所需要的信息写入配置文件备用
-                    INIWrite(TemporaryData, PreviousPrimaryDNS, PreviousDNS1, INIPath);
-                    INIWrite(TemporaryData, PreviousAlternativeDNS, PreviousDNS2, INIPath);
-                    INIWrite(TemporaryData, IsPreviousDnsAutomatic, isIPv4DNSAuto.ToString(), INIPath);
+                    INIWrite(TemporaryData, PreviousIPv4DNS, MergeStrings(",", [.. PreviousDNSv4]), INIPath);
+                    INIWrite(TemporaryData, PreviousIPv6DNS, MergeStrings(",", [.. PreviousDNSv6]), INIPath);
+                    INIWrite(TemporaryData, IsPreviousIPv4DnsAutomatic, isIPv4DNSAuto.ToString(), INIPath);
+                    INIWrite(TemporaryData, IsPreviousIPv6DnsAutomatic, isIPv6DNSAuto.ToString(), INIPath);
                 }
             }
             catch (Exception ex)
@@ -789,40 +788,54 @@ namespace SNIBypassGUI.Views
             WriteLog("进入 RestoreAdapterDNS。", LogLevel.Debug);
             try
             {
+                // 还原 IPv4 DNS
                 if (Adapter.IPv4DNSServer.Length > 0 && Adapter.IPv4DNSServer[0] == "127.0.0.1")
                 {
-                    // 指定适配器的首选DNS为环回地址的情况，需要从配置文件还原回去
-                    if (StringToBool(INIRead(TemporaryData, IsPreviousDnsAutomatic, INIPath)))
+                    if (StringToBool(INIRead(TemporaryData, IsPreviousIPv4DnsAutomatic, INIPath)))
                     {
-                        // 指定适配器DNS服务器之前是自动获取的情况，设置指定适配器DNS服务器为自动获取
                         SetIPv4DNS(Adapter, []);
-
                         WriteLog("活动网络适配器的 IPv4 DNS 成功设置为自动获取。", LogLevel.Info);
                     }
                     else
                     {
-                        string PreviousDNS1 = INIRead(TemporaryData, PreviousPrimaryDNS, INIPath);
-                        string PreviousDNS2 = INIRead(TemporaryData, PreviousAlternativeDNS, INIPath);
-                        if (string.IsNullOrEmpty(PreviousDNS1) || !IsValidIPv4(PreviousDNS1))
+                        string PreviousDNSv4 = INIRead(TemporaryData, PreviousIPv4DNS, INIPath);
+                        if (string.IsNullOrEmpty(PreviousDNSv4))
                         {
                             SetIPv4DNS(Adapter, []);
                             WriteLog("指定网络适配器的 IPv4 DNS 成功设置为自动获取。", LogLevel.Info);
                         }
                         else
                         {
-                            if (string.IsNullOrEmpty(PreviousDNS2) || !IsValidIPv4(PreviousDNS2)) SetIPv4DNS(Adapter, [PreviousDNS1]);
-                            else SetIPv4DNS(Adapter, [PreviousDNS1, PreviousDNS2]);
+                            SetIPv4DNS(Adapter, [.. SplitStrings(PreviousDNSv4, ",").Where(IsValidIPv4)]);
                             Adapter = Refresh(Adapter);
-                            string IPv4DNS1 = Adapter.IPv4DNSServer.Length > 0 ? Adapter.IPv4DNSServer[0] : "空";
-                            string IPv4DNS2 = Adapter.IPv4DNSServer.Length > 1 ? Adapter.IPv4DNSServer[1] : "空";
-                            WriteLog($"指定网络适配器的 DNS 成功设置为首选 {IPv4DNS1}，备用 {IPv4DNS2}。", LogLevel.Info);
+                            WriteLog($"指定网络适配器的 IPv4 DNS 成功设置为 {MergeStrings("、", Adapter.IPv4DNSServer)}。", LogLevel.Info);
                         }
                     }
                 }
+
+                // 还原 IPv6 DNS
                 if (Adapter.IPv6DNSServer.Length > 0 && Adapter.IPv6DNSServer[0] == "::1")
                 {
-                    await SetIPv6DNS(Adapter, []);
-                    WriteLog("活动网络适配器的 IPv6 DNS 成功设置为自动获取。", LogLevel.Info);
+                    if (StringToBool(INIRead(TemporaryData, IsPreviousIPv6DnsAutomatic, INIPath)))
+                    {
+                        await SetIPv6DNS(Adapter, []);
+                        WriteLog("活动网络适配器的 IPv6 DNS 成功设置为自动获取。", LogLevel.Info);
+                    }
+                    else
+                    {
+                        string PreviousDNSv6 = INIRead(TemporaryData, PreviousIPv6DNS, INIPath);
+                        if (string.IsNullOrEmpty(PreviousDNSv6))
+                        {
+                            await SetIPv6DNS(Adapter, []);
+                            WriteLog("指定网络适配器的 IPv6 DNS 成功设置为自动获取。", LogLevel.Info);
+                        }
+                        else
+                        {
+                            await SetIPv6DNS(Adapter, [.. SplitStrings(PreviousDNSv6, ",").Where(IsValidIPv6)]);
+                            Adapter = Refresh(Adapter);
+                            WriteLog($"指定网络适配器的 IPv6 DNS 成功设置为 {MergeStrings("、", Adapter.IPv6DNSServer)}。", LogLevel.Info);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -1034,7 +1047,7 @@ namespace SNIBypassGUI.Views
                 await StartService();
 
                 // 实验性功能：Pixiv IP优选
-                if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath))) PixivIPPreferenceEx();
+                if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath))) await OptimizePixivIPRouting();
 
                 FlushDNSCache();
             }
@@ -1061,25 +1074,6 @@ namespace SNIBypassGUI.Views
 
             // 停止服务
             await StopService();
-
-            // 实验性功能：Pixiv IP优选
-            if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)))
-            {
-                try
-                {
-                    RemoveSection(SystemHosts, "s.pximg.net");
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    WriteLog("对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
-                    if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
-                }
-                catch (Exception ex)
-                {
-                    WriteLog("遇到异常。", LogLevel.Error, ex);
-                    MessageBox.Show($"更新 Hosts 文件时遇到异常。\r\n{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
 
             // 刷新DNS缓存
             FlushDNSCache();
@@ -1221,32 +1215,14 @@ namespace SNIBypassGUI.Views
                 // 停止所有文件追踪进程
                 if (stopTail) StopTailProcesses();
 
-                // 实验性功能： Pixiv IP 优选
-                if (StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)))
-                {
-                    try
-                    {
-                        RemoveSection(SystemHosts, "s.pximg.net");
-                    }
-                    catch (UnauthorizedAccessException ex)
-                    {
-                        WriteLog("对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
-                        if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
-                    }
-                    catch (Exception ex)
-                    {
-                        WriteLog("遇到异常。", LogLevel.Error, ex);
-                        MessageBox.Show($"更新 Hosts 文件时遇到异常。\r\n{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                }
-
                 // 刷新DNS缓存
                 FlushDNSCache();
 
                 // 清空暂存数据
-                INIWrite(TemporaryData, PreviousPrimaryDNS, "", INIPath);
-                INIWrite(TemporaryData, PreviousAlternativeDNS, "", INIPath);
-                INIWrite(TemporaryData, IsPreviousDnsAutomatic, "true", INIPath);
+                INIWrite(TemporaryData, PreviousIPv4DNS, "", INIPath);
+                INIWrite(TemporaryData, PreviousIPv6DNS, "", INIPath);
+                INIWrite(TemporaryData, IsPreviousIPv4DnsAutomatic, "true", INIPath);
+                INIWrite(TemporaryData, IsPreviousIPv6DnsAutomatic, "true", INIPath);
 
                 // 删除启动追踪的临时批处理文件
                 TryDelete(RunTailBatFiles);
@@ -1271,6 +1247,10 @@ namespace SNIBypassGUI.Views
 
             try
             {
+                /*
+                /// <summary>
+                /// 先从主服务器获取最新版本信息，如果失败则从 GitHub 更新
+                /// </summary>
                 string jsonResponse;
                 string fastestProxy = DefaultProxy;
                 bool needproxy = false;
@@ -1280,7 +1260,7 @@ namespace SNIBypassGUI.Views
                 }
                 catch(Exception ex)
                 {
-                    WriteLog("从主服务获取信息失败，将使用备用服务器。", LogLevel.Error, ex);
+                    WriteLog("从主服务器获取信息失败，将使用备用服务器。", LogLevel.Error, ex);
                     fastestProxy = await FindFastestProxy(BackupLatest);
                     jsonResponse = await GetAsync($"https://{fastestProxy}/{BackupLatest}");
                     needproxy = true;
@@ -1340,6 +1320,64 @@ namespace SNIBypassGUI.Views
                     }
                 }
 
+                MessageBox.Show($"数据更新完成，将会为您重启主程序。", "更新", MessageBoxButton.OK, MessageBoxImage.Information);
+                StartProcess(CurrentExe, MergeStrings(" ", [WaitForParentArgument, Process.GetCurrentProcess().Id.ToString()]));
+                ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                */
+
+                /// <summary>
+                /// 从 GitHub 更新
+                /// </summary>
+                string jsonResponse;
+                string fastestProxy = DefaultProxy;
+
+                fastestProxy = await FindFastestProxy(GitHubLatest);
+                jsonResponse = await GetAsync($"https://{fastestProxy}/{GitHubLatest}");
+
+                // 解析返回的 JSON 字符串
+                JObject updateData = JObject.Parse(jsonResponse);
+                JObject files = (JObject)updateData["files"];
+
+                // 从解析后的 JSON 中获取最后一次发布的信息
+                string version = updateData["version"].ToString();
+                string exehash = updateData["sha256"].ToString();
+
+                string acrylichostsUrl = $"https://{fastestProxy}/{files["AcrylicHosts_All.dat"]}";
+                string systemhostsUrl = $"https://{fastestProxy}/{files["SystemHosts_All.dat"]}";
+                string switchdataUrl = $"https://{fastestProxy}/{files["SwitchData.json"]}";
+                string crtUrl = $"https://{fastestProxy}/{files["SNIBypassCrt.crt"]}";
+                string nginxconfUrl = $"https://{fastestProxy}/{files["nginx.conf"]}";
+                string exeUrl = $"https://{fastestProxy}/{files["SNIBypassGUI.exe"]}";
+
+                // 下载文件并覆盖
+                await DownloadFileWithProgress(acrylichostsUrl, AcrylicHostsAll, UpdateProgress, 10);
+                await DownloadFileWithProgress(systemhostsUrl, SystemHostsAll, UpdateProgress, 10);
+                await DownloadFileWithProgress(switchdataUrl, SwitchData, UpdateProgress, 10);
+                await DownloadFileWithProgress(crtUrl, CRTFile, UpdateProgress, 10);
+                await DownloadFileWithProgress(nginxconfUrl, nginxConfigFile, UpdateProgress, 10);
+
+                if (version != CurrentVersion)
+                {
+                    UpdateBtn.Content = "更新主程序…";
+                    await DownloadFileWithProgress(exeUrl, NewVersionExe, UpdateProgress, 120);
+
+                    UpdateBtn.Content = "校验哈希值…";
+                    string realhash = CalculateFileHash(NewVersionExe);
+                    if (realhash == exehash)
+                    {
+                        TryDelete(OldVersionExe);
+                        File.Move(CurrentExe, OldVersionExe);
+                        File.SetAttributes(OldVersionExe, File.GetAttributes(OldVersionExe) | FileAttributes.Hidden);
+                        File.Copy(NewVersionExe, CurrentExe);
+                        UpdateBtn.Content = "更新完成";
+                    }
+                    else
+                    {
+                        TryDelete(NewVersionExe);
+                        WriteLog($"主程序更新失败，哈希值校验未通过！预期：{exehash}，现有：{realhash}", LogLevel.Error);
+                        MessageBox.Show($"主程序更新失败，哈希值校验未通过！\r\n预期：{exehash}\r\n现有：{realhash}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
                 MessageBox.Show($"数据更新完成，将会为您重启主程序。", "更新", MessageBoxButton.OK, MessageBoxImage.Information);
                 StartProcess(CurrentExe, MergeStrings(" ", [WaitForParentArgument, Process.GetCurrentProcess().Id.ToString()]));
                 ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -1796,10 +1834,7 @@ namespace SNIBypassGUI.Views
 
             // 如果有配置中不存在的项，则开启
             List<string> ExistingKeys = GetKeys(ProxySettings, INIPath);
-            foreach (SwitchItem item in Switchs)
-            {
-                if (!ExistingKeys.Contains(item.SectionName)) INIWrite(ProxySettings, item.SectionName, "true", INIPath);
-            }
+            foreach (SwitchItem item in Switchs) if (!ExistingKeys.Contains(item.SectionName)) INIWrite(ProxySettings, item.SectionName, "true", INIPath);
 
             // 更新信息
             SyncControlsFromConfig();
@@ -1843,6 +1878,9 @@ namespace SNIBypassGUI.Views
                 Show();
                 Activate();
             }
+
+            // 如果没选，则自动选中当前活动的适配器
+            if (AdaptersCombo.SelectedItem == null) GetActiveAdapterBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
             // 启用有关计时器
             serviceStatusUpdateTimer.Start();
@@ -2166,43 +2204,6 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 实验性功能：Pixiv IP 优选
-        /// </summary>
-        private void PixivIPPreferenceEx()
-        {
-            WriteLog("进入 PixivIPPreferenceEx。", LogLevel.Debug);
-            try
-            {
-                RemoveSection(SystemHosts, "s.pximg.net");
-                string ip = FindFastestIP(pximgIP);
-                if (ip != null)
-                {
-                    string[] NewAPIRecord =
-                    [
-                    "#\ts.pximg.net Start",
-                    $"{ip}       s.pximg.net",
-                    "#\ts.pximg.net End",
-                    ];
-                    PrependToFile(SystemHosts, NewAPIRecord);
-                    FlushDNSCache();
-                    PixivIPPreferenceBtn.Content = "Pixiv IP 优选：开";
-                }
-                else WriteLog("Pixiv IP 优选失败，没有找到最优 IP。", LogLevel.Warning);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                WriteLog("对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
-                if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
-            }
-            catch (Exception ex)
-            {
-                WriteLog("遇到异常。", LogLevel.Error, ex);
-                MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            WriteLog("完成 PixivIPPreferenceEx。", LogLevel.Debug);
-        }
-
-        /// <summary>
         /// 反馈按钮点击事件
         /// </summary>
         private void FeedbackBtn_Click(object sender, RoutedEventArgs e)
@@ -2224,21 +2225,45 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// Pixiv IP 优选按钮点击事件
         /// </summary>
-        private void PixivIPPreferenceBtn_Click(object sender, RoutedEventArgs e)
+        private async void PixivIPPreferenceBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 PixivIPPreferenceBtn_Click。", LogLevel.Debug);
             PixivIPPreferenceBtn.IsEnabled = false;
-            if (!StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) && MessageBox.Show("Pixiv IP 优选是实验性功能。\r\n当您遇到服务正常运行，但打开 Pixiv 白屏时可以尝试使用此功能。\r\n您要打开该功能吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            await Dispatcher.Yield(DispatcherPriority.Render);
+            try
             {
-                INIWrite(ProgramSettings, PixivIPPreference, "true", INIPath);
-                PixivIPPreferenceEx();
+                if (!StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) && MessageBox.Show("Pixiv IP 优选是对 Pixiv 的特别支持。\r\n当您遇到服务正常运行，但打开 Pixiv 白屏时可以尝试使用此功能。\r\n您要打开该功能吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    await Task.Run(async() =>
+                    {
+                        INIWrite(ProgramSettings, PixivIPPreference, "true", INIPath);
+                        await OptimizePixivIPRouting();
+                    });
+                }
+                else
+                {
+                    await Task.Run(() =>
+                    {
+                        INIWrite(ProgramSettings, PixivIPPreference, "false", INIPath);
+                        RestoreOriginalPixivDNS();
+                    });
+                }
             }
-            else
+            catch (UnauthorizedAccessException ex)
             {
-                INIWrite(ProgramSettings, PixivIPPreference, "false", INIPath);
-                RemoveSection(SystemHosts, "s.pximg.net");
+                WriteLog("对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
+                if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
             }
-            PixivIPPreferenceBtn.IsEnabled = true;
+            catch (Exception ex)
+            {
+                WriteLog("遇到异常。", LogLevel.Error, ex);
+                MessageBox.Show($"遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                SyncControlsFromConfig();
+                PixivIPPreferenceBtn.IsEnabled = true;
+            }
             WriteLog("完成 PixivIPPreferenceBtn_Click。", LogLevel.Debug);
         }
 

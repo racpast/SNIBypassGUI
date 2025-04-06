@@ -52,7 +52,7 @@ namespace SNIBypassGUI.Utils
                 var ipv6Dns = netInterface.GetIPProperties().DnsAddresses
                     .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6)
                     .Select(ip => ip.ToString());
-                GUIDToIPv6DNSServer.Add(netInterface.Id, ipv6Dns.ToArray());
+                GUIDToIPv6DNSServer.Add(netInterface.Id, [.. ipv6Dns]);
             }
 
             List<NetworkAdapter> adapters = [];
@@ -75,12 +75,16 @@ namespace SNIBypassGUI.Utils
                     bool isNetEnabled = (bool)(adapter["NetEnabled"] ?? false);
                     ushort netConnectionStatus = (ushort)(adapter["NetConnectionStatus"] ?? 0);
                     bool isIPv4DNSAuto = true;
+                    bool isIPv6DNSAuto = true;
 
                     if (!string.IsNullOrEmpty(guid))
                     {
                         string path = "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\" + guid;
                         string ns = (string)Registry.GetValue(path, "NameServer", null);
                         isIPv4DNSAuto = string.IsNullOrEmpty(ns);
+                        string path2 = "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters\\Interfaces\\" + guid;
+                        string ns2 = (string)Registry.GetValue(path2, "NameServer", null);
+                        isIPv6DNSAuto = string.IsNullOrEmpty(ns2);
                     }
 
                     // 查询 IP 配置信息
@@ -156,6 +160,7 @@ namespace SNIBypassGUI.Utils
                         dhcpLeaseExpires,
                         [.. ipv4DnsServer],
                         isIPv4DNSAuto,
+                        isIPv6DNSAuto,
                         isIPv6Enabled,
                         [.. ipv6Address],
                         [.. ipv6PrefixLength],
@@ -204,23 +209,47 @@ namespace SNIBypassGUI.Utils
         {
             try
             {
+                string friendlyName = networkAdapter.FriendlyName;
+                if (string.IsNullOrEmpty(friendlyName))
+                {
+                    WriteLog($"网络适配器 {networkAdapter.Name} 的 FriendlyName 为空，无法设置 DNS。", LogLevel.Warning);
+                    return;
+                }
+
                 if (dnsServers.Length == 0)
                 {
-                    networkAdapter = Refresh(networkAdapter);
-                    string v4DnsList = string.Join(", ", networkAdapter.IPv4DNSServer.Select(dns => $"\"{dns}\""));
-                    await RunPowerShell($"Set-DnsClientServerAddress -InterfaceIndex {networkAdapter.InterfaceIndex} -ResetServerAddresses");
-                    if (networkAdapter.IPv4DNSServer.Length != 0 && !networkAdapter.IsIPv4DNSAuto) await RunPowerShell($"Set-DnsClientServerAddress -InterfaceIndex {networkAdapter.InterfaceIndex} -ServerAddresses ({v4DnsList})");
+                    var (success, output, error) = await RunCommand($"netsh interface ipv6 set dnsservers name=\"{friendlyName}\" source=dhcp");
+                    if (!success)
+                    {
+                        WriteLog($"设置 {friendlyName} 的 IPv6 DNS 为 DHCP 时遇到异常，错误：{error}。", LogLevel.Error);
+                        return;
+                    }
                 }
                 else
                 {
-                    string v6DnsList = string.Join(", ", dnsServers.Select(dns => $"\"{dns}\""));
-                    await RunPowerShell($"Set-DnsClientServerAddress -InterfaceIndex {networkAdapter.InterfaceIndex} -ServerAddresses ({v6DnsList})");
+                    string firstDNS = dnsServers[0];
+                    var (success, output, error) = await RunCommand($"netsh interface ipv6 set dnsservers name=\"{friendlyName}\" static address={firstDNS} primary");
+                    if (!success)
+                    {
+                        WriteLog($"设置 {friendlyName} 的 IPv6 DNS 时遇到异常，错误：{error}。", LogLevel.Error);
+                        return;
+                    }
+
+                    for (int i = 1; i < dnsServers.Length; i++)
+                    {
+                        var (successAdd, outputAdd, errorAdd) = await RunCommand($"netsh interface ipv6 add dnsservers name=\"{friendlyName}\" address={dnsServers[i]} index={i + 1}");
+                        if (!successAdd)
+                        {
+                            WriteLog($"设置 {friendlyName} 的 IPv6 DNS 时遇到异常，索引：{i + 1}，错误：{error}。", LogLevel.Error);
+                            return;
+                        }
+                    }
                 }
                 FlushDNSCache();
             }
             catch (Exception ex)
             {
-                WriteLog($"设置 {networkAdapter.FriendlyName} 的 IPv6 DNS 服务器时遇到异常。", LogLevel.Error, ex);
+                WriteLog($"设置 {networkAdapter.FriendlyName} 的 IPv6 DNS 时遇到异常。", LogLevel.Error, ex);
             }
         }
 
@@ -231,39 +260,37 @@ namespace SNIBypassGUI.Utils
         {
             try
             {
-                using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_IP4RouteTable WHERE Destination='0.0.0.0' AND Mask='0.0.0.0'"))
+                using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_IP4RouteTable WHERE Destination='0.0.0.0' AND Mask='0.0.0.0'");
+                var routes = searcher.Get().Cast<ManagementObject>()
+                    .Where(r => r["Metric1"] != null && (int)r["Metric1"] != -1)
+                    .OrderBy(r => (int)r["Metric1"])
+                    .ToList();
+
+                if (routes.Any())
                 {
-                    var routes = searcher.Get().Cast<ManagementObject>()
-                        .Where(r => r["Metric1"] != null && (int)r["Metric1"] != -1)
-                        .OrderBy(r => (int)r["Metric1"])
-                        .ToList();
+                    var firstRoute = routes.First();
+                    var interfaceIndex = firstRoute["InterfaceIndex"];
 
-                    if (routes.Any())
+                    // 检查类型并转换
+                    if (interfaceIndex is int indexInt)
                     {
-                        var firstRoute = routes.First();
-                        var interfaceIndex = firstRoute["InterfaceIndex"];
-
-                        // 检查类型并转换
-                        if (interfaceIndex is int indexInt)
-                        {
-                            if (indexInt >= 0) return (uint)indexInt;
-                            else
-                            {
-                                WriteLog("InterfaceIndex 为负数，无法转换为 uint。", LogLevel.Error);
-                                return null;
-                            }
-                        }
+                        if (indexInt >= 0) return (uint)indexInt;
                         else
                         {
-                            WriteLog($"InterfaceIndex 不是 int 类型，而是 {interfaceIndex?.GetType().ToString() ?? "null"}。", LogLevel.Error);
+                            WriteLog("InterfaceIndex 为负数，无法转换为 uint。", LogLevel.Error);
                             return null;
                         }
                     }
                     else
                     {
-                        WriteLog("未找到符合条件的默认路由。", LogLevel.Debug);
+                        WriteLog($"InterfaceIndex 不是 int 类型，而是 {interfaceIndex?.GetType().ToString() ?? "null"}。", LogLevel.Error);
                         return null;
                     }
+                }
+                else
+                {
+                    WriteLog("未找到符合条件的默认路由。", LogLevel.Debug);
+                    return null;
                 }
             }
             catch (Exception ex)

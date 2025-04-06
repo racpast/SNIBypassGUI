@@ -23,8 +23,9 @@
         public static readonly string SystemHostsMode = "SystemHosts";
         public static readonly string AcrylicDebug = "AcrylicDebug";
         public static readonly string TemporaryData = "暂存数据";
-        public static readonly string PreviousPrimaryDNS = "PreviousDNS1";
-        public static readonly string PreviousAlternativeDNS = "PreviousDNS2";
-        public static readonly string IsPreviousDnsAutomatic = "IsPreviousDnsAutomatic";
+        public static readonly string PreviousIPv4DNS = "PreviousIPv4DNS";
+        public static readonly string PreviousIPv6DNS = "PreviousIPv6DNS";
+        public static readonly string IsPreviousIPv4DnsAutomatic = "IsPreviousIPv4DnsAutomatic";
+        public static readonly string IsPreviousIPv6DnsAutomatic = "IsPreviousIPv6DnsAutomatic";
     }
 }

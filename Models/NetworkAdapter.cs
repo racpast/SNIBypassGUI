@@ -2,7 +2,7 @@
 
 namespace SNIBypassGUI.Models
 {
-    public class NetworkAdapter(string name, string friendlyName, string description, string serviceName, uint interfaceIndex, string macAddress, string manufacturer, bool isPhysicalAdapter, string guid, bool isNetEnabled, ushort netConnectionStatus, bool isIPEnabled, string[] ipAddress, string[] ipSubnet, string[] defaultIPGateway, bool isDhcpEnabled, string dhcpServer, DateTime dhcpLeaseObtained, DateTime dhcpLeaseExpires, string[] ipv4DnsServer, bool isIPv4DNSAuto, bool isIPv6Enabled, string[] ipv6Address, ushort[] ipv6PrefixLength, string[] ipv6DnsServer)
+    public class NetworkAdapter(string name, string friendlyName, string description, string serviceName, uint interfaceIndex, string macAddress, string manufacturer, bool isPhysicalAdapter, string guid, bool isNetEnabled, ushort netConnectionStatus, bool isIPEnabled, string[] ipAddress, string[] ipSubnet, string[] defaultIPGateway, bool isDhcpEnabled, string dhcpServer, DateTime dhcpLeaseObtained, DateTime dhcpLeaseExpires, string[] ipv4DnsServer, bool isIPv4DNSAuto, bool isIPv6DNSAuto, bool isIPv6Enabled, string[] ipv6Address, ushort[] ipv6PrefixLength, string[] ipv6DnsServer)
     {
         /// <summary>
         /// 适配器的内部名称，这个名字通常和设备管理器里的网卡名称相同。
@@ -129,6 +129,12 @@ namespace SNIBypassGUI.Models
         /// 从注册表判断。
         /// </summary>
         public bool IsIPv4DNSAuto { get; } = isIPv4DNSAuto;
+        
+        /// <summary>
+        /// 指示 IPv6 DNS 是否自动获取。
+        /// 从注册表判断。
+        /// </summary>
+        public bool IsIPv6DNSAuto { get; } = isIPv6DNSAuto;
 
         /// <summary>
         /// 是否启用 TCP/IPv6。
