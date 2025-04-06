@@ -1,19 +1,19 @@
-![social_compressed](https://github.com/user-attachments/assets/2cefa9c4-413f-4a61-91ee-891f3896b9d3)
+![image](https://github.com/user-attachments/assets/97bdec0b-112a-44f3-8d90-1434bf7d28cc)![social_compressed](https://github.com/user-attachments/assets/2cefa9c4-413f-4a61-91ee-891f3896b9d3)
 ## 📝 简介
 一个**通过 Nginx 反向代理实现绕过 SNI 阻断** 的工具，基于 [Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI) 进行功能扩展与改进。
 ## ☕ 使用演示（ 一键完成 Discord、Facebook、Instagram、Pixiv、Wikipedia、Telegram 等的直连 ）
 https://github.com/user-attachments/assets/8d29e300-99e5-46cc-a678-acc5bed94649
-## ✨ 功能预览
+## ✨ 特色预览
 ### 💻 多站点可开关支持
-![image](https://github.com/user-attachments/assets/aef8cec4-5c6b-4ef0-9bfc-909b30d135e9)
+![image](https://github.com/user-attachments/assets/9169961d-405b-4355-bbae-7bf8c06c1888)
 ### 📰 可视化管理
-![image](https://github.com/user-attachments/assets/28aece3f-278b-4335-ae18-77054a9644ca)
+![image](https://github.com/user-attachments/assets/79f1de5c-e4d9-4d80-bd1c-ddce43482285)
 ### 🌙 深色主题
-![image](https://github.com/user-attachments/assets/e320eb8b-058e-4a98-9d2d-ab17782055b5)
+![image](https://github.com/user-attachments/assets/03c0fb9f-0533-44af-b3c2-3448e1221ee4)
 ### 🧩 一键更新与更多设置
-![image](https://github.com/user-attachments/assets/f6ac5cac-40f4-4777-8e73-aa4b61e0c6c1)
-### 📓 详尽的日志诊断
-![image](https://github.com/user-attachments/assets/9fe29086-b21a-416b-b0bb-486a499a4bf1)
+![image](https://github.com/user-attachments/assets/ca1f8c4a-2eea-4905-bd2d-6e9324fda6a6)
+### 📦️ 体积小巧
+![image](https://github.com/user-attachments/assets/dc0d2b1d-a029-48de-9f4e-dff25accd72a)
 ## 📚 维基百科 
 ### [🏠️ 首页](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%8F%A0%EF%B8%8F-%E9%A6%96%E9%A1%B5) | [🏷️ 关于SNIBypassGUI](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%8F%B7%EF%B8%8F-%E5%85%B3%E4%BA%8ESNIBypassGUI) | [🔑 具体实现原理](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%94%91-%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86) | [🌐 关于本地DNS服务与泛域名解析](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%8C%90-%E5%85%B3%E4%BA%8E%E6%9C%AC%E5%9C%B0DNS%E6%9C%8D%E5%8A%A1%E4%B8%8E%E6%B3%9B%E5%9F%9F%E5%90%8D%E8%A7%A3%E6%9E%90) | [❓️ 使用时遇到问题](https://github.com/racpast/SNIBypassGUI/wiki/%E2%9D%93%EF%B8%8F-%E4%BD%BF%E7%94%A8%E6%97%B6%E9%81%87%E5%88%B0%E9%97%AE%E9%A2%98) | [🔗 联系我们](https://github.com/racpast/SNIBypassGUI/wiki/%F0%9F%94%97-%E8%81%94%E7%B3%BB%E6%88%91%E4%BB%AC)
 ## 🌸 贡献者名单
@@ -142,7 +142,22 @@ https://github.com/user-attachments/assets/8d29e300-99e5-46cc-a678-acc5bed94649
   </tr>
   <tr>
       <td>
-        <img src="https://avatars.githubusercontent.com/u/111474097" width="100" height="100" alt="缪"/>
+        <img src="https://avatars.githubusercontent.com/u/111474097" width="100" height="100" alt="刘涛"/>
+      </td>
+      <td>
+        <img src="https://github.com/user-attachments/assets/6e7d70fa-22da-46d2-94a8-7767d9182dee" width="100" height="100" alt="Mostronica*"/>
+      </td>
+      <td>
+        <img src="https://github.com/user-attachments/assets/17e88524-4c61-49ab-a89f-22e9a3435c1b" width="100" height="100" alt="山营城stationmaster"/>
+      </td>
+      <td>
+        <img src="" width="100" height="100" alt=""/>
+      </td>
+      <td>
+        <img src="" width="100" height="100" alt=""/>
+      </td>
+      <td>
+        <img src="" width="100" height="100" alt=""/>
       </td>
   </tr>
   <tr>
@@ -151,6 +166,11 @@ https://github.com/user-attachments/assets/8d29e300-99e5-46cc-a678-acc5bed94649
         <b>刘涛</b>
       </a>
     </td>
+    <td>Mostronica*</td>
+    <td>山营城stationmaster</td>
+    <td></td>
+    <td></td>
+    <td></td>
   </tr>
 </table>
 
