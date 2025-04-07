@@ -25,7 +25,7 @@ https://github.com/user-attachments/assets/8d29e300-99e5-46cc-a678-acc5bed94649
           <img src="https://avatars.githubusercontent.com/u/16148054" width="100" height="100" alt="mashirozx"/>
         </td> 
         <td>
-          <img src="https://q.qlogo.cn/headimg_dl?dst_uin=373715504&spec=640&img_type=jpg" width="100" height="100" alt="玛修·基列莱特"/>
+          <img src="https://github.com/user-attachments/assets/27332879-6733-4f4e-ac66-103f98899ca2" width="100" height="100" alt="玛修·基列莱特"/>
         </td>
         <td>
           <img src="https://github.com/user-attachments/assets/b4cc9c73-42d4-4dc9-9dc2-7c61e59badb8" width="100" height="100" alt="八云"/>
