@@ -603,6 +603,10 @@
 127.0.0.1       drive.proton.me
 127.0.0.1       pass.proton.me
 #	Proton End
+#	Quora Start
+127.0.0.1       quora.com
+127.0.0.1       www.quora.com
+#	Quora End
 #	Reddit Start
 127.0.0.1       reddit.com
 127.0.0.1       www.reddit.com

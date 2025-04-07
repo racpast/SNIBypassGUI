@@ -493,6 +493,13 @@
 127.0.0.1       proton.me
 127.0.0.1       *.proton.me
 #	Proton End
+#	Quora Start
+127.0.0.1       quora.com
+127.0.0.1       *.quora.com
+127.0.0.1       *.www.quora.com
+127.0.0.1       *.tch.quora.com
+127.0.0.1       *.www.tch.quora.com
+#	Quora End
 #	Reddit Start
 127.0.0.1       reddit.com
 127.0.0.1       *.reddit.com
