@@ -3,16 +3,16 @@ using DnsClient.Protocol;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Net.NetworkInformation;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Net;
+using System.Net.Http;
+using System.Net.Sockets;
+using System.Net.NetworkInformation;
+using SNIBypassGUI.Models;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.WinApiUtils;
-using SNIBypassGUI.Models;
-using System.Net.Sockets;
 
 namespace SNIBypassGUI.Utils
 {

@@ -73,6 +73,9 @@ namespace SNIBypassGUI.Utils
         [DllImport("dnsapi.dll", EntryPoint = "DnsFlushResolverCache")]
         public static extern UInt32 DnsFlushResolverCache();
 
+        [DllImport("iphlpapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        public static extern int GetBestInterface(uint DestAddr, out uint BestIfIndex);
+
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr childAfter, string className, string windowTitle);
 

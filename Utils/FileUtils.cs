@@ -16,8 +16,6 @@ namespace SNIBypassGUI.Utils
 {
     public static class FileUtils
     {
-        public static List<string> RunTailBatFiles = [];
-
         /// <summary>
         /// 将内容写到指定文件顶部
         /// </summary>
@@ -336,6 +334,60 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
+        /// 重命名部分
+        /// </summary>
+        public static void RenameSection(string[] oldNames, string[] newNames, string filePath)
+        {
+            // 验证输入参数
+            if (oldNames == null || newNames == null || oldNames.Length != newNames.Length || string.IsNullOrEmpty(filePath))
+            {
+                WriteLog("无效的参数。", LogLevel.Warning);
+                return;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                WriteLog("指定的文件不存在。", LogLevel.Warning);
+                return;
+            }
+
+            string tempFilePath = filePath + ".temp";
+            try
+            {
+                using (var reader = new StreamReader(filePath, Encoding.Default))
+                using (var writer = new StreamWriter(tempFilePath, false, Encoding.Default))
+                {
+                    string line;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        bool replaced = false;
+                        if (line.StartsWith("[") && line.EndsWith("]"))
+                        {
+                            string sectionName = line.Substring(1, line.Length - 2).Trim();
+                            for (int i = 0; i < oldNames.Length; i++)
+                            {
+                                if (sectionName.Equals(oldNames[i], StringComparison.OrdinalIgnoreCase))
+                                {
+                                    writer.WriteLine($"[{newNames[i].Trim()}]");
+                                    replaced = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!replaced) writer.WriteLine(line);
+                    }
+                }
+                TryReplaceFile(tempFilePath, filePath);
+            }
+            catch (Exception ex)
+            {
+                WriteLog("修改部分名称时遇到异常。", LogLevel.Error, ex);
+                TryDelete(tempFilePath);
+                return;
+            }
+        }
+
+        /// <summary>
         /// 从文件中移除从“#   sectionName Start”到“#   sectionName End”的部分
         /// </summary>
         /// <param name="filePath">文件路径</param>
@@ -349,30 +401,147 @@ namespace SNIBypassGUI.Utils
             }
             string startMarker = $"#\t{sectionName} Start";
             string endMarker = $"#\t{sectionName} End";
-            bool isRemoving = false;
-            StringBuilder newContent = new();
+            string tempFilePath = Path.GetTempFileName();
             try
             {
-                foreach (string line in File.ReadAllLines(filePath))
+                bool isRemoving = false;
+
+                using (StreamReader reader = new(filePath))
+                using (StreamWriter writer = new(tempFilePath))
                 {
-                    if (line == startMarker)
+                    string line;
+                    while ((line = reader.ReadLine()) != null)
                     {
-                        isRemoving = true;
-                        continue;
+                        if (line == startMarker)
+                        {
+                            isRemoving = true;
+                            continue;
+                        }
+                        else if (line == endMarker)
+                        {
+                            isRemoving = false;
+                            continue;
+                        }
+                        if (!isRemoving) writer.WriteLine(line);
                     }
-                    else if (line == endMarker)
-                    {
-                        isRemoving = false;
-                        continue;
-                    }
-                    else if (!isRemoving) newContent.AppendLine(line);
                 }
-                File.WriteAllText(filePath, newContent.ToString());
+                TryReplaceFile(tempFilePath, filePath);
+                WriteLog($"成功移除文件 {filePath} 中的 {sectionName} 部分。", LogLevel.Info);
             }
             catch (Exception ex)
             {
                 WriteLog($"移除文件 {filePath} 中的 {sectionName} 部分时遇到异常。", LogLevel.Error, ex);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// 从文件中移除从“# sectionName Start”到“# sectionName End”的多个部分
+        /// </summary>
+        /// <param name="filePath">文件路径</param>
+        /// <param name="sectionNames">需要移除的部分名称数组</param>
+        public static void RemoveSection(string filePath, string[] sectionNames)
+        {
+            if (!File.Exists(filePath))
+            {
+                WriteLog($"文件 {filePath} 不存在！", LogLevel.Warning);
+                return;
+            }
+            string tempFilePath = Path.GetTempFileName();
+            try
+            {
+                using (StreamReader reader = new(filePath))
+                using (StreamWriter writer = new(tempFilePath))
+                {
+                    string line;
+                    bool isRemoving = false;
+                    string currentSectionToRemove = null;
+
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        bool isStartMarker = false;
+                        foreach (string sectionName in sectionNames)
+                        {
+                            if (line == $"#\t{sectionName} Start")
+                            {
+                                isStartMarker = true;
+                                isRemoving = true;
+                                currentSectionToRemove = sectionName;
+                                break;
+                            }
+                        }
+                        if (isStartMarker) continue;
+                        else if (isRemoving)
+                        {
+                            foreach (string sectionName in sectionNames)
+                            {
+                                if (line == $"#\t{sectionName} End" && currentSectionToRemove == sectionName)
+                                {
+                                    isRemoving = false;
+                                    currentSectionToRemove = null;
+                                    break;
+                                }
+                            }
+                            continue;
+                        }
+                        writer.WriteLine(line);
+                    }
+                }
+                TryReplaceFile(tempFilePath, filePath);
+                WriteLog($"成功移除文件 {filePath} 中的多个指定部分。", LogLevel.Info);
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"移除文件 {filePath} 中的多个指定部分时遇到异常。", LogLevel.Error, ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 尝试替换文件，支持跨卷标操作。
+        /// </summary>
+        /// <param name="sourceFilePath">源文件路径</param>
+        /// <param name="destinationFilePath">目标文件路径</param>
+        /// <returns>指示文件是否替换成功</returns>
+        public static bool TryReplaceFile(string sourceFilePath, string destinationFilePath)
+        {
+            try
+            {
+                string sourceRoot = Path.GetPathRoot(sourceFilePath);
+                string destRoot = Path.GetPathRoot(destinationFilePath);
+
+                if (string.Equals(sourceRoot, destRoot, StringComparison.OrdinalIgnoreCase)) File.Replace(sourceFilePath, destinationFilePath, null);
+                else
+                {
+                    string tempFilePath = Path.Combine(destRoot, Guid.NewGuid().ToString() + ".tmp");
+                    try
+                    {
+                        File.Copy(sourceFilePath, tempFilePath, true);
+                        File.Replace(tempFilePath, destinationFilePath, null);
+                        File.Delete(sourceFilePath);
+                    }
+                    catch
+                    {
+                        if (File.Exists(tempFilePath))
+                        {
+                            try
+                            {
+                                File.Delete(tempFilePath);
+                            }
+                            catch
+                            {
+                                WriteLog("删除临时文件失败。", LogLevel.Error);
+                            }
+                        }
+                        throw;
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                WriteLog("尝试替换文件时遇到异常。", LogLevel.Error, ex);
+                return false;
             }
         }
 
@@ -388,26 +557,41 @@ namespace SNIBypassGUI.Utils
                 WriteLog($"文件 {filePath} 不存在！", LogLevel.Warning);
                 return [];
             }
+
             string startMarker = $"#\t{sectionName} Start";
             string endMarker = $"#\t{sectionName} End";
             bool isInSection = false;
-            List<String> section = [];
+            List<string> sectionLines = [];
+
             try
             {
-                foreach (string line in File.ReadAllLines(filePath))
+                using (StreamReader reader = new StreamReader(filePath))
                 {
-                    if (line == startMarker)
+                    string line;
+                    while ((line = reader.ReadLine()) != null)
                     {
-                        isInSection = true;
-                        section.Add(line);
-                    }
-                    else if (isInSection)
-                    {
-                        section.Add(line);
-                        if (line == endMarker) break;
+                        if (!isInSection)
+                        {
+                            if (line == startMarker)
+                            {
+                                isInSection = true;
+                                sectionLines.Add(line);
+                            }
+                        }
+                        else
+                        {
+                            sectionLines.Add(line);
+                            if (line == endMarker) break;
+                        }
                     }
                 }
-                return [.. section];
+
+                if (!isInSection || sectionLines.Count == 0 || sectionLines[sectionLines.Count - 1] != endMarker)
+                {
+                    if (isInSection && (sectionLines.Count == 0 || sectionLines[sectionLines.Count - 1] != endMarker)) WriteLog($"在文件 {filePath} 中找到了 {sectionName} 的起始标记但未找到结束标记。", LogLevel.Warning);
+                }
+
+                return [.. sectionLines];
             }
             catch (Exception ex)
             {
@@ -417,39 +601,52 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 尝试删除指定文件
+        /// 尝试删除指定文件或目录
         /// </summary>
-        /// <param name="filePath">文件路径</param>
-        public static void TryDelete(string filePath)
+        /// <param name="path">路径</param>
+        /// <param name="maxRetries">最大重试次数</param>
+        /// <param name="delayMilliseconds">重试延迟时间（毫秒）</param>
+        public static void TryDelete(string path, int maxRetries = 5, int delayMilliseconds = 500)
         {
-            try
+            int retryCount = 0;
+            while (retryCount < maxRetries)
             {
-                if (File.Exists(filePath)) File.Delete(filePath);
+                try
+                {
+                    if (File.Exists(path)) File.Delete(path);
+                    else if (Directory.Exists(path)) Directory.Delete(path, true);
+                    return;
+                }
+                catch (IOException ex)
+                {
+                    WriteLog($"尝试删除 {path} 时遇到 IOException，重试次数：{retryCount + 1}/{maxRetries}。", LogLevel.Warning, ex);
+                    Thread.Sleep(delayMilliseconds);
+                    retryCount++;
+                }
+                catch (Exception ex)
+                {
+                    WriteLog($"删除文件或目录 {path} 时遇到异常。", LogLevel.Error, ex);
+                    throw;
+                }
             }
-            catch (Exception ex)
-            {
-                WriteLog($"删除文件 {filePath} 时遇到异常。", LogLevel.Error, ex);
-                throw;
-            }
+            WriteLog($"删除文件或目录 {path} 失败，达到最大重试次数。", LogLevel.Warning);
+            throw new IOException($"删除文件或目录 {path} 失败，达到最大重试次数。");
         }
 
         /// <summary>
-        /// 尝试删除指定文件
+        /// 尝试删除指定文件或目录
         /// </summary>
-        /// <param name="filePaths">包含文件路径的数组</param>
-        public static void TryDelete(string[] filePaths)
+        /// <param name="paths">包含路径的数组</param>
+        public static void TryDelete(string[] paths)
         {
-            foreach (var filePath in filePaths)
-            {
-                TryDelete(filePath);
-            }
+            foreach (var path in paths) TryDelete(path);
         }
 
         /// <summary>
-        /// 尝试删除指定文件
+        /// 尝试删除指定文件或目录
         /// </summary>
-        /// <param name="filePaths">包含文件路径的列表</param>
-        public static void TryDelete(List<string> filePaths) => TryDelete(filePaths.ToArray());
+        /// <param name="paths">包含路径的列表</param>
+        public static void TryDelete(List<string> paths) => TryDelete(paths.ToArray());
 
         /// <summary>
         /// 创建文件
@@ -505,7 +702,7 @@ namespace SNIBypassGUI.Utils
             try
             {
                 using var sha256 = SHA256.Create();
-                using var stream = new BufferedStream(File.OpenRead(filePath), 1024 * 1024); // 1MB 缓冲区
+                using var stream = new BufferedStream(File.OpenRead(filePath), 1024 * 1024);
                 byte[] hashBytes = sha256.ComputeHash(stream);
                 StringBuilder hashStringBuilder = new(64);
                 foreach (byte b in hashBytes) hashStringBuilder.Append(b.ToString("x2"));
@@ -526,7 +723,7 @@ namespace SNIBypassGUI.Utils
             try
             {
                 using var stream = File.OpenRead(path);
-                var frame = BitmapFrame.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                var frame = BitmapFrame.Create(stream, BitmapCreateOptions.DelayCreation | BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.None);
                 return (frame.PixelWidth, frame.PixelHeight);
             }
             catch (Exception ex)
@@ -541,36 +738,39 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         /// <param name="filePath">要停止监控的文件路径，空则终止所有</param>
         /// <returns>成功终止的进程数量</returns>
-        public static int StopTailProcesses(string filePath = "")
+        public async static Task<int> StopTailProcesses(string filePath = "")
         {
             int stoppedCount = 0;
             try
             {
-                // 获取所有名为 tail.exe 的进程
-                Process[] tailProcesses = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(TailExePath));
-
-                foreach (var process in tailProcesses)
+                await Task.Run(() =>
                 {
-                    try
-                    {
-                        // 获取进程的完整命令行参数
-                        string commandLine = GetCommandLine(process);
+                    // 获取所有名为 tail.exe 的进程
+                    Process[] tailProcesses = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(TailExePath));
 
-                        // 判断是否终止：路径为空时直接终止所有，非空时检查路径匹配
-                        if (string.IsNullOrEmpty(filePath) || commandLine.ToLower().Contains(filePath.ToLower()))
+                    foreach (var process in tailProcesses)
+                    {
+                        try
                         {
-                           // 尝试结束进程
-                            process.Kill();
-                            process.WaitForExit();
-                            stoppedCount++;
-                            WriteLog($"成功结束 {(string.IsNullOrEmpty(filePath) ? "所有" : $"对文件 {filePath} 的")} 追踪进程，PID为 {process.Id}。", LogLevel.Info);
+                            // 获取进程的完整命令行参数
+                            string commandLine = GetCommandLine(process);
+
+                            // 判断是否终止：路径为空时直接终止所有，非空时检查路径匹配
+                            if (string.IsNullOrEmpty(filePath) || commandLine.ToLower().Contains(filePath.ToLower()))
+                            {
+                                // 尝试结束进程
+                                process.Kill();
+                                process.WaitForExit();
+                                stoppedCount++;
+                                WriteLog($"成功结束 {(string.IsNullOrEmpty(filePath) ? "所有" : $"对文件 {filePath} 的")} 追踪进程，PID为 {process.Id}。", LogLevel.Info);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            WriteLog($"尝试终止 PID为 {process.Id} 的文件追踪进程时遇到异常。", LogLevel.Error, ex);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        WriteLog($"尝试终止 PID为 {process.Id} 的文件追踪进程时遇到异常。", LogLevel.Error, ex);
-                    }
-                }
+                });
 
                 if (stoppedCount == 0) WriteLog($"{(string.IsNullOrEmpty(filePath) ? "未找到正在运行的" : $"未找到对文件 {filePath} 的")} 追踪进程。", LogLevel.Warning);
                 else WriteLog($"共结束 {stoppedCount} 个 {(string.IsNullOrEmpty(filePath) ? "正在运行的" : $"对文件 {filePath} 的")} 追踪进程。", LogLevel.Info);
@@ -596,6 +796,9 @@ namespace SNIBypassGUI.Utils
                 // 确保 tail.exe 存在
                 if (!File.Exists(TailExePath)) ExtractResourceToFile(Properties.Resources.tail, TailExePath);
 
+                // 确保临时目录存在
+                EnsureDirectoryExists(TempDirectory);
+
                 // 生成唯一标识符
                 string uniqueId = Guid.NewGuid().ToString("N");
 
@@ -603,7 +806,7 @@ namespace SNIBypassGUI.Utils
                 string expectedTitle = $"{title}_{uniqueId}";
 
                 // 创建临时批处理文件内容
-                string tempBatchFile = Path.Combine(Path.GetTempPath(), $"run_tail_{uniqueId}.bat");
+                string tempBatchFile = Path.Combine(TempDirectory, $"run_tail_{uniqueId}.bat");
                 string batchContent = $"@echo off{Environment.NewLine}" +
                                             // 预先将含中文的变量以 ANSI 格式写入环境变量中
                                             $"set \"expectedTitle={expectedTitle}\"{Environment.NewLine}" +
@@ -615,7 +818,6 @@ namespace SNIBypassGUI.Utils
                                             $"title %expectedTitle%{Environment.NewLine}" +
                                             $"\"%TailExePath%\" -f -m 0 \"%filePath%\"{Environment.NewLine}";
                 File.WriteAllText(tempBatchFile, batchContent, Encoding.GetEncoding(936));
-                RunTailBatFiles.Add(tempBatchFile);
 
                 // 启动批处理文件，显示窗口
                 StartProcess(tempBatchFile, useShellExecute: true, createNoWindow: false);

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.ConfigConsts;
 using static SNIBypassGUI.Consts.PathConsts;
@@ -70,17 +69,23 @@ namespace SNIBypassGUI.Utils
         /// <summary>
         /// 启动 Acrylic DNS Proxy 服务
         /// </summary>
-        public static void StartAcrylicService()
+        public static async Task StartAcrylicService()
         {
-            if (!IsAcrylicServiceRunning()) StartServiceByName(DnsServiceName);
+            await Task.Run(() =>
+            {
+                if (!IsAcrylicServiceRunning()) StartServiceByName(DnsServiceName);
+            });
         }
 
         /// <summary>
         /// 停止 Acrylic DNS Proxy 服务
         /// </summary>
-        public static void  StopAcrylicService()
+        public static async Task  StopAcrylicService()
         {
-            if (IsAcrylicServiceRunning()) StopService(DnsServiceName);
+            await Task.Run(() =>
+            {
+                if (IsAcrylicServiceRunning()) StopService(DnsServiceName);
+            });
         }
 
         /// <summary>
