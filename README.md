@@ -151,6 +151,7 @@ https://github.com/user-attachments/assets/8d29e300-99e5-46cc-a678-acc5bed94649
         <img src="https://github.com/user-attachments/assets/17e88524-4c61-49ab-a89f-22e9a3435c1b" width="100" height="100" alt="山营城stationmaster"/>
       </td>
       <td>
+        <img src="https://github.com/user-attachments/assets/3f711f1a-f5ae-4304-be67-e6d6ce413cb0" width="100" height="100" alt="人间卧底"/>
       </td>
       <td>
       </td>
@@ -165,7 +166,7 @@ https://github.com/user-attachments/assets/8d29e300-99e5-46cc-a678-acc5bed94649
     </td>
     <td>Mostronica*</td>
     <td>山营城<br/>stationmaster</td>
-    <td></td>
+    <td>人间卧底</td>
     <td></td>
     <td></td>
   </tr>
