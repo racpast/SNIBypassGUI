@@ -211,9 +211,6 @@
     <None Include="Resources\dns\AcrylicHosts.txt" />
     <None Include="Resources\dns\AcrylicConfiguration.ini" />
     <Resource Include="Resources\imgs\MenuBkg.png" />
-    <None Include="Resources\imgs\97051135.jpg" />
-    <None Include="Resources\imgs\118532760.jpg" />
-    <None Include="Resources\imgs\125521081.jpg" />
     <None Include="Resources\imgs\5go1w8.jpg" />
     <None Include="Resources\imgs\7pv9go.jpg" />
     <None Include="Resources\imgs\125838182.jpg" />
