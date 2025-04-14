@@ -1,8 +1,4 @@
-﻿using Hardcodet.Wpf.TaskbarNotification;
-using Microsoft.Win32.TaskScheduler;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -19,6 +15,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using Hardcodet.Wpf.TaskbarNotification;
+using Microsoft.Win32.TaskScheduler;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Models;
 using SNIBypassGUI.Utils;
 using static SNIBypassGUI.Consts.AppConsts;
@@ -298,7 +298,7 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 更新适配器列表
         /// </summary>
-        private void UpdateAdaptersCombo()
+        private async Task UpdateAdaptersCombo()
         {
             WriteLog("进入 UpdateAdaptersCombo。", LogLevel.Debug);
 
@@ -306,7 +306,7 @@ namespace SNIBypassGUI.Views
             string PreviousSelectedAdapter = INIRead(ProgramSettings, SpecifiedAdapter, INIPath);
 
             // 获取友好名称不为空的适配器
-            List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
+            List<NetworkAdapter> adapters = await GetNetworkAdaptersAsync(ScopeNeeded.FriendlyNameNotNullOnly);
 
             // 清空下拉框避免重复添加
             AdaptersCombo.Items.Clear();
@@ -396,13 +396,9 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 InitializeDirectoriesAndFiles。", LogLevel.Debug);
 
-            // 检查是否为新旧版本过渡
-            bool isVersionTransition = false;
-
             // 删除旧版本主程序
             if (File.Exists(OldVersionExe))
             {
-                isVersionTransition = true;
                 TryDelete(OldVersionExe);
                 TryDelete(NewVersionExe);
             }
@@ -422,6 +418,13 @@ namespace SNIBypassGUI.Views
 
             // 如果配置文件不存在，则直接创建
             if (!File.Exists(INIPath)) EnsureFileExists(INIPath);
+
+            /*
+             * 版本兼容：
+             * 对 V4.5 及以下版本的兼容处理，
+             * 更换中文部分名为英文部分名。
+             */
+            RenameSection(["背景设置", "程序设置", "代理开关", "高级设置", "暂存数据"], [BackgroundSettings, ProgramSettings, ProxySettings, AdvancedSettings, TemporaryData], INIPath);
 
             Dictionary<string, List<string>> sectionKeys = [];
             foreach (var config in InitialConfigurations)
@@ -453,7 +456,7 @@ namespace SNIBypassGUI.Views
             {
                 foreach (var pair in DefaultBackgrounds) ExtractResourceToFile(pair.Value, Path.Combine(BackgroundDirectory, pair.Key));
             }
-            else if (isVersionTransition)
+            else
             {
                 // 将所有历史版本哈希值合并到哈希集以提升查找效率
                 var oldVersionHashes = new HashSet<string>(VersionToBackgroundHash.Values.SelectMany(hashArray => hashArray));
@@ -546,7 +549,7 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 从配置文件向 Hosts 文件更新
         /// </summary>
-        public void UpdateHostsFromConfig()
+        public async Task UpdateHostsFromConfig()
         {
             WriteLog("进入 UpdateHostsFromConfig。", LogLevel.Debug);
 
@@ -560,21 +563,24 @@ namespace SNIBypassGUI.Views
             WriteLog($"当前域名解析方法是否为DNS服务： {BoolToYesNo(IsDnsService)}，将更新的文件为 {FileShouldUpdate}。", LogLevel.Info);
             try
             {
-                // 移除所有条目部分，防止重复添加
-                RemoveHostsRecords();
-
-                // 遍历条目部分名称
-                foreach (SwitchItem pair in Switchs)
+                await Task.Run(async() =>
                 {
-                    if (StringToBool(INIRead(ProxySettings, pair.SectionName, INIPath)) == true)
-                    {
-                        // 条目部分名称对应的开关是打开的情况
-                        WriteLog($"{pair.SectionName} 的代理开关为开启，将添加记录。", LogLevel.Info);
+                    // 移除所有条目部分，防止重复添加
+                    await RemoveHostsRecords();
 
-                        // 添加该条目部分
-                        AppendToFile(FileShouldUpdate, (string[])pair.GetType().GetProperty(CorrespondingHosts).GetValue(pair));
+                    // 遍历条目部分名称
+                    foreach (SwitchItem pair in Switchs)
+                    {
+                        if (StringToBool(INIRead(ProxySettings, pair.SectionName, INIPath)) == true)
+                        {
+                            // 条目部分名称对应的开关是打开的情况
+                            WriteLog($"{pair.SectionName} 的代理开关为开启，将添加记录。", LogLevel.Info);
+
+                            // 添加该条目部分
+                            AppendToFile(FileShouldUpdate, (string[])pair.GetType().GetProperty(CorrespondingHosts).GetValue(pair));
+                        }
                     }
-                }
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -592,9 +598,9 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 移除 Hosts 中全部有关记录
         /// </summary>
-        public void RemoveHostsRecords()
+        public async Task RemoveHostsRecords()
         {
-            WriteLog("进入RemoveHosts。", LogLevel.Debug);
+            WriteLog("进入RemoveHostsRecords。", LogLevel.Debug);
 
             // 根据域名解析模式判断要更新的文件
             bool IsDnsService = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode;
@@ -603,12 +609,13 @@ namespace SNIBypassGUI.Views
             WriteLog($"当前域名解析方法是否为 DNS 服务： {BoolToYesNo(IsDnsService)}，将更新的文件为 {FileShouldUpdate}。", LogLevel.Info);
             try
             {
-                foreach (SwitchItem pair in Switchs)
+                await Task.Run(async() =>
                 {
-                    WriteLog($"移除 {pair.SectionName} 的记录部分。", LogLevel.Info);
-                    RemoveSection(FileShouldUpdate, pair.SectionName);
-                }
-                RestoreOriginalPixivDNS();
+                    List<string> sections = [];
+                    foreach (SwitchItem pair in Switchs) sections.Add(pair.SectionName);
+                    RemoveSection(FileShouldUpdate, [.. sections]);
+                    await RestoreOriginalPixivDNS();
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -620,13 +627,13 @@ namespace SNIBypassGUI.Views
                 WriteLog("遇到异常。", LogLevel.Error, ex);
                 MessageBox.Show($"更新 Hosts 文件时遇到异常。\r\n{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            WriteLog("完成 RemoveHosts。", LogLevel.Debug);
+            WriteLog("完成 RemoveHostsRecords。", LogLevel.Debug);
         }
 
         /// <summary>
         /// 从配置文件同步有关控件
         /// </summary>
-        private void SyncControlsFromConfig()
+        private async Task SyncControlsFromConfig()
         {
             WriteLog("进入 SyncControlsFromConfig。", LogLevel.Debug);
 
@@ -665,18 +672,20 @@ namespace SNIBypassGUI.Views
             else
             {
                 GUIDebugBtn.Content = "GUI调试：\n关";
-                StopTailProcesses(LogManager.GetLogPath());
+                DisableLog();
+                await StopTailProcesses(LogManager.GetLogPath());
             }
             if (StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath))) AcrylicDebugBtn.Content = "DNS调试：\n开";
             else
             {
                 AcrylicDebugBtn.Content = "DNS调试：\n关";
-                StopTailProcesses(AcrylicServiceUtils.GetLogPath());
+                await StopTailProcesses(AcrylicServiceUtils.GetLogPath());
             }
             if (!isDebugModeOn)
             {
-                StopTailProcesses(nginxAccessLogPath);
-                StopTailProcesses(nginxErrorLogPath);
+                await StopTailProcesses(nginxAccessLogPath);
+                await StopTailProcesses(nginxErrorLogPath);
+                ClearFolder(TempDirectory);
             }
             SwitchDomainNameResolutionMethodBtn.Content = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode ? "域名解析：\nDNS服务" : "域名解析：\n系统hosts";
             PixivIPPreferenceBtn.Content = StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) ? "Pixiv IP 优选：开" : "Pixiv IP 优选：关";
@@ -685,7 +694,7 @@ namespace SNIBypassGUI.Views
             SwitchDomainNameResolutionMethodBtn.IsEnabled = AcrylicDebugBtn.IsEnabled = GUIDebugBtn.IsEnabled = NginxLogTracingBtn.IsEnabled = isDebugModeOn;
 
             // 更新适配器列表及选中的适配器
-            UpdateAdaptersCombo();
+            await UpdateAdaptersCombo();
 
             WriteLog("完成 SyncControlsFromConfig。", LogLevel.Debug);
         }
@@ -721,55 +730,52 @@ namespace SNIBypassGUI.Views
             WriteLog("进入 SetLoopbackDNS。", LogLevel.Debug);
             try
             {
-                if (Adapter.IPv4DNSServer.Length == 0 || Adapter.IPv4DNSServer[0] != "127.0.0.1")
+                await Task.Run(async () =>
                 {
-                    // 指定适配器的首选DNS不是127.0.0.1的情况
-                    WriteLog($"开始配置网络适配器： {Adapter.FriendlyName}。", LogLevel.Info);
-
-                    // 在设置DNS之前记录DNS服务器是否为自动获取
-                    bool? isIPv4DNSAuto = Adapter.IsIPv4DNSAuto;
-                    bool? isIPv6DNSAuto = Adapter.IsIPv6DNSAuto;
-
-                    // 用于暂存DNS服务器地址
-                    List<string> PreviousDNSv4 = [], PreviousDNSv6 = [];
-
-                    // 遍历 DNS 地址并获取有效的 DNS
-                    if (isIPv4DNSAuto != true)
+                    if (Adapter.IPv4DNSServer.Length == 0 || Adapter.IPv4DNSServer[0] != "127.0.0.1")
                     {
-                        foreach (var dns in Adapter.IPv4DNSServer) if (IsValidIPv4(dns) && dns != "127.0.0.1") PreviousDNSv4.Add(dns);
+                        // 指定适配器的首选DNS不是127.0.0.1的情况
+                        WriteLog($"开始配置网络适配器： {Adapter.FriendlyName}。", LogLevel.Info);
+
+                        // 在设置DNS之前记录DNS服务器是否为自动获取
+                        bool? isIPv4DNSAuto = Adapter.IsIPv4DNSAuto;
+                        bool? isIPv6DNSAuto = Adapter.IsIPv6DNSAuto;
+
+                        // 用于暂存DNS服务器地址
+                        List<string> PreviousDNSv4 = [], PreviousDNSv6 = [];
+
+                        // 遍历 DNS 地址并获取有效的 DNS
+                        if (isIPv4DNSAuto != true) foreach (var dns in Adapter.IPv4DNSServer) if (IsValidIPv4(dns) && dns != "127.0.0.1") PreviousDNSv4.Add(dns);
+                        if (isIPv6DNSAuto != true) foreach (var dns in Adapter.IPv6DNSServer) if (IsValidIPv6(dns) && dns != "::1") PreviousDNSv6.Add(dns);
+
+                        // 将指定适配器的IPv4 DNS服务器设置为首选127.0.0.1
+                        SetIPv4DNS(Adapter, ["127.0.0.1"]);
+
+                        // 将指定适配器的IPv6 DNS服务器设置为首选::1
+                        await SetIPv6DNS(Adapter, ["::1"]);
+
+                        // 刷新适配器信息
+                        var refreshedAdapter = await RefreshAsync(Adapter);
+                        if (refreshedAdapter == null)
+                        {
+                            WriteLog("刷新适配器信息失败！", LogLevel.Error);
+                            return;
+                        }
+                        Adapter = refreshedAdapter;
+
+                        string ipv4Dns = Adapter.IPv4DNSServer.Length > 0 ? Adapter.IPv4DNSServer[0] : "未设置";
+                        string ipv6Dns = Adapter.IPv6DNSServer.Length > 0 ? Adapter.IPv6DNSServer[0] : "未设置";
+                        WriteLog($"指定网络适配器是否为自动获取 DNS： {BoolToYesNo(isIPv4DNSAuto)}", LogLevel.Info);
+                        WriteLog($"成功设置指定网络适配器的 IPv4 首选 DNS 为 {ipv4Dns}，IPv6 首选 DNS 为 {ipv6Dns}", LogLevel.Info);
+                        WriteLog($"将暂存的DNS服务器为： {MergeStrings("、", [.. PreviousDNSv4])}，{MergeStrings("、", [.. PreviousDNSv6])}", LogLevel.Debug);
+
+                        // 将停止服务时恢复适配器所需要的信息写入配置文件备用
+                        INIWrite(TemporaryData, PreviousIPv4DNS, MergeStrings(",", [.. PreviousDNSv4]), INIPath);
+                        INIWrite(TemporaryData, PreviousIPv6DNS, MergeStrings(",", [.. PreviousDNSv6]), INIPath);
+                        INIWrite(TemporaryData, IsPreviousIPv4DnsAutomatic, isIPv4DNSAuto.ToString(), INIPath);
+                        INIWrite(TemporaryData, IsPreviousIPv6DnsAutomatic, isIPv6DNSAuto.ToString(), INIPath);
                     }
-                    if (isIPv6DNSAuto != true)
-                    {
-                        foreach (var dns in Adapter.IPv6DNSServer) if (IsValidIPv6(dns) && dns != "::1") PreviousDNSv6.Add(dns);
-                    }
-
-                    // 将指定适配器的IPv4 DNS服务器设置为首选127.0.0.1
-                    SetIPv4DNS(Adapter, ["127.0.0.1"]);
-
-                    // 将指定适配器的IPv6 DNS服务器设置为首选::1
-                    await SetIPv6DNS(Adapter, ["::1"]);
-
-                    // 刷新适配器信息
-                    var refreshedAdapter = Refresh(Adapter);
-                    if (refreshedAdapter == null)
-                    {
-                        WriteLog("刷新适配器信息失败！", LogLevel.Error);
-                        return;
-                    }
-                    Adapter = refreshedAdapter;
-
-                    string ipv4Dns = Adapter.IPv4DNSServer.Length > 0 ? Adapter.IPv4DNSServer[0] : "未设置";
-                    string ipv6Dns = Adapter.IPv6DNSServer.Length > 0 ? Adapter.IPv6DNSServer[0] : "未设置";
-                    WriteLog($"指定网络适配器是否为自动获取 DNS： {BoolToYesNo(isIPv4DNSAuto)}", LogLevel.Info);
-                    WriteLog($"成功设置指定网络适配器的 IPv4 首选 DNS 为 {ipv4Dns}，IPv6 首选 DNS 为 {ipv6Dns}", LogLevel.Info);
-                    WriteLog($"将暂存的DNS服务器为： {MergeStrings("、", [.. PreviousDNSv4])}，{MergeStrings("、", [.. PreviousDNSv6])}", LogLevel.Debug);
-
-                    // 将停止服务时恢复适配器所需要的信息写入配置文件备用
-                    INIWrite(TemporaryData, PreviousIPv4DNS, MergeStrings(",", [.. PreviousDNSv4]), INIPath);
-                    INIWrite(TemporaryData, PreviousIPv6DNS, MergeStrings(",", [.. PreviousDNSv6]), INIPath);
-                    INIWrite(TemporaryData, IsPreviousIPv4DnsAutomatic, isIPv4DNSAuto.ToString(), INIPath);
-                    INIWrite(TemporaryData, IsPreviousIPv6DnsAutomatic, isIPv6DNSAuto.ToString(), INIPath);
-                }
+                });
             }
             catch (Exception ex)
             {
@@ -788,55 +794,58 @@ namespace SNIBypassGUI.Views
             WriteLog("进入 RestoreAdapterDNS。", LogLevel.Debug);
             try
             {
-                // 还原 IPv4 DNS
-                if (Adapter.IPv4DNSServer.Length > 0 && Adapter.IPv4DNSServer[0] == "127.0.0.1")
+                await Task.Run(async () =>
                 {
-                    if (StringToBool(INIRead(TemporaryData, IsPreviousIPv4DnsAutomatic, INIPath)))
+                    // 还原 IPv4 DNS
+                    if (Adapter.IPv4DNSServer.Length > 0 && Adapter.IPv4DNSServer[0] == "127.0.0.1")
                     {
-                        SetIPv4DNS(Adapter, []);
-                        WriteLog("活动网络适配器的 IPv4 DNS 成功设置为自动获取。", LogLevel.Info);
-                    }
-                    else
-                    {
-                        string PreviousDNSv4 = INIRead(TemporaryData, PreviousIPv4DNS, INIPath);
-                        if (string.IsNullOrEmpty(PreviousDNSv4))
+                        if (StringToBool(INIRead(TemporaryData, IsPreviousIPv4DnsAutomatic, INIPath)))
                         {
                             SetIPv4DNS(Adapter, []);
-                            WriteLog("指定网络适配器的 IPv4 DNS 成功设置为自动获取。", LogLevel.Info);
+                            WriteLog("活动网络适配器的 IPv4 DNS 成功设置为自动获取。", LogLevel.Info);
                         }
                         else
                         {
-                            SetIPv4DNS(Adapter, [.. SplitStrings(PreviousDNSv4, ",").Where(IsValidIPv4)]);
-                            Adapter = Refresh(Adapter);
-                            WriteLog($"指定网络适配器的 IPv4 DNS 成功设置为 {MergeStrings("、", Adapter.IPv4DNSServer)}。", LogLevel.Info);
+                            string PreviousDNSv4 = INIRead(TemporaryData, PreviousIPv4DNS, INIPath);
+                            if (string.IsNullOrEmpty(PreviousDNSv4))
+                            {
+                                SetIPv4DNS(Adapter, []);
+                                WriteLog("指定网络适配器的 IPv4 DNS 成功设置为自动获取。", LogLevel.Info);
+                            }
+                            else
+                            {
+                                SetIPv4DNS(Adapter, [.. SplitStrings(PreviousDNSv4, ",").Where(IsValidIPv4)]);
+                                Adapter = await RefreshAsync(Adapter);
+                                WriteLog($"指定网络适配器的 IPv4 DNS 成功设置为 {MergeStrings("、", Adapter.IPv4DNSServer)}。", LogLevel.Info);
+                            }
                         }
                     }
-                }
 
-                // 还原 IPv6 DNS
-                if (Adapter.IPv6DNSServer.Length > 0 && Adapter.IPv6DNSServer[0] == "::1")
-                {
-                    if (StringToBool(INIRead(TemporaryData, IsPreviousIPv6DnsAutomatic, INIPath)))
+                    // 还原 IPv6 DNS
+                    if (Adapter.IPv6DNSServer.Length > 0 && Adapter.IPv6DNSServer[0] == "::1")
                     {
-                        await SetIPv6DNS(Adapter, []);
-                        WriteLog("活动网络适配器的 IPv6 DNS 成功设置为自动获取。", LogLevel.Info);
-                    }
-                    else
-                    {
-                        string PreviousDNSv6 = INIRead(TemporaryData, PreviousIPv6DNS, INIPath);
-                        if (string.IsNullOrEmpty(PreviousDNSv6))
+                        if (StringToBool(INIRead(TemporaryData, IsPreviousIPv6DnsAutomatic, INIPath)))
                         {
                             await SetIPv6DNS(Adapter, []);
-                            WriteLog("指定网络适配器的 IPv6 DNS 成功设置为自动获取。", LogLevel.Info);
+                            WriteLog("活动网络适配器的 IPv6 DNS 成功设置为自动获取。", LogLevel.Info);
                         }
                         else
                         {
-                            await SetIPv6DNS(Adapter, [.. SplitStrings(PreviousDNSv6, ",").Where(IsValidIPv6)]);
-                            Adapter = Refresh(Adapter);
-                            WriteLog($"指定网络适配器的 IPv6 DNS 成功设置为 {MergeStrings("、", Adapter.IPv6DNSServer)}。", LogLevel.Info);
+                            string PreviousDNSv6 = INIRead(TemporaryData, PreviousIPv6DNS, INIPath);
+                            if (string.IsNullOrEmpty(PreviousDNSv6))
+                            {
+                                await SetIPv6DNS(Adapter, []);
+                                WriteLog("指定网络适配器的 IPv6 DNS 成功设置为自动获取。", LogLevel.Info);
+                            }
+                            else
+                            {
+                                await SetIPv6DNS(Adapter, [.. SplitStrings(PreviousDNSv6, ",").Where(IsValidIPv6)]);
+                                Adapter = await RefreshAsync(Adapter);
+                                WriteLog($"指定网络适配器的 IPv6 DNS 成功设置为 {MergeStrings("、", Adapter.IPv6DNSServer)}。", LogLevel.Info);
+                            }
                         }
                     }
-                }
+                });
             }
             catch (Exception ex)
             {
@@ -849,7 +858,7 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 启动主服务
         /// </summary>
-        public void StartNginx()
+        public async Task StartNginx()
         {
             WriteLog("进入 StartNginx。", LogLevel.Debug);
             try
@@ -861,7 +870,10 @@ namespace SNIBypassGUI.Views
                     WriteLog("检测到系统 80 或 443 端口被占用。", LogLevel.Warning);
                     if (MessageBox.Show($"检测到系统 80 或 443 端口被占用，主服务可能无法正常运行，但仍然会尝试继续启动。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您的主服务运行后自动停止或遇到80端口被占用的提示时, useShellExecute: true);
                 }
-                StartProcess(nginxPath, workingDirectory: NginxDirectory, createNoWindow: true);
+                await Task.Run(() =>
+                {
+                    StartProcess(nginxPath, workingDirectory: NginxDirectory, createNoWindow: true);
+                });
             }
             catch (Exception ex)
             {
@@ -885,7 +897,7 @@ namespace SNIBypassGUI.Views
                 if (!IsProcessRunning(NginxProcessName))
                 {
                     WriteLog("主服务未运行，将启动主服务。", LogLevel.Info);
-                    StartNginx();
+                    await StartNginx();
                 }
 
                 if (!IsAcrylicServiceRunning())
@@ -898,9 +910,9 @@ namespace SNIBypassGUI.Views
                         if (IsAcrylicServiceHitLogEnabled())
                         {
                             EnableAcrylicServiceHitLog();
-                            TailFile(AcrylicServiceUtils.GetLogPath(), "命中日志");
-                        }                       
-                        StartAcrylicService();
+                            TailFile(AcrylicServiceUtils.GetLogPath(), "HitLog");
+                        }
+                        await StartAcrylicService();
                     }
                     catch (Exception ex)
                     {
@@ -911,7 +923,7 @@ namespace SNIBypassGUI.Views
 
                 // 遍历所有适配器
                 NetworkAdapter activeAdapter = null;
-                foreach (var adapter in GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly))
+                foreach (var adapter in await GetNetworkAdaptersAsync(ScopeNeeded.FriendlyNameNotNullOnly))
                 {
                     if (adapter.FriendlyName == AdaptersCombo.SelectedItem?.ToString())
                     {
@@ -939,7 +951,7 @@ namespace SNIBypassGUI.Views
                 if (!IsProcessRunning(NginxProcessName))
                 {
                     WriteLog("主服务未运行，将启动主服务。", LogLevel.Info);
-                    StartNginx();
+                    await StartNginx();
                 }
             }
 
@@ -963,7 +975,7 @@ namespace SNIBypassGUI.Views
                 ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 try
                 {
-                    KillProcess(NginxProcessName);
+                    await Task.Run(() => KillProcess(NginxProcessName));
                 }
                 catch (Exception ex)
                 {
@@ -979,8 +991,8 @@ namespace SNIBypassGUI.Views
                 ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
                 try
                 {
-                    if (IsAcrylicServiceHitLogEnabled()) StopTailProcesses(AcrylicServiceUtils.GetLogPath());
-                    StopAcrylicService();
+                    if (IsAcrylicServiceHitLogEnabled()) await StopTailProcesses(AcrylicServiceUtils.GetLogPath());
+                    await Task.Run(() => StopAcrylicService());
                 }
                 catch (Exception ex)
                 {
@@ -993,7 +1005,7 @@ namespace SNIBypassGUI.Views
             UpdateServiceStatus();
 
             // 获取所有网络适配器
-            List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
+            List<NetworkAdapter> adapters = await GetNetworkAdaptersAsync(ScopeNeeded.FriendlyNameNotNullOnly);
             NetworkAdapter activeAdapter = null;
 
             // 遍历所有适配器
@@ -1012,11 +1024,11 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 刷新状态按钮点击事件
         /// </summary>
-        private void RefreshBtn_Click(object sender, RoutedEventArgs e)
+        private async void RefreshBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 RefreshBtn_Click。", LogLevel.Debug);
             UpdateServiceStatus();
-            UpdateAdaptersCombo();
+            await UpdateAdaptersCombo();
             WriteLog("完成 RefreshBtn_Click。", LogLevel.Debug);
         }
 
@@ -1041,7 +1053,7 @@ namespace SNIBypassGUI.Views
             else
             {
                 // 从配置文件更新 Hosts
-                UpdateHostsFromConfig();
+                await UpdateHostsFromConfig();
 
                 // 启动服务
                 await StartService();
@@ -1066,11 +1078,10 @@ namespace SNIBypassGUI.Views
             WriteLog("进入 StopBtn_Click。", LogLevel.Debug);
 
             // 禁用按钮，防手重复停止
-            StartBtn.IsEnabled = false;
-            StopBtn.IsEnabled = false;
+            StartBtn.IsEnabled = StopBtn.IsEnabled = false;
 
             // 移除所有条目以消除对系统的影响
-            RemoveHostsRecords();
+            await RemoveHostsRecords();
 
             // 停止服务
             await StopService();
@@ -1207,13 +1218,13 @@ namespace SNIBypassGUI.Views
                 RefreshNotification();
 
                 // 移除所有条目以消除对系统的影响
-                RemoveHostsRecords();
+                await RemoveHostsRecords();
 
                 // 停止服务
                 await StopService();
 
                 // 停止所有文件追踪进程
-                if (stopTail) StopTailProcesses();
+                if (stopTail) await StopTailProcesses();
 
                 // 刷新DNS缓存
                 FlushDNSCache();
@@ -1223,9 +1234,6 @@ namespace SNIBypassGUI.Views
                 INIWrite(TemporaryData, PreviousIPv6DNS, "", INIPath);
                 INIWrite(TemporaryData, IsPreviousIPv4DnsAutomatic, "true", INIPath);
                 INIWrite(TemporaryData, IsPreviousIPv6DnsAutomatic, "true", INIPath);
-
-                // 删除启动追踪的临时批处理文件
-                TryDelete(RunTailBatFiles);
 
                 // 退出程序
                 Environment.Exit(0);
@@ -1435,31 +1443,37 @@ namespace SNIBypassGUI.Views
             await StopService();
             CleanBtn.Content = "清理中…";
 
-            try
+            await Task.Run(async() =>
             {
-                string[] tempfiles = [nginxAccessLogPath, nginxErrorLogPath, AcrylicCacheFilePath, AcrylicServiceUtils.GetLogPath()]; 
-                foreach (var path in tempfiles)
+                try
                 {
-                    StopTailProcesses(path);
-                    TryDelete(path);
+                    string[] tempfiles = [nginxAccessLogPath, nginxErrorLogPath, AcrylicCacheFilePath, AcrylicServiceUtils.GetLogPath()];
+                    foreach (var path in tempfiles)
+                    {
+                        await StopTailProcesses(path);
+                        TryDelete(path);
+                    }
+                    if (IsLogEnabled)
+                    {
+                        WriteLog("GUI 调试开启，将不会删除调试日志。", LogLevel.Info);
+                        Dispatcher.Invoke(() =>
+                        {
+                            MessageBox.Show("GUI 调试开启时将不会删除调试日志，请尝试关闭 GUI 调试。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                        });
+                        foreach (var file in Directory.GetFiles(LogDirectory)) if (file != LogManager.GetLogPath()) TryDelete(file);
+                    }
+                    else
+                    {
+                        await StopTailProcesses(LogManager.GetLogPath());
+                        ClearFolder(LogDirectory);
+                    }
                 }
-                if (IsLogEnabled)
+                catch (Exception ex)
                 {
-                    WriteLog("GUI 调试开启，将不会删除调试日志。", LogLevel.Info);
-                    MessageBox.Show("GUI 调试开启时将不会删除调试日志，请尝试关闭 GUI 调试。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                    foreach (var file in Directory.GetFiles(LogDirectory)) if (file != LogManager.GetLogPath()) TryDelete(file);
+                    WriteLog("尝试清理临时文件时遇到异常。", LogLevel.Error, ex);
+                    MessageBox.Show($"清理临时文件时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
-                else
-                {
-                    StopTailProcesses(LogManager.GetLogPath());
-                    ClearFolder(LogDirectory);
-                }
-            }
-            catch (Exception ex)
-            {
-                WriteLog("尝试清理临时文件时遇到异常。", LogLevel.Error, ex);
-                MessageBox.Show($"清理临时文件时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            });
 
             WriteLog("服务运行日志及缓存清理完成。", LogLevel.Info);
 
@@ -1474,20 +1488,27 @@ namespace SNIBypassGUI.Views
 
             WriteLog("完成 CleanBtn_Click。", LogLevel.Debug);
         }
-
+        
         // 主服务日志追踪按钮点击事件
-        private void NginxLogTracing_Click(object sender, RoutedEventArgs e)
+        private async void NginxLogTracing_Click(object sender, RoutedEventArgs e)
         {
-            StopTailProcesses(nginxAccessLogPath);
-            StopTailProcesses(nginxErrorLogPath);
-            TailFile(nginxAccessLogPath, "访问日志");
-            TailFile(nginxErrorLogPath, "错误日志");
+            WriteLog("进入 NginxLogTracing_Click。", LogLevel.Debug);
+            NginxLogTracingBtn.IsEnabled = false;
+            await Task.Run(async() =>
+            {
+                await StopTailProcesses(nginxAccessLogPath);
+                await StopTailProcesses(nginxErrorLogPath);
+                TailFile(nginxAccessLogPath, "AccessLog");
+                TailFile(nginxErrorLogPath, "ErrorLog");
+            });
+            NginxLogTracingBtn.IsEnabled = true;
+            WriteLog("完成 NginxLogTracing_Click。", LogLevel.Debug);
         }
 
         /// <summary>
         /// 选项卡发生改变事件
         /// </summary>
-        private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             WriteLog("进入 TabControl_SelectionChanged。", LogLevel.Debug);
             if (e.OriginalSource != sender) return;
@@ -1508,14 +1529,14 @@ namespace SNIBypassGUI.Views
                         tempFilesSizeUpdateTimer?.Stop();
                         break;
                     case "开关列表":
-                        SyncControlsFromConfig();
+                        await SyncControlsFromConfig();
                         controlsStatusUpdateTimer?.Stop();
                         serviceStatusUpdateTimer?.Stop();
                         tempFilesSizeUpdateTimer?.Stop();
                         break;
                     case "设置":
                         UpdateTempFilesSize();
-                        SyncControlsFromConfig();
+                        await SyncControlsFromConfig();
                         controlsStatusUpdateTimer?.Start();
                         tempFilesSizeUpdateTimer?.Start();
                         serviceStatusUpdateTimer?.Stop();
@@ -1666,7 +1687,7 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 应用更改按钮点击事件
         /// </summary>
-        private void ApplyBtn_Click(object sender, RoutedEventArgs e)
+        private async void ApplyBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 ApplyBtn_Click。", LogLevel.Debug);
 
@@ -1680,7 +1701,7 @@ namespace SNIBypassGUI.Views
 
             try
             {
-                StopAcrylicService();
+                await StopAcrylicService();
             }
             catch (Exception ex)
             {
@@ -1692,9 +1713,9 @@ namespace SNIBypassGUI.Views
             UpdateConfigFromToggleButtons();
 
             // 从配置文件同步到 Hosts
-            UpdateHostsFromConfig();
+            await UpdateHostsFromConfig();
 
-            if (WasDnsServiceRunning) StartAcrylicService();
+            if (WasDnsServiceRunning) await StartAcrylicService();
             RemoveAcrylicCacheFile();
 
             // 刷新DNS缓存
@@ -1707,11 +1728,11 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 取消更改按钮点击事件
         /// </summary>
-        private void UnchangeBtn_Click(object sender, RoutedEventArgs e)
+        private async void UnchangeBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 UnchangeBtn_Click。", LogLevel.Debug);
             ApplyBtn.IsEnabled = UnchangeBtn.IsEnabled = false;
-            SyncControlsFromConfig();
+            await SyncControlsFromConfig();
             WriteLog("完成 UnchangeBtn_Click。", LogLevel.Debug);
         }
 
@@ -1817,6 +1838,7 @@ namespace SNIBypassGUI.Views
             if (ContainsArgument(cliargs, CleanUpArgument))
             {
                 WriteLog("程序启动为清理模式，还原适配器设置后自动退出。", LogLevel.Info);
+                Hide();
                 Exit();
             }
 
@@ -1837,7 +1859,7 @@ namespace SNIBypassGUI.Views
             foreach (SwitchItem item in Switchs) if (!ExistingKeys.Contains(item.SectionName)) INIWrite(ProxySettings, item.SectionName, "true", INIPath);
 
             // 更新信息
-            SyncControlsFromConfig();
+            await SyncControlsFromConfig();
 
             // 更新服务状态
             UpdateServiceStatus();
@@ -1891,7 +1913,11 @@ namespace SNIBypassGUI.Views
                 // 尝试获取已存在的同名任务
                 Microsoft.Win32.TaskScheduler.Task existingTask = ts.GetTask(TaskName);
 
-                // 如果存在则说明旧版本中设置为开机启动，则平滑过渡
+                /*
+                 * 版本兼容：
+                 * 对 V4.2 及以下版本的兼容处理，
+                 * 旧版本中设置为开机启动的平滑过渡处理。
+                 */
                 if (existingTask != null)
                 {
                     // 获取任务的所有操作
@@ -1917,7 +1943,7 @@ namespace SNIBypassGUI.Views
         /// <summary>
         ///控件状态更新计时器触发事件
         /// </summary>
-        private void ControlsStatusUpdateTimer_Tick(object sender, EventArgs e) => SyncControlsFromConfig();
+        private async void ControlsStatusUpdateTimer_Tick(object sender, EventArgs e) => await SyncControlsFromConfig();
 
         /// <summary>
         /// 临时文件大小更新计时器触发事件
@@ -1981,49 +2007,50 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 调试模式按钮点击事件
         /// </summary>
-        private void DebugModeBtn_Click(object sender, RoutedEventArgs e)
+        private async void DebugModeBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 DebugModeBtn_Click。", LogLevel.Debug);
             if (!StringToBool(INIRead(AdvancedSettings, DebugMode, INIPath)) && MessageBox.Show("调试模式仅供测试和开发使用，强烈建议您在没有开发者明确指示的情况下不要随意打开。\r\n是否打开调试模式？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, DebugMode, "true", INIPath);
             else
             {
+                DisableLog();
                 INIWrite(AdvancedSettings, DebugMode, "false", INIPath);
                 INIWrite(AdvancedSettings, GUIDebug, "false", INIPath);
                 INIWrite(AdvancedSettings, DomainNameResolutionMethod, DnsServiceMode, INIPath);
                 INIWrite(AdvancedSettings, AcrylicDebug, "false", INIPath);
             }
-            SyncControlsFromConfig();
+            await SyncControlsFromConfig();
             WriteLog("完成 DebugModeBtn_Click。", LogLevel.Debug);
         }
 
         /// <summary>
         /// 域名解析模式按钮点击事件
         /// </summary>
-        private void SwitchDomainNameResolutionMethodBtn_Click(object sender, RoutedEventArgs e)
+        private async void SwitchDomainNameResolutionMethodBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
             if (INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) != SystemHostsMode && MessageBox.Show("在 DNS 服务无法正常启动的情况下，系统 Hosts 可以作为备选方案使用，\r\n但具有一定局限性（例如 pixivFANBOX 的作者页面需要手动向系统 Hosts 添加记录）。\r\n是否切换域名解析模式为系统 Hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, DomainNameResolutionMethod, SystemHostsMode, INIPath);
             else INIWrite(AdvancedSettings, DomainNameResolutionMethod, DnsServiceMode, INIPath);
-            SyncControlsFromConfig();
+            await SyncControlsFromConfig();
             WriteLog("完成 SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
         }
 
         /// <summary>
         /// DNS 调试按钮点击事件
         /// </summary>
-        private void AcrylicDebugBtn_Click(object sender, RoutedEventArgs e)
+        private async void AcrylicDebugBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 AcrylicDebugBtn_Click。", LogLevel.Debug);
             if (!StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath)) && MessageBox.Show("开启 DNS 服务调试可以诊断某些问题，重启服务后生效。\r\n请在重启直到出现问题后，将有关信息提交给开发者。\r\n是否打开 DNS 服务调试？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, AcrylicDebug, "true", INIPath);
             else INIWrite(AdvancedSettings, AcrylicDebug, "false", INIPath);
-            SyncControlsFromConfig();
+            await SyncControlsFromConfig();
             WriteLog("完成 AcrylicDebugBtn_Click。", LogLevel.Debug);
         }
 
         /// <summary>
         /// GUI 调试按钮点击事件
         /// </summary>
-        private void GUIDebugBtn_Click(object sender, RoutedEventArgs e)
+        private async void GUIDebugBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 GUIDebugBtn_Click。", LogLevel.Debug);
             if (!StringToBool(INIRead(AdvancedSettings, GUIDebug, INIPath)) && MessageBox.Show("开启 GUI 调试模式可以更准确地诊断问题，但生成日志会产生额外的性能开销，请在不需要时关闭。\r\n开启后将自动关闭程序，重启程序后生效。\r\n请在重启直到程序出现问题后，将有关信息提交给开发者。\r\n是否打开 GUI 调试模式并重启？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
@@ -2037,7 +2064,7 @@ namespace SNIBypassGUI.Views
                 DisableLog();
                 INIWrite(AdvancedSettings, GUIDebug, "false", INIPath);
             }
-            SyncControlsFromConfig();
+            await SyncControlsFromConfig();
             WriteLog("完成 GUIDebugBtn_Click。", LogLevel.Debug);
         }
 
@@ -2075,11 +2102,9 @@ namespace SNIBypassGUI.Views
                     StopBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
                     // 移除系统 Hosts 记录
-                    foreach (SwitchItem pair in Switchs)
-                    {
-                        WriteLog($"移除 {pair.SectionName} 的记录部分。", LogLevel.Info);
-                        RemoveSection(SystemHosts, pair.SectionName);
-                    }
+                    List<string> sections = [];
+                    foreach (SwitchItem pair in Switchs) sections.Add(pair.SectionName);
+                    RemoveSection(SystemHosts, [.. sections]);
 
                     // 删除任务计划
                     using TaskService ts = new();
@@ -2087,7 +2112,7 @@ namespace SNIBypassGUI.Views
                     if (existingTask != null) ts.RootFolder.DeleteTask(TaskName);
 
                     // 回退网络适配器有关设置
-                    List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
+                    List<NetworkAdapter> adapters = await GetNetworkAdaptersAsync(ScopeNeeded.FriendlyNameNotNullOnly);
                     NetworkAdapter activeAdapter = null;
                     foreach (var adapter in adapters)
                     {
@@ -2101,7 +2126,7 @@ namespace SNIBypassGUI.Views
                     FlushDNSCache();
 
                     // 停止所有文件追踪
-                    StopTailProcesses();
+                    await StopTailProcesses();
 
                     // 卸载 DNS 服务
                     await UninstallAcrylicService();
@@ -2110,7 +2135,8 @@ namespace SNIBypassGUI.Views
                     BackgroundService.Cleanup();
 
                     // 删除数据目录
-                    Directory.Delete(dataDirectory, true);
+                    TryDelete(dataDirectory);
+                    TryDelete(TempDirectory);
 
                     // 创建批处理文件并删除自身
                     string bat = $"@echo off{Environment.NewLine}" +
@@ -2169,15 +2195,15 @@ namespace SNIBypassGUI.Views
         /// <summary>
         /// 自动获取活动适配器按钮点击事件
         /// </summary>
-        private void GetActiveAdapterBtn_Click(object sender, RoutedEventArgs e)
+        private async void GetActiveAdapterBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 GetActiveAdapterBtn_Click。", LogLevel.Debug);
-            UpdateAdaptersCombo();
+            await UpdateAdaptersCombo();
             uint? interfaceIndex = GetDefaultRouteInterfaceIndex();
             NetworkAdapter activeAdapter = null;
             if (interfaceIndex.HasValue)
             {
-                List<NetworkAdapter> adapters = GetNetworkAdapters(ScopeNeeded.FriendlyNameNotNullOnly);
+                List<NetworkAdapter> adapters = await GetNetworkAdaptersAsync(ScopeNeeded.FriendlyNameNotNullOnly);
                 activeAdapter = adapters.FirstOrDefault(a => a.InterfaceIndex == interfaceIndex.Value);
             }
             if (activeAdapter != null && AdaptersCombo.Items.OfType<string>().Contains(activeAdapter.FriendlyName))
@@ -2242,10 +2268,10 @@ namespace SNIBypassGUI.Views
                 }
                 else
                 {
-                    await Task.Run(() =>
+                    await Task.Run(async() =>
                     {
                         INIWrite(ProgramSettings, PixivIPPreference, "false", INIPath);
-                        RestoreOriginalPixivDNS();
+                        await RestoreOriginalPixivDNS();
                     });
                 }
             }
@@ -2261,7 +2287,7 @@ namespace SNIBypassGUI.Views
             }
             finally
             {
-                SyncControlsFromConfig();
+                await SyncControlsFromConfig();
                 PixivIPPreferenceBtn.IsEnabled = true;
             }
             WriteLog("完成 PixivIPPreferenceBtn_Click。", LogLevel.Debug);

@@ -2,30 +2,30 @@
 {
     public static class ConfigConsts
     {
-        public static readonly string BackgroundSettings = "背景设置";
-        public static readonly string ChangeInterval = "ChangeInterval";
-        public static readonly string ChangeMode = "ChangeMode";
-        public static readonly string SequentialMode = "Sequential";
-        public static readonly string RandomMode = "Random";
-        public static readonly string ImageOrder = "ImageOrder";
-        public static readonly string ProgramSettings = "程序设置";
-        public static readonly string ThemeMode = "ThemeMode";
-        public static readonly string LightMode = "Light";
-        public static readonly string DarkMode = "Dark";
-        public static readonly string SpecifiedAdapter = "SpecifiedAdapter";
-        public static readonly string PixivIPPreference = "PixivIPPreference";
-        public static readonly string ProxySettings = "代理开关";
-        public static readonly string AdvancedSettings = "高级设置";
-        public static readonly string DebugMode = "DebugMode";
-        public static readonly string GUIDebug = "GUIDebug";
-        public static readonly string DomainNameResolutionMethod = "DomainNameResolutionMethod";
-        public static readonly string DnsServiceMode = "DnsService";
-        public static readonly string SystemHostsMode = "SystemHosts";
-        public static readonly string AcrylicDebug = "AcrylicDebug";
-        public static readonly string TemporaryData = "暂存数据";
-        public static readonly string PreviousIPv4DNS = "PreviousIPv4DNS";
-        public static readonly string PreviousIPv6DNS = "PreviousIPv6DNS";
-        public static readonly string IsPreviousIPv4DnsAutomatic = "IsPreviousIPv4DnsAutomatic";
-        public static readonly string IsPreviousIPv6DnsAutomatic = "IsPreviousIPv6DnsAutomatic";
+        public const string BackgroundSettings = "BackgroundSettings";
+        public const string ChangeInterval = "ChangeInterval";
+        public const string ChangeMode = "ChangeMode";
+        public const string SequentialMode = "Sequential";
+        public const string RandomMode = "Random";
+        public const string ImageOrder = "ImageOrder";
+        public const string ProgramSettings = "ProgramSettings";
+        public const string ThemeMode = "ThemeMode";
+        public const string LightMode = "Light";
+        public const string DarkMode = "Dark";
+        public const string SpecifiedAdapter = "SpecifiedAdapter";
+        public const string PixivIPPreference = "PixivIPPreference";
+        public const string ProxySettings = "ProxySettings";
+        public const string AdvancedSettings = "AdvancedSettings";
+        public const string DebugMode = "DebugMode";
+        public const string GUIDebug = "GUIDebug";
+        public const string DomainNameResolutionMethod = "DomainNameResolutionMethod";
+        public const string DnsServiceMode = "DnsService";
+        public const string SystemHostsMode = "SystemHosts";
+        public const string AcrylicDebug = "AcrylicDebug";
+        public const string TemporaryData = "TemporaryData";
+        public const string PreviousIPv4DNS = "PreviousIPv4DNS";
+        public const string PreviousIPv6DNS = "PreviousIPv6DNS";
+        public const string IsPreviousIPv4DnsAutomatic = "IsPreviousIPv4DnsAutomatic";
+        public const string IsPreviousIPv6DnsAutomatic = "IsPreviousIPv6DnsAutomatic";
     }
 }

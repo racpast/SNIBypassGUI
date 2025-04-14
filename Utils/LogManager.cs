@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.PathConsts;
 using static SNIBypassGUI.Utils.FileUtils;

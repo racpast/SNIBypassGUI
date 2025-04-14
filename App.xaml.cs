@@ -25,7 +25,7 @@ namespace SNIBypassGUI
                 string logPath = GetLogPath();
 
                 // 实时追踪日志文件
-                TailFile(logPath, "GUI调试", true);
+                TailFile(logPath, "GUIDebug", true);
 
                 // 启用日志
                 EnableLog();

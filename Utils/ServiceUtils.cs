@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Threading;
 using System.Runtime.InteropServices;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.WinApiUtils;
@@ -223,7 +224,7 @@ namespace SNIBypassGUI.Utils
             int elapsed = 0;
             while (status.dwCurrentState != SERVICE_STOPPED && elapsed < timeout)
             {
-                System.Threading.Thread.Sleep(sleepInterval);
+                Thread.Sleep(sleepInterval);
                 elapsed += sleepInterval;
                 if (!QueryServiceStatus(svc, ref status))
                 {

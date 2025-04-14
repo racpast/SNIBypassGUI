@@ -6,8 +6,8 @@ using System.Windows;
 // 有关程序集的一般信息由以下
 // 控制。更改这些特性值可修改
 // 与程序集关联的信息。
-[assembly: AssemblyTitle("一个通过 Nginx 反向代理实现绕过 SNI 阻断的工具。")]
-[assembly: AssemblyDescription("https://github.com/racpast/SNIBypassGUI")]
+[assembly: AssemblyTitle("SNIBypassGUI")]
+[assembly: AssemblyDescription("【一个通过 Nginx 反向代理实现绕过 SNI 阻断的工具】https://github.com/racpast/SNIBypassGUI")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Racpast")]
 [assembly: AssemblyProduct("SNIBypassGUI")]
@@ -50,6 +50,6 @@ using System.Windows;
 //可以指定所有这些值，也可以使用“生成号”和“修订号”的默认值
 //通过使用 "*"，如下所示:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("4.5.0.0")]
-[assembly: AssemblyFileVersion("4.5.0.0")]
+[assembly: AssemblyVersion("4.6.0.0")]
+[assembly: AssemblyFileVersion("4.6.0.0")]
 [assembly: NeutralResourcesLanguage("")]

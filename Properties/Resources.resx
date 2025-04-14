@@ -154,13 +154,13 @@
   <data name="tail" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\tail.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="_118532760" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\118532760.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="_125838182" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\125838182.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="_125521081" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\125521081.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="_5go1w8" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\5go1w8.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="_97051135" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\97051135.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="_7pv9go" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\7pv9go.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>

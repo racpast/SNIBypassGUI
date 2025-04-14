@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using static SNIBypassGUI.Utils.LogManager;
 
 namespace SNIBypassGUI.Utils
@@ -26,6 +27,11 @@ namespace SNIBypassGUI.Utils
             }
         }
 
+        /// <summary>
+        /// 获取进程数量
+        /// </summary>
+        /// <param name="processName">进程名称</param>
+        /// <returns>找到的进程数</returns>
         public static int GetProcessCount(string processName)
         {
             try
@@ -123,7 +129,6 @@ namespace SNIBypassGUI.Utils
             {
                 if (process == null || process.HasExited) return;
 
-                // 判断是否为 GUI 程序
                 if (!process.StartInfo.UseShellExecute && process.StartInfo.CreateNoWindow)
                 {
                     int waited = 0;
@@ -144,7 +149,6 @@ namespace SNIBypassGUI.Utils
                 }
                 else
                 {
-                    // GUI 程序，尝试等待空闲
                     if (!process.WaitForInputIdle(timeout))
                     {
                         WriteLog($"进程 {process.ProcessName} 未进入空闲状态，可能是控制台程序。", LogLevel.Warning);
@@ -159,6 +163,11 @@ namespace SNIBypassGUI.Utils
             {
                 WriteLog($"等待进程 {process.ProcessName} 初始化时发生异常。", LogLevel.Error, ex);
             }
+        }
+
+        public static Task<bool> WaitForExitAsync(this Process process, int timeout)
+        {
+            return Task.Run(() => process.WaitForExit(timeout));
         }
     }
 }

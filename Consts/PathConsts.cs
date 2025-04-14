@@ -36,6 +36,7 @@ namespace SNIBypassGUI.Consts
         public static readonly string AcrylicHostsAll = Path.Combine(dataDirectory, "AcrylicHosts_All.dat");
         public static readonly string SystemHostsAll = Path.Combine(dataDirectory, "SystemHosts_All.dat");
         public static readonly string TailExePath = Path.Combine(dataDirectory, "tail.exe");
+        public static readonly string TempDirectory = Path.Combine(Path.GetTempPath(), "SNIBypassGUI");
         public static readonly string NewVersionExe = Path.Combine(dataDirectory, "SNIBypassGUI.exe");
         public static readonly string CurrentExe = Assembly.GetExecutingAssembly().Location;
         public static readonly string OldVersionExe = Path.Combine(currentDirectory, "SNIBypassGUI.exe.old");

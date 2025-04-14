@@ -84,6 +84,9 @@
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BouncyCastle.Crypto, Version=1.9.0.0, Culture=neutral, PublicKeyToken=0e99375e54769942, processorArchitecture=MSIL">
+      <HintPath>packages\Portable.BouncyCastle.1.9.0\lib\net40\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
     <Reference Include="Costura, Version=6.0.0.0, Culture=neutral, PublicKeyToken=9919ef960d84173d, processorArchitecture=MSIL">
       <HintPath>packages\Costura.Fody.6.0.0\lib\netstandard2.0\Costura.dll</HintPath>
     </Reference>
@@ -211,6 +214,9 @@
     <None Include="Resources\imgs\97051135.jpg" />
     <None Include="Resources\imgs\118532760.jpg" />
     <None Include="Resources\imgs\125521081.jpg" />
+    <None Include="Resources\imgs\5go1w8.jpg" />
+    <None Include="Resources\imgs\7pv9go.jpg" />
+    <None Include="Resources\imgs\125838182.jpg" />
     <Content Include="Resources\libs\ImageCropper.dll" />
     <Compile Include="Utils\AcrylicServiceUtils.cs" />
     <Compile Include="Utils\CertificateUtils.cs" />
