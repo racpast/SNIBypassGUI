@@ -172,5 +172,6 @@ https://github.com/user-attachments/assets/6224d899-e495-4b24-b828-5634ac5db853
   </tr>
 </table>
 
-## 🧪 任何 Bug 或建议请提交至 issue 或发送邮件至 racpast@gmail.com 。
+## ❤️ 赞助我请到[爱发电](https://afdian.com/a/racpast)，感谢！
+## 🧪 任何 Bug 或建议请提交至 issue 或发送邮件至 racpast@gmail.com。
 ## 👥 QQ 交流群：946813204 ( [SNIBypassGUI](https://github.com/racpast/SNIBypassGUI) 兼 _[Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI)_ 交流群)。
