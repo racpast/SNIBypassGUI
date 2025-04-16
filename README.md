@@ -8,13 +8,13 @@
 https://github.com/user-attachments/assets/6224d899-e495-4b24-b828-5634ac5db853
 ## ✨ 特色预览
 ### 💻 多站点可开关支持
-![image](https://snibypassgui.netlib.re/images/advantages/1-1.webp)
+![image](https://github.com/user-attachments/assets/b39dc2fd-dbe9-47df-881d-3c57cb44ed60)
 ### 📰 可视化管理
-![image](https://snibypassgui.netlib.re/images/advantages/2-2.webp)
+![image](https://github.com/user-attachments/assets/e4354ad4-0e99-4d5d-9d11-67a0900ccddd)
 ### 🌙 深色主题
-![image](https://snibypassgui.netlib.re/images/advantages/3-1.webp)
+![image](https://github.com/user-attachments/assets/f02ff86a-eeb7-4563-ae0d-a14d21b5c0e0)
 ### 🧩 一键更新与更多设置
-![image](https://snibypassgui.netlib.re/images/advantages/2-3.webp)
+![image](https://github.com/user-attachments/assets/a3bc0e3d-e9f2-4e9d-910d-a332bc4cd2a5)
 ### 📦️ 体积小巧
 ![image](https://snibypassgui.netlib.re/images/advantages/5-2.webp)
 ## 📚 维基百科 
