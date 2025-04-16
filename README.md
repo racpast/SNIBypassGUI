@@ -1,4 +1,5 @@
 ![social_compressed](https://github.com/user-attachments/assets/2cefa9c4-413f-4a61-91ee-891f3896b9d3)
+![Alt](https://repobeats.axiom.co/api/embed/bde449dbfa2e8d400b8962b10d9b468f7b49cd6f.svg "Repobeats analytics image")
 ## 📝 简介
 一个**通过 Nginx 反向代理实现绕过 SNI 阻断** 的工具，基于 [Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI) 进行功能扩展与改进。
 ## ☕ 使用演示（ 一键完成 Gmail、Discord、Facebook、Pixiv、Wikipedia、Telegram、YouTube 等的直连 ）
