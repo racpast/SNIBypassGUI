@@ -668,24 +668,56 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 将 Base64 转换为图片文件，并返回图片路径
+        /// 将 Base64 编码的字符串转换为 BitmapImage 对象。
         /// </summary>
-        public static string SaveBase64AsImage(string base64, string title, string basepath)
+        /// <param name="base64String">包含图像数据的 Base64 字符串。</param>
+        /// <returns>一个 BitmapImage 对象，如果转换失败则返回 null。</returns>
+        public static BitmapImage Base64ToBitmapImage(string base64String)
         {
-            if (string.IsNullOrEmpty(base64)) return string.Empty;
-
-            string filePath = Path.Combine(basepath, $"{title}.png");
-            byte[] imageBytes = Convert.FromBase64String(base64);
+            if (string.IsNullOrEmpty(base64String))
+            {
+                WriteLog("输入的 Base64 字符串为空。", LogLevel.Warning);
+                return null;
+            }
 
             try
             {
-                File.WriteAllBytes(filePath, imageBytes);
-                return filePath;
+                // 将 Base64 字符串解码为字节数组
+                byte[] imageBytes = Convert.FromBase64String(base64String);
+
+                // 使用字节数组创建内存流
+                using var memoryStream = new MemoryStream(imageBytes);
+
+                // 确保流的位置在开头
+                memoryStream.Position = 0;
+
+                // 创建 BitmapImage 对象
+                var bitmapImage = new BitmapImage();
+
+                // 开始初始化
+                bitmapImage.BeginInit();
+
+                // 设置缓存选项为 OnLoad，这样可以立即加载图像数据，并且允许我们安全地释放 memoryStream。
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+
+                // 忽略颜色配置文件
+                bitmapImage.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+
+                // 设置流源
+                bitmapImage.StreamSource = memoryStream;
+
+                // 结束初始化
+                bitmapImage.EndInit();
+
+                // 冻结图像以提高性能，特别是跨线程使用时。冻结后图像变为只读。
+                bitmapImage.Freeze();
+
+                return bitmapImage;
             }
             catch (Exception ex)
             {
-                WriteLog($"将 Base64 保存为图片 {filePath} 时遇到异常。", LogLevel.Error, ex);
-                return string.Empty;
+                WriteLog($"将 Base64 转换为 BitmapImage 时遇到异常。", LogLevel.Error, ex);
+                return null;
             }
         }
 

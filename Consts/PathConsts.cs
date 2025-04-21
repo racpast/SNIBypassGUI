@@ -10,7 +10,6 @@ namespace SNIBypassGUI.Consts
         public static readonly string currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
         public static readonly string dataDirectory = Path.Combine(currentDirectory, "data");
         public static readonly string NginxDirectory = Path.Combine(dataDirectory, "core");
-        public static readonly string FaviconsDirectory = Path.Combine(dataDirectory, "favicons");
         public static readonly string BackgroundDirectory = Path.Combine(dataDirectory, "backgrounds");
         public static readonly string nginxPath = Path.Combine(NginxDirectory, "SNIBypass.exe");
         public static readonly string nginxConfigDirectory = Path.Combine(NginxDirectory, "conf");
@@ -41,6 +40,6 @@ namespace SNIBypassGUI.Consts
         public static readonly string CurrentExe = Assembly.GetExecutingAssembly().Location;
         public static readonly string OldVersionExe = Path.Combine(currentDirectory, "SNIBypassGUI.exe.old");
         public static readonly string SNIBypassGUIExeFilePath = System.Windows.Forms.Application.ExecutablePath;
-        public static readonly List<string> NeccesaryDirectories = [dataDirectory, NginxDirectory, nginxConfigDirectory, CADirectory, nginxLogDirectory, nginxTempDirectory, dnsDirectory, FaviconsDirectory, BackgroundDirectory];
+        public static readonly List<string> NeccesaryDirectories = [dataDirectory, NginxDirectory, nginxConfigDirectory, CADirectory, nginxLogDirectory, nginxTempDirectory, dnsDirectory, BackgroundDirectory];
     }
 }

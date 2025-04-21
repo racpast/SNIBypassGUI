@@ -140,13 +140,11 @@ namespace SNIBypassGUI.Views
             {
                 Switchs.Add(new SwitchItem
                 {
-                    FaviconImageSource = Path.Combine(FaviconsDirectory, item.sectionname + ".png"),
+                    FaviconImage = Base64ToBitmapImage(item.favicon),
                     SwitchTitle = item.switchtitle,
                     LinksText = item.linkstext,
                     ToggleButtonName = item.togglebuttonname,
-                    SectionName = item.sectionname,
-                    SystemHostsRecord = GetSection(SystemHostsAll, item.sectionname),
-                    AcrylicHostsRecord = GetSection(AcrylicHostsAll, item.sectionname),
+                    SectionName = item.sectionname
                 });
             }
 
@@ -154,9 +152,6 @@ namespace SNIBypassGUI.Views
             {
                 foreach (var item in items)
                 {
-                    // 先保存 Base64 转换的图片
-                    SaveBase64AsImage(item.favicon, item.sectionname, FaviconsDirectory);
-
                     // 立刻更新 UI
                     Application.Current.Dispatcher.Invoke(() =>
                     {
@@ -183,7 +178,7 @@ namespace SNIBypassGUI.Views
             // 创建站点图标
             Image favicon = new()
             {
-                Source = LoadImage(item.FaviconImageSource),
+                Source = item.FaviconImage,
                 Height = 32,
                 Width = 32,
                 Margin = new Thickness(10, 10, 10, 5)
@@ -558,7 +553,7 @@ namespace SNIBypassGUI.Views
             string FileShouldUpdate = IsDnsService ? AcrylicHostsPath : SystemHosts;
 
             // 根据域名解析模式获取应该添加的条目数据
-            string CorrespondingHosts = IsDnsService ? "AcrylicHostsRecord" : "SystemHostsRecord";
+            string CorrespondingHosts = IsDnsService ? AcrylicHostsAll : SystemHostsAll;
 
             WriteLog($"当前域名解析方法是否为DNS服务： {BoolToYesNo(IsDnsService)}，将更新的文件为 {FileShouldUpdate}。", LogLevel.Info);
             try
@@ -577,7 +572,7 @@ namespace SNIBypassGUI.Views
                             WriteLog($"{pair.SectionName} 的代理开关为开启，将添加记录。", LogLevel.Info);
 
                             // 添加该条目部分
-                            AppendToFile(FileShouldUpdate, (string[])pair.GetType().GetProperty(CorrespondingHosts).GetValue(pair));
+                            AppendToFile(FileShouldUpdate, GetSection(CorrespondingHosts, pair.SectionName));
                         }
                     }
                 });
