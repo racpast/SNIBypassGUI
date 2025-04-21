@@ -1194,10 +1194,8 @@ namespace SNIBypassGUI.Views
         private void ExitBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 ExitBtn_Click。", LogLevel.Debug);
-
+            ExitBtn.IsEnabled = false;
             Exit();
-
-            // 不必要的日志记录
             WriteLog("完成 ExitBtn_Click。", LogLevel.Debug);
         }
 
