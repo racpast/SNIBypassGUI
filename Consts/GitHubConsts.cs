@@ -23,7 +23,6 @@ namespace SNIBypassGUI.Consts
             "firewall.lxstd.org",
             "gh.monlor.com",
             "slink.ltd",
-            "github.geekery.cn",
             "gh.jasonzeng.dev",
             "gh.sixyin.com",
             "github.xxlab.tech",
