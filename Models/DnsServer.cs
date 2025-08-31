@@ -216,7 +216,7 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此服务器的图标类型，用于列表显示。
+        /// 此服务器的图标类型，供 UI 使用。
         /// </summary>
         public PackIconKind ListIconKind
         {
@@ -231,9 +231,9 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此服务器在列表中的主要展示文本。
+        /// 此服务器在列表中的主要展示文本，供 UI 使用。
         /// </summary>
-        public object PrimaryDisplayText
+        public string PrimaryDisplayText
         {
             get =>
                 ProtocolType switch
@@ -246,9 +246,9 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此服务器在列表中的次要展示文本。
+        /// 此服务器在列表中的次要展示文本，供 UI 使用。
         /// </summary>
-        public object SecondaryDisplayText
+        public string SecondaryDisplayText
         {
             get =>
                 ProtocolType switch
@@ -264,7 +264,7 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此服务器在列表中的查询类型限制展示文本。
+        /// 此服务器在列表中的查询类型限制展示文本，供 UI 使用。
         /// </summary>
         public string LimitQueryTypesDisplayText =>
             LimitQueryTypes.Any()
@@ -295,8 +295,24 @@ namespace SNIBypassGUI.Models
         /// <returns>当前对象的一个完整副本。</returns>
         public DnsServer Clone()
         {
-            var clone = (DnsServer)MemberwiseClone();
-            clone.LimitQueryTypes = [.. LimitQueryTypes.OrEmpty()];
+            var clone = new DnsServer
+            {
+                ServerAddress = ServerAddress,
+                ServerPort = ServerPort,
+                ProtocolType = ProtocolType,
+                DohHostname = DohHostname,
+                DohQueryPath = DohQueryPath,
+                DohConnectionType = DohConnectionType,
+                DohReuseConnection = DohReuseConnection,
+                DohUseWinHttp = DohUseWinHttp,
+                Socks5ProxyAddress = Socks5ProxyAddress,
+                Socks5ProxyPort = Socks5ProxyPort,
+                DomainMatchingRule = DomainMatchingRule,
+                IgnoreFailureResponses = IgnoreFailureResponses,
+                IgnoreNegativeResponses = IgnoreNegativeResponses,
+                LimitQueryTypes = [.. LimitQueryTypes.OrEmpty()]
+            };
+
             return clone;
         }
 
@@ -349,7 +365,7 @@ namespace SNIBypassGUI.Models
                 !jObject.TryGetBool("ignoreNegativeResponses", out bool ignoreNegativeResponses) ||
                 !jObject.TryGetString("domainMatchingRule", out string domainMatchingRule) ||
                 !jObject.TryGetArray("limitQueryTypes", out IReadOnlyList<string> limitQueryTypes))
-                return ParseResult<DnsServer>.Failure("必填字段缺失或类型错误。");
+                return ParseResult<DnsServer>.Failure("一个或多个通用字段缺失或类型错误。");
 
             var server = new DnsServer
             {

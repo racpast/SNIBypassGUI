@@ -16,12 +16,11 @@ using SNIBypassGUI.Models;
 using SNIBypassGUI.Services;
 using SNIBypassGUI.Utils.Codecs;
 using SNIBypassGUI.Validators;
-using SNIBypassGUI.ViewModels.Dialogs.Items;
 using SNIBypassGUI.ViewModels.Validation;
 
 namespace SNIBypassGUI.ViewModels
 {
-    public class DnsConfigsViewModel : NotifyPropertyChangedBase
+    public class DnsConfigsViewModel : NotifyPropertyChangedBase, IDisposable
     {
         #region Dependencies & Core State
         private static readonly IReadOnlyList<string> s_allPossibleQueryTypes =
@@ -39,6 +38,7 @@ namespace SNIBypassGUI.ViewModels
         private readonly DnsConfigValidator _configValidator;
         private EditingState _currentState = EditingState.None;
         private bool _isBusy;
+        private bool _canExecuteCopy = true;
         private DnsConfig _editingConfigCopy;
         private DnsServer _selectedDnsServer;
         private IReadOnlyList<ValidationErrorNode> _validationErrors;
@@ -69,7 +69,7 @@ namespace SNIBypassGUI.ViewModels
             RemoveSelectedServerCommand = new RelayCommand(ExecuteRemoveSelectedServer, CanExecuteOnSelectedServer);
             MoveSelectedServerUpCommand = new RelayCommand(ExecuteMoveSelectedServerUp, CanExecuteMoveUp);
             MoveSelectedServerDownCommand = new RelayCommand(ExecuteMoveSelectedServerDown, CanExecuteMoveDown);
-            CopyLinkCodeCommand = new RelayCommand<DnsConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+            CopyLinkCodeCommand = new AsyncCommand<DnsConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
 
             _configService.LoadData();
             if (AllConfigs.Any()) SwitchToConfig(AllConfigs.First());
@@ -92,19 +92,7 @@ namespace SNIBypassGUI.ViewModels
             {
                 // 取消对旧副本及其子项的监听
                 if (_editingConfigCopy != null)
-                {
-                    _editingConfigCopy.PropertyChanged -= OnEditingCopyPropertyChanged;
-                    if (_editingConfigCopy.DnsServers != null)
-                    {
-                        _editingConfigCopy.DnsServers.CollectionChanged -= OnDnsServersCollectionChanged;
-                        foreach (var server in _editingConfigCopy.DnsServers)
-                            server.PropertyChanged -= OnDnsServerPropertyChanged;
-                    }
-                    if (_editingConfigCopy.LimitQueryTypesCache != null)
-                        _editingConfigCopy.LimitQueryTypesCache.CollectionChanged += OnChildCollectionChanged;
-                    if (_editingConfigCopy.LogEvents != null)
-                        _editingConfigCopy.LogEvents.CollectionChanged += OnChildCollectionChanged;
-                }
+                    StopListeningToChanges(_editingConfigCopy);
                 // 你问我为什么 EditingConfigCopy.DnsServers[n].LimitQueryTypes的CollectionChanged 不需要被订阅也可以进入脏状态？
                 // 别问，问就是 DnsServer 的 LimitQueryTypes 集合的变化会通过 PropertyChanged 事件向上传播。
 
@@ -113,19 +101,7 @@ namespace SNIBypassGUI.ViewModels
 
                 // 订阅新副本及其子项的事件
                 if (_editingConfigCopy != null)
-                {
-                    _editingConfigCopy.PropertyChanged += OnEditingCopyPropertyChanged;
-                    if (_editingConfigCopy.DnsServers != null)
-                    {
-                        _editingConfigCopy.DnsServers.CollectionChanged += OnDnsServersCollectionChanged;
-                        foreach (var server in _editingConfigCopy.DnsServers)
-                            server.PropertyChanged += OnDnsServerPropertyChanged;
-                    }
-                    if (_editingConfigCopy.LimitQueryTypesCache != null)
-                        _editingConfigCopy.LimitQueryTypesCache.CollectionChanged += OnChildCollectionChanged;
-                    if (_editingConfigCopy.LogEvents != null)
-                        _editingConfigCopy.LogEvents.CollectionChanged += OnChildCollectionChanged;
-                }
+                    StartListeningToChanges(_editingConfigCopy);
             }
         }
 
@@ -263,7 +239,7 @@ namespace SNIBypassGUI.ViewModels
             (RemoveSelectedServerCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedServerUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedServerDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (CopyLinkCodeCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (CopyLinkCodeCommand as AsyncCommand<DnsConfig>)?.RaiseCanExecuteChanged();
         }
         #endregion
 
@@ -289,7 +265,7 @@ namespace SNIBypassGUI.ViewModels
             if (newName != null)
             {
                 if (!string.IsNullOrWhiteSpace(newName)) EnterCreationMode(newName);
-                else await _dialogService.ShowInfoAsync("创建失败", "配置名不能为空！");
+                else await _dialogService.ShowInfoAsync("创建失败", "配置名称不能为空！");
             }
             _isBusy = false;
             UpdateCommandStates();
@@ -326,13 +302,13 @@ namespace SNIBypassGUI.ViewModels
                 newConfig.Id = Guid.NewGuid();
 
                 _configService.AllConfigs.Add(newConfig);
-                _configService.SaveChanges(newConfig);
+                await _configService.SaveChangesAsync(newConfig);
 
                 SwitchToConfig(newConfig);
             }
             else if (newName != null)
             {
-                await _dialogService.ShowInfoAsync("创建失败", "配置名不能为空！");
+                await _dialogService.ShowInfoAsync("创建失败", "配置名称不能为空！");
             }
 
             _isBusy = false;
@@ -409,14 +385,14 @@ namespace SNIBypassGUI.ViewModels
                         if (newName != originalConfig.ConfigName)
                         {
                             originalConfig.ConfigName = newName;
-                            _configService.SaveChanges(originalConfig);
+                            await _configService.SaveChangesAsync(originalConfig);
                         }
                         // 刷新显示并确保选中状态正确
                         SwitchToConfig(originalConfig);
                     }
                     else
                     {
-                        await _dialogService.ShowInfoAsync("重命名失败", "配置名不能为空！");
+                        await _dialogService.ShowInfoAsync("重命名失败", "配置名称不能为空！");
                         // 输入空名称后也需要重置选中状态
                         ResetToSelectedConfig();
                     }
@@ -448,7 +424,8 @@ namespace SNIBypassGUI.ViewModels
                 var openFileDialog = new OpenFileDialog
                 {
                     Filter = " DNS 配置文件 (*.sdc)|*.sdc",
-                    Title = "选择要导入的 DNS 配置文件"
+                    Title = "选择要导入的 DNS 配置文件",
+                    RestoreDirectory = true
                 };
 
                 if (openFileDialog.ShowDialog() == true)
@@ -506,7 +483,8 @@ namespace SNIBypassGUI.ViewModels
             {
                 Filter = "DNS 配置文件 (*.sdc)|*.sdc",
                 Title = "选择配置导出位置",
-                FileName = $"{configToExport.ConfigName}.sdc"
+                FileName = $"{configToExport.ConfigName}.sdc",
+                RestoreDirectory = true
             };
             if (saveFileDialog.ShowDialog() == true)
             {
@@ -531,10 +509,39 @@ namespace SNIBypassGUI.ViewModels
 
         #region Editing Area Operations
         #region Change Listening & Validation
+        private void StartListeningToChanges(DnsConfig config)
+        {
+            config.PropertyChanged += OnEditingCopyPropertyChanged;
+            if (config.DnsServers != null)
+            {
+                config.DnsServers.CollectionChanged += OnDnsServersCollectionChanged;
+                foreach (var server in config.DnsServers)
+                    server.PropertyChanged += OnDnsServerPropertyChanged;
+            }
+            if (config.LimitQueryTypesCache != null)
+                config.LimitQueryTypesCache.CollectionChanged += OnChildCollectionChanged;
+            if (config.LogEvents != null)
+                config.LogEvents.CollectionChanged += OnChildCollectionChanged;
+        }
+
+        private void StopListeningToChanges(DnsConfig config)
+        {
+            config.PropertyChanged -= OnEditingCopyPropertyChanged;
+            if (config.DnsServers != null)
+            {
+                config.DnsServers.CollectionChanged -= OnDnsServersCollectionChanged;
+                foreach (var server in config.DnsServers)
+                    server.PropertyChanged -= OnDnsServerPropertyChanged;
+            }
+            if (config.LimitQueryTypesCache != null)
+                config.LimitQueryTypesCache.CollectionChanged -= OnChildCollectionChanged;
+            if (config.LogEvents != null)
+                config.LogEvents.CollectionChanged -= OnChildCollectionChanged;
+        }
+
         private void OnEditingCopyPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(DnsConfig.DnsServers)) return;
-
             if (_currentState == EditingState.None)
                 TransitionToState(EditingState.Editing);
             ValidateEditingCopy();
@@ -617,9 +624,7 @@ namespace SNIBypassGUI.ViewModels
 
             if (HasValidationErrors)
             {
-                var errorItems = new List<BulletedListItem>();
-                foreach (var error in ValidationErrors)
-                    errorItems.Add(error.ToBulletedListItem());
+                var errorItems = ValidationErrors.Select(e => e.ToBulletedListItem());
                 await _dialogService.ShowInfoAsync("保存失败", errorItems, "请更正以下信息：");
                 _isBusy = false;
                 UpdateCommandStates();
@@ -632,14 +637,14 @@ namespace SNIBypassGUI.ViewModels
                 {
                     var newConfig = EditingConfigCopy;
                     _configService.AllConfigs.Add(newConfig);
-                    _configService.SaveChanges(newConfig);
+                    await _configService.SaveChangesAsync(newConfig);
                     SwitchToConfig(newConfig);
                 }
                 else if (_currentState == EditingState.Editing)
                 {
                     var originalConfig = ConfigSelector.SelectedItem;
                     originalConfig.UpdateFrom(EditingConfigCopy);
-                    _configService.SaveChanges(originalConfig);
+                    await _configService.SaveChangesAsync(originalConfig);
                     TransitionToState(EditingState.None);
                 }
             }
@@ -659,11 +664,7 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteDiscardChanges()
         {
-            if (_currentState == EditingState.Creating)
-            {
-                var previousSelection = AllConfigs.FirstOrDefault();
-                SwitchToConfig(previousSelection);
-            }
+            if (_currentState == EditingState.Creating) SwitchToConfig(AllConfigs.FirstOrDefault());
             else ResetToSelectedConfig();
         }
 
@@ -794,14 +795,39 @@ namespace SNIBypassGUI.ViewModels
 
         #region Other Commands & Helpers
         #region Copy Link Code
-        private void ExecuteCopyLinkCode(DnsConfig config)
+        private async Task ExecuteCopyLinkCode(DnsConfig config)
         {
-            if (config is null) return;
-            var linkCode = Base64Utils.EncodeString(config.Id.ToString());
-            Clipboard.SetText(linkCode);
+            if (config is null || !_canExecuteCopy) return;
+
+            try
+            {
+                _canExecuteCopy = false;
+                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+
+                var linkCode = Base64Utils.EncodeString(config.Id.ToString());
+                for (int i = 0; i < 5; i++)
+                {
+                    try
+                    {
+                        Clipboard.SetText(linkCode);
+                        break;
+                    }
+                    catch (System.Runtime.InteropServices.COMException)
+                    {
+                        await Task.Delay(50);
+                    }
+                }
+
+                await Task.Delay(500);
+            }
+            finally
+            {
+                _canExecuteCopy = true;
+                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+            }
         }
 
-        private bool CanExecuteCopyLinkCode(DnsConfig config) => config != null && !_isBusy;
+        private bool CanExecuteCopyLinkCode(DnsConfig config) => config != null && !_isBusy && _canExecuteCopy;
         #endregion
 
         #region General CanExecute Predicates
@@ -812,6 +838,15 @@ namespace SNIBypassGUI.ViewModels
             !ConfigSelector.SelectedItem.IsBuiltIn &&
             !_isBusy;
         #endregion
+        #endregion
+
+        #region Disposal
+        public void Dispose()
+        {
+            if (_editingConfigCopy != null)
+                StopListeningToChanges(_editingConfigCopy);
+            GC.SuppressFinalize(this);
+        }
         #endregion
     }
 }

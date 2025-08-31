@@ -41,8 +41,11 @@ namespace SNIBypassGUI.Models
         /// <returns>当前对象的一个完整副本。</returns>
         public HttpHeaderItem Clone()
         {
-            var clone = (HttpHeaderItem)MemberwiseClone();
-            return clone;
+            return new HttpHeaderItem
+            {
+                Name = Name,
+                Value = Value
+            };
         }
 
         /// <summary>

@@ -85,16 +85,6 @@ namespace SNIBypassGUI.Models
         public ObservableCollection<DnsServer> DnsServers { get => _dnsServers; set => SetProperty(ref _dnsServers, value); }
 
         /// <summary>
-        /// 此配置的图标类型，用于列表显示。
-        /// </summary>
-        public PackIconKind ListIconKind => IsBuiltIn ? PackIconKind.ArchiveLockOutline : PackIconKind.PencilOutline;
-
-        /// <summary>
-        /// 此配置的类型描述，用于列表显示。
-        /// </summary>
-        public string ListTypeDescription => IsBuiltIn ? "(内置)" : "(用户)";
-
-        /// <summary>
         /// 是否拦截 IPv6 查询。
         /// </summary>
         public bool InterceptIpv6Queries { get => _interceptIpv6Queries; set => SetProperty(ref _interceptIpv6Queries, value); }
@@ -223,6 +213,16 @@ namespace SNIBypassGUI.Models
         /// 日志内存缓冲区大小。
         /// </summary>
         public string LogMemoryBufferSize { get => _logMemoryBufferSize; set => SetProperty(ref _logMemoryBufferSize, value); }
+
+        /// <summary>
+        /// 此配置的图标类型，供 UI 使用。
+        /// </summary>
+        public PackIconKind ListIconKind => IsBuiltIn ? PackIconKind.ArchiveLockOutline : PackIconKind.FileDocumentEditOutline;
+
+        /// <summary>
+        /// 此配置的类型描述，供 UI 使用。
+        /// </summary>
+        public string ListTypeDescription => IsBuiltIn ? "(内置)" : "(用户)";
         #endregion
 
         #region Methods
@@ -232,10 +232,40 @@ namespace SNIBypassGUI.Models
         /// <returns>当前对象的一个完整副本。</returns>
         public DnsConfig Clone()
         {
-            var clone = (DnsConfig)MemberwiseClone();
-            clone.LimitQueryTypesCache = [.. LimitQueryTypesCache ?? []];
-            clone.LogEvents = [.. LogEvents ?? []];
-            clone.DnsServers = [.. (DnsServers ?? []).Select(w => w.Clone())];
+            var clone = new DnsConfig
+            {
+                Id = Id,
+                ConfigName = ConfigName,
+                IsBuiltIn = IsBuiltIn,
+                InterceptIpv6Queries = InterceptIpv6Queries,
+                ForwardPrivateReverseLookups = ForwardPrivateReverseLookups,
+                PositiveResponseCacheTime = PositiveResponseCacheTime,
+                NegativeResponseCacheTime = NegativeResponseCacheTime,
+                FailedResponseCacheTime = FailedResponseCacheTime,
+                SilentCacheUpdateTime = SilentCacheUpdateTime,
+                CacheAutoCleanupTime = CacheAutoCleanupTime,
+                CacheDomainMatchingRule = CacheDomainMatchingRule,
+                UseMemoryCacheOnly = UseMemoryCacheOnly,
+                DisableAddressCache = DisableAddressCache,
+                LocalIpv4BindingAddress = LocalIpv4BindingAddress,
+                LocalIpv4BindingPort = LocalIpv4BindingPort,
+                LocalIpv6BindingAddress = LocalIpv6BindingAddress,
+                LocalIpv6BindingPort = LocalIpv6BindingPort,
+                GeneratedResponseTtl = GeneratedResponseTtl,
+                UdpResponseTimeout = UdpResponseTimeout,
+                TcpFirstByteTimeout = TcpFirstByteTimeout,
+                TcpInternalTimeout = TcpInternalTimeout,
+                Socks5ConnectTimeout = Socks5ConnectTimeout,
+                Socks5ResponseTimeout = Socks5ResponseTimeout,
+                Socks5FirstByteTimeout = Socks5FirstByteTimeout,
+                Socks5OtherByteTimeout = Socks5OtherByteTimeout,
+                EnableFullLogDump = EnableFullLogDump,
+                LogMemoryBufferSize = LogMemoryBufferSize,
+                LimitQueryTypesCache = [.. LimitQueryTypesCache.OrEmpty()],
+                LogEvents = [.. LogEvents.OrEmpty()],
+                DnsServers = [.. DnsServers.OrEmpty().Select(server => server.Clone())]
+            };
+
             return clone;
         }
 
@@ -356,7 +386,7 @@ namespace SNIBypassGUI.Models
                 !jObject.TryGetBool("enableFullLogDump", out bool enableFullLogDump) ||
                 !jObject.TryGetString("logMemoryBufferSize", out string logMemoryBufferSize) ||
                 !jObject.TryGetArray("dnsServers", out IReadOnlyList<JObject> dnsServerObjects))
-                return ParseResult<DnsConfig>.Failure("必填字段缺失或类型错误。");
+                return ParseResult<DnsConfig>.Failure("一个或多个通用字段缺失或类型错误。");
 
             ObservableCollection<DnsServer> dnsServers = [];
             foreach (var item in dnsServerObjects.OfType<JObject>())

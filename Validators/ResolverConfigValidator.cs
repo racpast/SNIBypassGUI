@@ -856,17 +856,21 @@ namespace SNIBypassGUI.Validators
                         }
                         catch (Exception ex)
                         {
-                            context.AddFailure(nameof(config.TlsClientKeyPath), $"“{keyPath}” 不是有效的 TLS 客户端证书：解析失败：{ex.Message}");
+                            context.AddFailure(nameof(config.TlsClientCertPath), $"“{keyPath}” 不是有效的 TLS 客户端证书：{ex.Message}");
                         }
 
                         // 如果证书和私钥都成功解析，最后一步是验证它们是否匹配
-                        if (bcCert != null && privateKey != null)
+                        try
                         {
-                            if (!KeyMatches(bcCert.GetPublicKey(), privateKey))
-                            {
-                                context.AddFailure(nameof(config.TlsClientKeyPath), $"“{keyPath}” 不是有效的 TLS 客户端私钥：该私钥与 TLS 客户端证书不匹配。");
-                            }
+                            if (bcCert != null && privateKey != null)
+                                if (!KeyMatches(bcCert.GetPublicKey(), privateKey))
+                                    context.AddFailure(nameof(config.TlsClientKeyPath), $"“{keyPath}” 不是有效的 TLS 客户端私钥：该私钥与 TLS 客户端证书不匹配。");
                         }
+                        catch (Exception ex)
+                        {
+                            context.AddFailure(nameof(config.TlsClientKeyPath), $"“{keyPath}” 不是有效的 TLS 客户端私钥：{ex.Message}。");
+                        }
+
                     });
             });
 

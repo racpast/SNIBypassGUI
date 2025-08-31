@@ -86,12 +86,12 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此解析器配置的图标类型，用于列表显示。
+        /// 此解析器配置的图标类型，供 UI 使用。
         /// </summary>
-        public PackIconKind ListIconKind => IsBuiltIn ? PackIconKind.ArchiveLockOutline : PackIconKind.PencilOutline;
+        public PackIconKind ListIconKind => IsBuiltIn ? PackIconKind.ArchiveLockOutline : PackIconKind.SearchWeb;
 
         /// <summary>
-        /// 此解析器配置的类型描述，用于列表显示。
+        /// 此解析器配置的类型描述，供 UI 使用。
         /// </summary>
         public string ListTypeDescription => IsBuiltIn ? "(内置)" : "(用户)";
 
@@ -300,12 +300,44 @@ namespace SNIBypassGUI.Models
         /// <returns>当前对象的一个完整副本。</returns>
         public ResolverConfig Clone()
         {
-            var clone = (ResolverConfig)MemberwiseClone();
-            clone.HttpHeaders = [.. HttpHeaders.OrEmpty().Select(h => h.Clone())];
-            clone.TlsCipherSuites = [.. TlsCipherSuites.OrEmpty()];
-            clone.TlsCurvePreferences = [.. TlsCurvePreferences.OrEmpty()];
-            clone.TlsNextProtos = [.. TlsNextProtos.OrEmpty()];
-            clone.QuicAlpnTokens = [.. QuicAlpnTokens.OrEmpty()];
+            var clone = new ResolverConfig
+            {
+                Id = Id,
+                ConfigName = ConfigName,
+                IsBuiltIn = IsBuiltIn,
+                ProtocolType = ProtocolType,
+                ServerAddress = ServerAddress,
+                QueryTimeout = QueryTimeout,
+                Dnssec = Dnssec,
+                ClientSubnet = ClientSubnet,
+                EnablePadding = EnablePadding,
+                DnsCookie = DnsCookie,
+                UdpBufferSize = UdpBufferSize,
+                TlsInsecure = TlsInsecure,
+                TlsServerName = TlsServerName,
+                TlsMinVersion = TlsMinVersion,
+                TlsMaxVersion = TlsMaxVersion,
+                TlsClientCertPath = TlsClientCertPath,
+                TlsClientKeyPath = TlsClientKeyPath,
+                HttpUserAgent = HttpUserAgent,
+                HttpMethod = HttpMethod,
+                HttpVersionMode = HttpVersionMode,
+                EnablePmtud = EnablePmtud,
+                QuicLengthPrefix = QuicLengthPrefix,
+                DnsCryptUseTcp = DnsCryptUseTcp,
+                DnsCryptUdpSize = DnsCryptUdpSize,
+                DnsCryptPublicKey = DnsCryptPublicKey,
+                DnsCryptProvider = DnsCryptProvider,
+                ReuseConnection = ReuseConnection,
+                BootstrapServer = BootstrapServer,
+                BootstrapTimeout = BootstrapTimeout,
+                TlsNextProtos = [.. TlsNextProtos.OrEmpty()],
+                TlsCipherSuites = [.. TlsCipherSuites.OrEmpty()],
+                TlsCurvePreferences = [.. TlsCurvePreferences.OrEmpty()],
+                QuicAlpnTokens = [.. QuicAlpnTokens.OrEmpty()],
+                HttpHeaders = [.. HttpHeaders.OrEmpty().Select(header => header.Clone())]
+            };
+
             return clone;
         }
 
@@ -329,17 +361,17 @@ namespace SNIBypassGUI.Models
             TlsServerName = source.TlsServerName;
             TlsMinVersion = source.TlsMinVersion;
             TlsMaxVersion = source.TlsMaxVersion;
-            TlsNextProtos = [.. source.TlsNextProtos];
-            TlsCipherSuites = [.. source.TlsCipherSuites];
-            TlsCurvePreferences = [.. source.TlsCurvePreferences];
+            TlsNextProtos = [.. source.TlsNextProtos.OrEmpty()];
+            TlsCipherSuites = [.. source.TlsCipherSuites.OrEmpty()];
+            TlsCurvePreferences = [.. source.TlsCurvePreferences.OrEmpty()];
             TlsClientCertPath = source.TlsClientCertPath;
             TlsClientKeyPath = source.TlsClientKeyPath;
             HttpUserAgent = source.HttpUserAgent;
             HttpMethod = source.HttpMethod;
-            HttpHeaders = [.. source.HttpHeaders?.Select(w => w.Clone()).OrEmpty()];
+            HttpHeaders = [.. source.HttpHeaders.OrEmpty().Select(h => h.Clone())];
             HttpVersionMode = source.HttpVersionMode;
             EnablePmtud = source.EnablePmtud;
-            QuicAlpnTokens = [.. source.QuicAlpnTokens];
+            QuicAlpnTokens = [.. source.QuicAlpnTokens.OrEmpty()];
             QuicLengthPrefix = source.QuicLengthPrefix;
             DnsCryptUseTcp = source.DnsCryptUseTcp;
             DnsCryptUdpSize = source.DnsCryptUdpSize;

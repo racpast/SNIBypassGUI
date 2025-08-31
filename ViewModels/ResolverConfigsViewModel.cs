@@ -23,7 +23,7 @@ using SNIBypassGUI.ViewModels.Dialogs.Items;
 
 namespace SNIBypassGUI.ViewModels
 {
-    public class ResolverConfigsViewModel : NotifyPropertyChangedBase
+    public class ResolverConfigsViewModel : NotifyPropertyChangedBase, IDisposable
     {
         #region Dependencies & Core State
         private readonly IConfigSetService<ResolverConfig> _configService;
@@ -31,6 +31,7 @@ namespace SNIBypassGUI.ViewModels
         private readonly ResolverConfigValidator _configValidator;
         private EditingState _currentState;
         private bool _isBusy;
+        private bool _canExecuteCopy = true;
         private ResolverConfig _editingConfigCopy;
         private IReadOnlyList<string> _validationErrors;
         private IReadOnlyList<string> _validationWarnings;
@@ -87,9 +88,9 @@ namespace SNIBypassGUI.ViewModels
             ExportConfigCommand = new AsyncCommand(ExecuteExportConfigAsync, CanExecuteExport);
             SaveChangesCommand = new AsyncCommand(ExecuteSaveChangesAsync, CanExecuteSave);
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, CanExecuteWhenDirty);
-            CopyLinkCodeCommand = new RelayCommand<ResolverConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+            CopyLinkCodeCommand = new AsyncCommand<ResolverConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
             DeleteHeaderCommand = new RelayCommand<HttpHeaderItem>(ExecuteDeleteHeader, CanExecuteWhenNotBusy);
-            DeleteAllHeadersCommand = new AsyncCommand(ExecuteDeleteAllHeadersAsync, CanExecuteWhenNotBusy);
+            DeleteAllHeadersCommand = new AsyncCommand(ExecuteDeleteAllHeadersAsync, CanExecuteDeleteAllHeaders);
             AddHeaderCommand = new AsyncCommand(ExecuteAddHeaderAsync, CanExecuteWhenNotBusy);
             DeleteAlpnProtocolCommand = new RelayCommand<string>(ExecuteDeleteAlpnProtocol, CanExecuteWhenNotBusy);
             AddAlpnProtocolCommand = new AsyncCommand(ExecuteAddAlpnProtocolAsync, CanExecuteWhenNotBusy);
@@ -116,34 +117,12 @@ namespace SNIBypassGUI.ViewModels
             private set
             {
                 if (_editingConfigCopy != null)
-                {
-                    _editingConfigCopy.PropertyChanged -= OnEditingCopyPropertyChanged;
-                    if (_editingConfigCopy.HttpHeaders != null)
-                        _editingConfigCopy.HttpHeaders.CollectionChanged -= OnChildCollectionChanged;
-                    if (_editingConfigCopy.TlsCipherSuites != null)
-                        _editingConfigCopy.TlsCipherSuites.CollectionChanged -= OnChildCollectionChanged;
-                    if (_editingConfigCopy.TlsCurvePreferences != null)
-                        _editingConfigCopy.TlsCurvePreferences.CollectionChanged -= OnChildCollectionChanged;
-                    if (_editingConfigCopy.TlsNextProtos != null)
-                        _editingConfigCopy.TlsNextProtos.CollectionChanged -= OnChildCollectionChanged;
-                    if (_editingConfigCopy.QuicAlpnTokens != null)
-                        _editingConfigCopy.QuicAlpnTokens.CollectionChanged -= OnChildCollectionChanged;
-                }
+                    StopListeningToChanges(_editingConfigCopy);
+
                 SetProperty(ref _editingConfigCopy, value);
+
                 if (_editingConfigCopy != null)
-                {
-                    _editingConfigCopy.PropertyChanged += OnEditingCopyPropertyChanged;
-                    if (_editingConfigCopy.HttpHeaders != null)
-                        _editingConfigCopy.HttpHeaders.CollectionChanged += OnChildCollectionChanged;
-                    if (_editingConfigCopy.TlsCipherSuites != null)
-                        _editingConfigCopy.TlsCipherSuites.CollectionChanged += OnChildCollectionChanged;
-                    if (_editingConfigCopy.TlsCurvePreferences != null)
-                        _editingConfigCopy.TlsCurvePreferences.CollectionChanged += OnChildCollectionChanged;
-                    if (_editingConfigCopy.TlsNextProtos != null)
-                        _editingConfigCopy.TlsNextProtos.CollectionChanged += OnChildCollectionChanged;
-                    if (_editingConfigCopy.QuicAlpnTokens != null)
-                        _editingConfigCopy.QuicAlpnTokens.CollectionChanged += OnChildCollectionChanged;
-                }
+                    StartListeningToChanges(_editingConfigCopy);
             }
         }
 
@@ -276,15 +255,14 @@ namespace SNIBypassGUI.ViewModels
             (ExportConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (SaveChangesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DiscardChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (CopyLinkCodeCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (DeleteAlpnProtocolCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (DeleteHeaderCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (CopyLinkCodeCommand as AsyncCommand<ResolverConfig>)?.RaiseCanExecuteChanged();
+            (DeleteAlpnProtocolCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+            (DeleteHeaderCommand as RelayCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
             (AddHeaderCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteAllHeadersCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (AddAlpnProtocolCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (DeleteAlpnProtocolCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (AddQuicAlpnTokenCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (DeleteQuicAlpnTokenCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (DeleteQuicAlpnTokenCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
             (SelectClientCertCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ClearClientCertCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (SelectClientKeyCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -315,7 +293,7 @@ namespace SNIBypassGUI.ViewModels
             if (newName != null)
             {
                 if (!string.IsNullOrWhiteSpace(newName)) EnterCreationMode(newName);
-                else await _dialogService.ShowInfoAsync("创建失败", "配置名不能为空！");
+                else await _dialogService.ShowInfoAsync("创建失败", "配置名称不能为空！");
             }
             _isBusy = false;
             UpdateCommandStates();
@@ -351,12 +329,12 @@ namespace SNIBypassGUI.ViewModels
                 newConfig.Id = Guid.NewGuid();
 
                 _configService.AllConfigs.Add(newConfig);
-                _configService.SaveChanges(newConfig);
+                await _configService.SaveChangesAsync(newConfig);
 
                 SwitchToConfig(newConfig);
             }
             else if (newName != null)
-                await _dialogService.ShowInfoAsync("创建失败", "配置名不能为空！");
+                await _dialogService.ShowInfoAsync("创建失败", "配置名称不能为空！");
 
             _isBusy = false;
             UpdateCommandStates();
@@ -425,12 +403,12 @@ namespace SNIBypassGUI.ViewModels
                     if (newName != originalConfig.ConfigName)
                     {
                         originalConfig.ConfigName = newName;
-                        _configService.SaveChanges(originalConfig);
+                        await _configService.SaveChangesAsync(originalConfig);
                         ResetToSelectedConfig();
                     }
                 }
                 else if (newName != null)
-                    await _dialogService.ShowInfoAsync("重命名失败", "配置名不能为空！");
+                    await _dialogService.ShowInfoAsync("重命名失败", "配置名称不能为空！");
             }
             finally
             {
@@ -458,7 +436,8 @@ namespace SNIBypassGUI.ViewModels
                 var openFileDialog = new OpenFileDialog
                 {
                     Filter = "解析器配置文件 (*.src)|*.src",
-                    Title = "选择要导入的解析器配置文件"
+                    Title = "选择要导入的解析器配置文件",
+                    RestoreDirectory = true
                 };
 
                 if (openFileDialog.ShowDialog() == true)
@@ -513,7 +492,8 @@ namespace SNIBypassGUI.ViewModels
             {
                 Filter = "解析器配置文件 (*.src)|*.src",
                 Title = "选择配置导出位置",
-                FileName = $"{configToExport.ConfigName}.src"
+                FileName = $"{configToExport.ConfigName}.src",
+                RestoreDirectory = true
             };
             if (saveFileDialog.ShowDialog() == true)
                 _configService.ExportConfig(configToExport, saveFileDialog.FileName);
@@ -536,6 +516,36 @@ namespace SNIBypassGUI.ViewModels
 
         #region Editing Area Operations
         #region Change Listening & Validation
+        private void StartListeningToChanges(ResolverConfig config)
+        {
+            config.PropertyChanged += OnEditingCopyPropertyChanged;
+            if (config.HttpHeaders != null)
+                config.HttpHeaders.CollectionChanged += OnChildCollectionChanged;
+            if (config.TlsCipherSuites != null)
+                config.TlsCipherSuites.CollectionChanged += OnChildCollectionChanged;
+            if (config.TlsCurvePreferences != null)
+                config.TlsCurvePreferences.CollectionChanged += OnChildCollectionChanged;
+            if (config.TlsNextProtos != null)
+                config.TlsNextProtos.CollectionChanged += OnChildCollectionChanged;
+            if (config.QuicAlpnTokens != null)
+                config.QuicAlpnTokens.CollectionChanged += OnChildCollectionChanged;
+        }
+
+        private void StopListeningToChanges(ResolverConfig config)
+        {
+            config.PropertyChanged -= OnEditingCopyPropertyChanged;
+            if (config.HttpHeaders != null)
+                config.HttpHeaders.CollectionChanged -= OnChildCollectionChanged;
+            if (config.TlsCipherSuites != null)
+                config.TlsCipherSuites.CollectionChanged -= OnChildCollectionChanged;
+            if (config.TlsCurvePreferences != null)
+                config.TlsCurvePreferences.CollectionChanged -= OnChildCollectionChanged;
+            if (config.TlsNextProtos != null)
+                config.TlsNextProtos.CollectionChanged -= OnChildCollectionChanged;
+            if (config.QuicAlpnTokens != null)
+                config.QuicAlpnTokens.CollectionChanged -= OnChildCollectionChanged;
+        }
+
         private void OnEditingCopyPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (_currentState == EditingState.None) TransitionToState(EditingState.Editing);
@@ -605,14 +615,14 @@ namespace SNIBypassGUI.ViewModels
                 {
                     var newConfig = EditingConfigCopy;
                     _configService.AllConfigs.Add(newConfig);
-                    _configService.SaveChanges(newConfig);
+                    await _configService.SaveChangesAsync(newConfig);
                     SwitchToConfig(newConfig);
                 }
                 else if (_currentState == EditingState.Editing)
                 {
                     var originalConfig = ConfigSelector.SelectedItem;
                     originalConfig.UpdateFrom(EditingConfigCopy);
-                    _configService.SaveChanges(originalConfig);
+                    await _configService.SaveChangesAsync(originalConfig);
                     TransitionToState(EditingState.None);
                 }
             }
@@ -625,11 +635,7 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteDiscardChanges()
         {
-            if (_currentState == EditingState.Creating)
-            {
-                var previousSelection = AllConfigs.FirstOrDefault();
-                SwitchToConfig(previousSelection);
-            }
+            if (_currentState == EditingState.Creating) SwitchToConfig(AllConfigs.FirstOrDefault());
             else ResetToSelectedConfig();
         }
 
@@ -718,6 +724,7 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
+        private bool CanExecuteDeleteAllHeaders() => EditingConfigCopy?.HttpHeaders.Any() == true && !_isBusy;
         #endregion
 
         #region TLS ALPN Protocol Management
@@ -797,7 +804,9 @@ namespace SNIBypassGUI.ViewModels
                 var openFileDialog = new OpenFileDialog
                 {
                     Filter = "PEM 证书文件 (*.pem;*.crt;*.cer)|*.pem;*.crt;*.cer|所有文件 (*.*)|*.*",
-                    Title = "选择 TLS 客户端证书文件"
+                    Title = "选择 TLS 客户端证书文件",
+                    FilterIndex = 1,
+                    RestoreDirectory = true
                 };
 
                 if (openFileDialog.ShowDialog() == true)
@@ -830,7 +839,9 @@ namespace SNIBypassGUI.ViewModels
                 var openFileDialog = new OpenFileDialog
                 {
                     Filter = "PEM 私钥文件 (*.key;*.pem)|*.key;*.pem|所有文件 (*.*)|*.*",
-                    Title = "选择 TLS 客户端私钥文件"
+                    Title = "选择 TLS 客户端私钥文件",
+                    FilterIndex = 1,
+                    RestoreDirectory = true
                 };
 
                 if (openFileDialog.ShowDialog() == true)
@@ -967,14 +978,39 @@ namespace SNIBypassGUI.ViewModels
 
         #region Other Commands & Helpers
         #region Copy Link Code
-        private void ExecuteCopyLinkCode(ResolverConfig config)
+        private async Task ExecuteCopyLinkCode(ResolverConfig config)
         {
-            if (config is null) return;
-            var linkCode = Base64Utils.EncodeString(config.Id.ToString());
-            Clipboard.SetText(linkCode);
+            if (config is null || !_canExecuteCopy) return;
+
+            try
+            {
+                _canExecuteCopy = false;
+                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+
+                var linkCode = Base64Utils.EncodeString(config.Id.ToString());
+                for (int i = 0; i < 5; i++)
+                {
+                    try
+                    {
+                        Clipboard.SetText(linkCode);
+                        break;
+                    }
+                    catch (System.Runtime.InteropServices.COMException)
+                    {
+                        await Task.Delay(50);
+                    }
+                }
+
+                await Task.Delay(500);
+            }
+            finally
+            {
+                _canExecuteCopy = true;
+                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+            }
         }
 
-        private bool CanExecuteCopyLinkCode(ResolverConfig config) => config != null && !_isBusy;
+        private bool CanExecuteCopyLinkCode(ResolverConfig config) => config != null && !_isBusy && _canExecuteCopy;
         #endregion
 
         #region General CanExecute Predicates
@@ -982,6 +1018,15 @@ namespace SNIBypassGUI.ViewModels
 
         private bool CanExecuteOnEditableConfig() => ConfigSelector.SelectedItem != null && !ConfigSelector.SelectedItem.IsBuiltIn && !_isBusy;
         #endregion
+        #endregion
+
+        #region Disposal
+        public void Dispose()
+        {
+            if (_editingConfigCopy != null)
+                StopListeningToChanges(_editingConfigCopy);
+            GC.SuppressFinalize(this);
+        }
         #endregion
     }
 }
