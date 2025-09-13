@@ -7,9 +7,9 @@ using SNIBypassGUI.Utils.Network;
 
 namespace SNIBypassGUI.Validators
 {
-    public class UpstreamSourceValidator : AbstractValidator<UpstreamSource>
+    public class TargetIpSourceValidator : AbstractValidator<TargetIpSource>
     {
-        public UpstreamSourceValidator()
+        public TargetIpSourceValidator()
         {
             When(source => source.SourceType == IpAddressSourceType.Static, () =>
             {
@@ -42,7 +42,7 @@ namespace SNIBypassGUI.Validators
                             return;
                         }
 
-                        var invalidIps = fallbackIps.Where(ip => !NetworkUtils.IsValidIP(ip)).ToList();
+                        var invalidIps = fallbackIps.Select(f => f.Address).Where(ip => !NetworkUtils.IsValidIP(ip)).ToList();
 
                         if (invalidIps.Any())
                         {
@@ -58,29 +58,7 @@ namespace SNIBypassGUI.Validators
                     })
                     .When(source => source.ResolverId == null);
             });
-
-            RuleFor(source => source.Port)
-                .NotEmpty().WithMessage("服务器端口不能为空。");
-            RuleFor(source => source.Port)
-                .Must(NetworkUtils.IsValidPort)
-                .WithMessage("“{PropertyValue}” 不是有效的服务器端口：应为 0 到 65535 的整数。")
-                .When(source => !string.IsNullOrEmpty(source.Port));
-
-            RuleFor(source => source.Weight)
-                .Matches(@"^\d+$").WithMessage("“{PropertyValue}” 不是有效的服务器权重：应为数字。")
-                .When(p => !string.IsNullOrEmpty(p.Weight));
-
-            RuleFor(source => source.MaxFails)
-                .Matches(@"^\d+$").WithMessage("“{PropertyValue}” 不是有效的最大失败次数：应为数字。")
-                .When(p => !string.IsNullOrEmpty(p.MaxFails));
-
-            RuleFor(source => source.FailTimeout)
-                .Matches(@"^\d+$").WithMessage("“{PropertyValue}” 不是有效的冷却时间：应为数字。")
-                .When(p => !string.IsNullOrEmpty(p.FailTimeout));
-
-            RuleFor(source => source.MaxConns)
-                .Matches(@"^\d+$").WithMessage("“{PropertyValue}” 不是有效的最大连接数：应为数字。")
-                .When(p => !string.IsNullOrEmpty(p.MaxConns));
         }
     }
+
 }

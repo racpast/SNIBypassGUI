@@ -15,12 +15,7 @@ namespace SNIBypassGUI.Factories
             {
                 DomainPattern = "",
                 RuleAction = DnsMappingRuleAction.IP,
-                TargetIpType = IpAddressSourceType.Static,
-                TargetIp = "",
-                ResolverId = null,
-                QueryDomain = "",
-                IpAddressType = IpAddressType.IPv4Only,
-                FallbackIpAddresses = []
+                TargetSources = []
             };
         }
     }

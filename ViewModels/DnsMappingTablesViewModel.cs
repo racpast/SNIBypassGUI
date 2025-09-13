@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -213,8 +214,11 @@ namespace SNIBypassGUI.ViewModels
         private readonly IDialogService _dialogService;
         private readonly IFactory<DnsMappingGroup> _groupFactory;
         private readonly IFactory<DnsMappingRule> _ruleFactory;
+        private readonly IFactory<TargetIpSource> _sourceFactory;
+        private readonly IFactory<FallbackAddress> _addressFactory;
         private readonly DnsMappingTableValidator _configValidator;
         private DnsMappingTable _editingTableCopy;
+        private TargetIpSource _selectedSource;
         private object _selectedTreeItem;
         private string _associatedResolverName;
         private bool _isGroupSelected;
@@ -229,12 +233,14 @@ namespace SNIBypassGUI.ViewModels
 
         #region Constructor
         public DnsMappingTablesViewModel(IConfigSetService<DnsMappingTable> tableService, IConfigSetService<ResolverConfig> resolverService,
-            IFactory<DnsMappingGroup> groupFactory, IFactory<DnsMappingRule> ruleFactory, IDialogService dialogService)
+            IFactory<DnsMappingGroup> groupFactory, IFactory<DnsMappingRule> ruleFactory, IFactory<TargetIpSource> sourceFactory, IFactory<FallbackAddress> addressFactory, IDialogService dialogService)
         {
             _tableService = tableService;
             _resolverService = resolverService;
             _groupFactory = groupFactory;
             _ruleFactory = ruleFactory;
+            _sourceFactory = sourceFactory;
+            _addressFactory = addressFactory;
             _dialogService = dialogService;
             _configValidator = new DnsMappingTableValidator();
 
@@ -266,12 +272,19 @@ namespace SNIBypassGUI.ViewModels
             MoveSelectedRuleUpCommand = new RelayCommand(ExecuteMoveSelectedRuleUp, CanExecuteMoveSelectedRuleUp);
             MoveSelectedRuleDownCommand = new RelayCommand(ExecuteMoveSelectedRuleDown, CanExecuteMoveSelectedRuleDown);
 
+            AddNewSourceCommand = new RelayCommand(ExecuteAddNewSource, CanExecuteAddNewSource);
+            RemoveSelectedSourceCommand = new RelayCommand(ExecuteRemoveSelectedSource, CanExecuteOnSelectedSource);
+            MoveSelectedSourceUpCommand = new RelayCommand(ExecuteMoveSelectedSourceUp, CanExecuteOnSelectedSource);
+            MoveSelectedSourceDownCommand = new RelayCommand(ExecuteMoveSelectedSourceDown, CanExecuteOnSelectedSource);
+
             PasteResolverLinkCodeCommand = new AsyncCommand(ExecutePasteResolverLinkCodeAsync, CanExecuteOnSelectedRule);
             UnlinkResolverCommand = new RelayCommand(ExecuteUnlinkResolver, CanExecuteOnSelectedRule);
 
-            MoveFallbackAddressUpCommand = new RelayCommand<string>(ExecuteMoveFallbackAddressUp, CanExecuteOnSelectedRule);
-            MoveFallbackAddressDownCommand = new RelayCommand<string>(ExecuteMoveFallbackAddressDown, CanExecuteOnSelectedRule);
-            DeleteFallbackAddressCommand = new RelayCommand<string>(ExecuteDeleteFallbackAddress, CanExecuteOnSelectedRule);
+            LockFallbackAddressCommand = new RelayCommand<FallbackAddress>(ExecuteLockFallbackAddress, CanExecuteLockFallbackAddress);
+            UnlockFallbackAddressCommand = new RelayCommand<FallbackAddress>(ExecuteUnlockFallbackAddress, CanExecuteUnlockFallbackAddress);
+            MoveFallbackAddressUpCommand = new RelayCommand<FallbackAddress>(ExecuteMoveFallbackAddressUp, CanExecuteOnSelectedRule);
+            MoveFallbackAddressDownCommand = new RelayCommand<FallbackAddress>(ExecuteMoveFallbackAddressDown, CanExecuteOnSelectedRule);
+            DeleteFallbackAddressCommand = new RelayCommand<FallbackAddress>(ExecuteDeleteFallbackAddress, CanExecuteOnSelectedRule);
             AddFallbackAddressCommand = new AsyncCommand(ExecuteAddFallbackAddressAsync, CanExecuteOnSelectedRule);
             DeleteAllFallbackAddressesCommand = new AsyncCommand(ExecuteDeleteAllFallbackAddressesAsync, CanExecuteDeleteAllFallbackAddresses);
 
@@ -314,6 +327,7 @@ namespace SNIBypassGUI.ViewModels
                 {
                     if (_editingTableCopy != null) StartListeningToChanges(_editingTableCopy);
                     SelectedTreeItem = null;
+                    SelectedSource = null;
                 }
             }
         }
@@ -328,12 +342,43 @@ namespace SNIBypassGUI.ViewModels
                     IsGroupSelected = value is DnsMappingGroup;
                     IsRuleSelected = value is DnsMappingRule;
 
-                    if (IsRuleSelected && value is DnsMappingRule rule && rule.Parent != null)
-                        rule.Parent.IsExpanded = true;
+                    // 当选择规则时，默认选择第一个目标源
+                    if (IsRuleSelected && value is DnsMappingRule rule)
+                    {
+                        if (rule.Parent != null)
+                        {
+                            rule.Parent.IsExpanded = true;
+                            SelectedSource = rule.TargetSources?.FirstOrDefault();
+                        }
+                        else
+                        {
+                            var actualParent = FindParentGroup(rule);
+                            if (actualParent != null)
+                            {
+                                rule.Parent = actualParent;
+                                actualParent.IsExpanded = true;
+                                SelectedSource = rule.TargetSources?.FirstOrDefault();
+                            }
+                        }
+                    }
+                    else SelectedSource = null;
 
                     UpdateAssociatedResolverName();
                     UpdateCommandStates();
                     OnPropertyChanged(nameof(IsDomainPatternPcre));
+                }
+            }
+        }
+
+        public TargetIpSource SelectedSource
+        {
+            get => _selectedSource;
+            set
+            {
+                if (SetProperty(ref _selectedSource, value))
+                {
+                    UpdateAssociatedResolverName();
+                    UpdateCommandStates();
                 }
             }
         }
@@ -353,10 +398,6 @@ namespace SNIBypassGUI.ViewModels
         public IReadOnlyList<ValidationErrorNode> ValidationWarnings { get => _validationWarnings; private set => SetProperty(ref _validationWarnings, value); }
 
         public bool HasValidationWarnings => ValidationWarnings?.Any() == true;
-
-
-
-
         #endregion
 
         #region Public Commands
@@ -378,10 +419,16 @@ namespace SNIBypassGUI.ViewModels
         public ICommand RemoveSelectedRuleCommand { get; }
         public ICommand MoveSelectedRuleUpCommand { get; }
         public ICommand MoveSelectedRuleDownCommand { get; }
+        public ICommand AddNewSourceCommand { get; }
+        public ICommand RemoveSelectedSourceCommand { get; }
+        public ICommand MoveSelectedSourceUpCommand { get; }
+        public ICommand MoveSelectedSourceDownCommand { get; }
         public ICommand PasteResolverLinkCodeCommand { get; }
         public ICommand UnlinkResolverCommand { get; }
         public ICommand MoveFallbackAddressUpCommand { get; }
         public ICommand MoveFallbackAddressDownCommand { get; }
+        public ICommand LockFallbackAddressCommand { get; }
+        public ICommand UnlockFallbackAddressCommand { get; }
         public ICommand DeleteFallbackAddressCommand { get; }
         public ICommand AddFallbackAddressCommand { get; }
         public ICommand DeleteAllFallbackAddressesCommand { get; }
@@ -472,11 +519,18 @@ namespace SNIBypassGUI.ViewModels
             (MoveSelectedRuleUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedRuleDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
+            (AddNewSourceCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (RemoveSelectedSourceCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (MoveSelectedSourceUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (MoveSelectedSourceDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+
             (PasteResolverLinkCodeCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (UnlinkResolverCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (MoveFallbackAddressUpCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
-            (MoveFallbackAddressDownCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
-            (DeleteFallbackAddressCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+            (MoveFallbackAddressUpCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
+            (MoveFallbackAddressDownCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
+            (DeleteFallbackAddressCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
+            (LockFallbackAddressCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
+            (UnlockFallbackAddressCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
             (AddFallbackAddressCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteAllFallbackAddressesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
 
@@ -610,14 +664,13 @@ namespace SNIBypassGUI.ViewModels
                     if (result == SaveChangesResult.Cancel) return;
                 }
 
-                var originalTable = TableSelector.SelectedItem;
-                var newName = await _dialogService.ShowTextInputAsync("重命名映射表", $"为 “{originalTable.TableName}” 输入新名称：", originalTable.TableName);
+                var newName = await _dialogService.ShowTextInputAsync("重命名映射表", $"为 “{EditingTableCopy.TableName}” 输入新名称：", EditingTableCopy.TableName);
                 if (newName != null && !string.IsNullOrWhiteSpace(newName))
                 {
-                    if (newName != originalTable.TableName)
+                    if (newName != EditingTableCopy.TableName)
                     {
-                        originalTable.TableName = newName;
-                        await _tableService.SaveChangesAsync(originalTable);
+                        EditingTableCopy.TableName = newName;
+                        await _tableService.SaveChangesAsync(EditingTableCopy);
                         ResetToSelectedTable();
                     }
                 }
@@ -772,22 +825,55 @@ namespace SNIBypassGUI.ViewModels
         private void ListenToRule(DnsMappingRule rule)
         {
             rule.PropertyChanged += OnEditingCopyPropertyChanged;
-            if (rule.FallbackIpAddresses != null)
-                rule.FallbackIpAddresses.CollectionChanged += OnChildCollectionChanged;
+            if (rule.TargetSources != null)
+            {
+                rule.TargetSources.CollectionChanged += OnSourcesCollectionChanged;
+                foreach (var source in rule.TargetSources) ListenToSource(source);
+            }
         }
 
         private void StopListeningToRule(DnsMappingRule rule)
         {
             rule.PropertyChanged -= OnEditingCopyPropertyChanged;
-            if (rule.FallbackIpAddresses != null)
-                rule.FallbackIpAddresses.CollectionChanged -= OnChildCollectionChanged;
+            if (rule.TargetSources != null)
+            {
+                rule.TargetSources.CollectionChanged -= OnSourcesCollectionChanged;
+                foreach (var source in rule.TargetSources) StopListeningToSource(source);
+            }
         }
+
+        private void ListenToSource(TargetIpSource source)
+        {
+            source.PropertyChanged += OnEditingCopyPropertyChanged;
+            if (source.FallbackIpAddresses != null)
+            {
+                source.FallbackIpAddresses.CollectionChanged += OnFallbackAddressesCollectionChanged;
+                foreach (var address in source.FallbackIpAddresses) ListenToFallbackAddress(address);
+            }
+        }
+
+        private void StopListeningToSource(TargetIpSource source)
+        {
+            source.PropertyChanged -= OnEditingCopyPropertyChanged;
+            if (source.FallbackIpAddresses != null)
+            {
+                source.FallbackIpAddresses.CollectionChanged -= OnFallbackAddressesCollectionChanged;
+                foreach (var address in source.FallbackIpAddresses) StopListeningToFallbackAddress(address);
+            }
+        }
+
+        private void ListenToFallbackAddress(FallbackAddress address) =>
+            address.PropertyChanged += OnEditingCopyPropertyChanged;
+
+        private void StopListeningToFallbackAddress(FallbackAddress address) =>
+            address.PropertyChanged -= OnEditingCopyPropertyChanged;
 
         private void OnGroupsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.NewItems != null) foreach (DnsMappingGroup item in e.NewItems) ListenToGroup(item);
             if (e.OldItems != null) foreach (DnsMappingGroup item in e.OldItems) StopListeningToGroup(item);
             if (CurrentState == EditingState.None) TransitionToState(EditingState.Editing);
+            ValidateEditingCopy();
         }
 
         private void OnRulesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -795,11 +881,23 @@ namespace SNIBypassGUI.ViewModels
             if (e.NewItems != null) foreach (DnsMappingRule item in e.NewItems) ListenToRule(item);
             if (e.OldItems != null) foreach (DnsMappingRule item in e.OldItems) StopListeningToRule(item);
             if (CurrentState == EditingState.None) TransitionToState(EditingState.Editing);
+            ValidateEditingCopy();
         }
 
-        private void OnChildCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void OnSourcesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            if (e.NewItems != null) foreach (TargetIpSource item in e.NewItems) ListenToSource(item);
+            if (e.OldItems != null) foreach (TargetIpSource item in e.OldItems) StopListeningToSource(item);
             if (CurrentState == EditingState.None) TransitionToState(EditingState.Editing);
+            ValidateEditingCopy();
+        }
+
+        private void OnFallbackAddressesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null) foreach (FallbackAddress item in e.NewItems) ListenToFallbackAddress(item);
+            if (e.OldItems != null) foreach (FallbackAddress item in e.OldItems) StopListeningToFallbackAddress(item);
+            if (CurrentState == EditingState.None) TransitionToState(EditingState.Editing);
+            ValidateEditingCopy();
         }
 
         private void OnEditingCopyPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -1071,20 +1169,66 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteMoveSelectedRuleUp()
         {
-            if (SelectedTreeItem is DnsMappingRule rule && FindParentGroup(rule) is DnsMappingGroup parent)
+            if (SelectedTreeItem is DnsMappingRule rule)
             {
-                int index = parent.MappingRules.IndexOf(rule);
-                if (index > 0) parent.MappingRules.Move(index, index - 1);
+                var currentGroup = FindParentGroup(rule);
+                if (currentGroup == null) return;
+
+                int currentGroupIndex = EditingTableCopy.MappingGroups.IndexOf(currentGroup);
+                int ruleIndex = currentGroup.MappingRules.IndexOf(rule);
+
+                // 如果在当前组内不是第一个规则，则在组内上移
+                if (ruleIndex > 0)
+                {
+                    currentGroup.MappingRules.Move(ruleIndex, ruleIndex - 1);
+                }
+                // 如果是当前组的第一个规则，且不是第一个组，则跨组移动到上一个组的末尾
+                else if (currentGroupIndex > 0)
+                {
+                    var previousGroup = EditingTableCopy.MappingGroups[currentGroupIndex - 1];
+
+                    // 从当前组移除规则
+                    currentGroup.MappingRules.Remove(rule);
+
+                    // 添加到上一个组的末尾
+                    previousGroup.MappingRules.Add(rule);
+
+                    // 保持选中状态
+                    SelectedTreeItem = rule;
+                }
             }
         }
 
         private void ExecuteMoveSelectedRuleDown()
         {
-            if (SelectedTreeItem is DnsMappingRule rule && FindParentGroup(rule) is DnsMappingGroup parent)
+            if (SelectedTreeItem is DnsMappingRule rule)
             {
-                int index = parent.MappingRules.IndexOf(rule);
-                if (index < parent.MappingRules.Count - 1)
-                    parent.MappingRules.Move(index, index + 1);
+                var currentGroup = FindParentGroup(rule);
+                if (currentGroup == null) return;
+
+                int currentGroupIndex = EditingTableCopy.MappingGroups.IndexOf(currentGroup);
+                int ruleIndex = currentGroup.MappingRules.IndexOf(rule);
+                int ruleCount = currentGroup.MappingRules.Count;
+
+                // 如果在当前组内不是最后一个规则，则在组内下移
+                if (ruleIndex < ruleCount - 1)
+                {
+                    currentGroup.MappingRules.Move(ruleIndex, ruleIndex + 1);
+                }
+                // 如果是当前组的最后一个规则，且不是最后一个组，则跨组移动到下一个组的开头
+                else if (currentGroupIndex < EditingTableCopy.MappingGroups.Count - 1)
+                {
+                    var nextGroup = EditingTableCopy.MappingGroups[currentGroupIndex + 1];
+
+                    // 从当前组移除规则
+                    currentGroup.MappingRules.Remove(rule);
+
+                    // 添加到下一个组的开头
+                    nextGroup.MappingRules.Insert(0, rule);
+
+                    // 保持选中状态
+                    SelectedTreeItem = rule;
+                }
             }
         }
 
@@ -1095,24 +1239,87 @@ namespace SNIBypassGUI.ViewModels
         private bool CanExecuteMoveSelectedRuleUp()
         {
             if (!CanExecuteOnSelectedRule()) return false;
+
             var rule = SelectedTreeItem as DnsMappingRule;
-            var parent = FindParentGroup(rule);
-            return parent != null && parent.MappingRules.IndexOf(rule) > 0;
+            var currentGroup = FindParentGroup(rule);
+            if (currentGroup == null) return false;
+
+            int currentGroupIndex = EditingTableCopy.MappingGroups.IndexOf(currentGroup);
+            int ruleIndex = currentGroup.MappingRules.IndexOf(rule);
+
+            // 不是当前组的第一个规则，或者不是第一个组
+            return ruleIndex > 0 || currentGroupIndex > 0;
         }
 
         private bool CanExecuteMoveSelectedRuleDown()
         {
             if (!CanExecuteOnSelectedRule()) return false;
+
             var rule = SelectedTreeItem as DnsMappingRule;
-            var parent = FindParentGroup(rule);
-            return parent != null && parent.MappingRules.IndexOf(rule) < parent.MappingRules.Count - 1;
+            var currentGroup = FindParentGroup(rule);
+            if (currentGroup == null) return false;
+
+            int currentGroupIndex = EditingTableCopy.MappingGroups.IndexOf(currentGroup);
+            int ruleIndex = currentGroup.MappingRules.IndexOf(rule);
+            int ruleCount = currentGroup.MappingRules.Count;
+
+            // 不是当前组的最后一个规则，或者不是最后一个组
+            return ruleIndex < ruleCount - 1 || currentGroupIndex < EditingTableCopy.MappingGroups.Count - 1;
         }
+        #endregion
+
+        #region Source Management
+        private void ExecuteAddNewSource()
+        {
+            if (SelectedTreeItem is DnsMappingRule rule)
+            {
+                var newSource = _sourceFactory.CreateDefault();
+                rule.TargetSources.Add(newSource);
+                SelectedSource = newSource;
+            }
+        }
+
+        private void ExecuteRemoveSelectedSource()
+        {
+            if (SelectedSource == null) return;
+            else if (SelectedTreeItem is DnsMappingRule rule)
+            {
+                int index = rule.TargetSources.IndexOf(SelectedSource);
+                rule.TargetSources.Remove(SelectedSource);
+                SelectedSource = rule.TargetSources.Any() ? rule.TargetSources[Math.Max(0, index - 1)] : null;
+            }
+        }
+
+        private void ExecuteMoveSelectedSourceUp()
+        {
+            if (SelectedSource == null) return;
+            else if (SelectedTreeItem is DnsMappingRule rule)
+            {
+                int index = rule.TargetSources.IndexOf(SelectedSource);
+                if (index > 0) rule.TargetSources.Move(index, index - 1);
+            }
+        }
+
+        private void ExecuteMoveSelectedSourceDown()
+        {
+            if (SelectedSource == null) return;
+            else if (SelectedTreeItem is DnsMappingRule rule)
+            {
+                int index = rule.TargetSources.IndexOf(SelectedSource);
+                if (index < rule.TargetSources.Count - 1)
+                    rule.TargetSources.Move(index, index + 1);
+            }
+        }
+
+        private bool CanExecuteAddNewSource() => !_isBusy && IsRuleSelected;
+
+        private bool CanExecuteOnSelectedSource() => SelectedSource != null && !_isBusy;
         #endregion
 
         #region Resolver Link Management
         private async Task ExecutePasteResolverLinkCodeAsync()
         {
-            if (SelectedTreeItem is not DnsMappingRule selectedRule) return;
+            if (SelectedSource is null) return;
 
             var linkCode = Clipboard.GetText();
             if (string.IsNullOrWhiteSpace(linkCode)) return;
@@ -1124,7 +1331,7 @@ namespace SNIBypassGUI.ViewModels
                 var resolver = _resolverService.AllConfigs.FirstOrDefault(r => r.Id == resolverId);
                 if (resolver != null)
                 {
-                    selectedRule.ResolverId = resolver.Id;
+                    SelectedSource.ResolverId = resolver.Id;
                     UpdateAssociatedResolverName();
                 }
                 else await _dialogService.ShowInfoAsync("关联失败", "未找到对应关联码的解析器配置。");
@@ -1133,18 +1340,18 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteUnlinkResolver()
         {
-            if (SelectedTreeItem is DnsMappingRule rule)
+            if (SelectedSource != null)
             {
-                rule.ResolverId = null;
+                SelectedSource.ResolverId = null;
                 UpdateAssociatedResolverName();
             }
         }
 
         private void UpdateAssociatedResolverName()
         {
-            if (SelectedTreeItem is DnsMappingRule rule && rule.ResolverId.HasValue)
+            if (SelectedSource != null && SelectedSource.ResolverId.HasValue)
             {
-                var resolver = _resolverService.AllConfigs.FirstOrDefault(r => r.Id == rule.ResolverId.Value);
+                var resolver = _resolverService.AllConfigs.FirstOrDefault(r => r.Id == SelectedSource.ResolverId.Value);
                 AssociatedResolverName = resolver != null ? resolver.ConfigName : "关联已失效";
             }
             else AssociatedResolverName = string.Empty;
@@ -1154,74 +1361,109 @@ namespace SNIBypassGUI.ViewModels
         #region Fallback Address Management
         private async Task ExecuteAddFallbackAddressAsync()
         {
-            if (SelectedTreeItem is DnsMappingRule rule)
+            if (SelectedSource is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            var newIp = await _dialogService.ShowTextInputAsync("添加回落地址", "请输入 IP 地址：");
+            if (newIp != null)
             {
-                _isBusy = true;
-                UpdateCommandStates();
-
-                var newIp = await _dialogService.ShowTextInputAsync("添加回落地址", "请输入 IP 地址：");
-                if (newIp != null)
+                string trimmed = newIp.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed))
+                    await _dialogService.ShowInfoAsync("添加失败", "回落地址不能为空！");
+                else if (!NetworkUtils.IsValidIP(trimmed))
+                    await _dialogService.ShowInfoAsync("添加失败", $"“{trimmed}” 不是合法的 IP 地址！");
+                else if (SelectedSource.FallbackIpAddresses.Select(f => f.Address).Contains(trimmed))
+                    await _dialogService.ShowInfoAsync("添加失败", $"回落地址 “{trimmed}” 已存在！");
+                else
                 {
-                    string trimmed = newIp.Trim();
-                    if (string.IsNullOrWhiteSpace(trimmed))
-                        await _dialogService.ShowInfoAsync("添加失败", "回落地址不能为空！");
-                    else if (!NetworkUtils.IsValidIP(trimmed))
-                        await _dialogService.ShowInfoAsync("添加失败", $"“{trimmed}” 不是合法的 IP 地址！");
-                    else if (rule.FallbackIpAddresses.Contains(trimmed))
-                        await _dialogService.ShowInfoAsync("添加失败", $"回落地址 “{trimmed}” 已存在！");
-                    else rule.FallbackIpAddresses.Add(trimmed);
+                    var newAddress = _addressFactory.CreateDefault();
+                    newAddress.Address = trimmed;
+                    SelectedSource.FallbackIpAddresses.Add(newAddress);
                 }
-
-                _isBusy = false;
-                UpdateCommandStates();
             }
+
+            _isBusy = false;
+            UpdateCommandStates();
         }
 
-        private void ExecuteDeleteFallbackAddress(string address)
+        private void ExecuteDeleteFallbackAddress(FallbackAddress address)
         {
-            if (SelectedTreeItem is DnsMappingRule rule && address != null)
+            if (SelectedSource != null && address != null)
             {
-                if (rule.FallbackIpAddresses.Contains(address))
-                    rule.FallbackIpAddresses.Remove(address);
+                if (SelectedSource.FallbackIpAddresses.Contains(address))
+                    SelectedSource.FallbackIpAddresses.Remove(address);
             }
         }
 
         private async Task ExecuteDeleteAllFallbackAddressesAsync()
         {
-            if (SelectedTreeItem is DnsMappingRule rule && rule.FallbackIpAddresses.Any())
+            if (SelectedSource != null && SelectedSource.FallbackIpAddresses.Any())
             {
                 var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除所有回落地址吗？", "删除");
                 if (!confirmResult) return;
-                rule.FallbackIpAddresses.Clear();
+                SelectedSource.FallbackIpAddresses.Clear();
             }
         }
 
-        private void ExecuteMoveFallbackAddressUp(string address)
+        private void ExecuteMoveFallbackAddressUp(FallbackAddress address)
         {
-            if (SelectedTreeItem is DnsMappingRule rule && address != null)
+            if (SelectedSource != null && address != null)
             {
-                if (rule.FallbackIpAddresses.Contains(address))
+                if (SelectedSource.FallbackIpAddresses.Contains(address))
                 {
-                    int index = rule.FallbackIpAddresses.IndexOf(address);
-                    if (index > 0) rule.FallbackIpAddresses.Move(index, index - 1);
+                    int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
+                    if (index > 0) SelectedSource.FallbackIpAddresses.Move(index, index - 1);
                 }
             }
         }
 
-        private void ExecuteMoveFallbackAddressDown(string address)
+        private void ExecuteMoveFallbackAddressDown(FallbackAddress address)
         {
-            if (SelectedTreeItem is DnsMappingRule rule && address != null)
+            if (SelectedSource != null && address != null)
             {
-                if (rule.FallbackIpAddresses.Contains(address))
+                if (SelectedSource.FallbackIpAddresses.Contains(address))
                 {
-                    int index = rule.FallbackIpAddresses.IndexOf(address);
-                    if (index < rule.FallbackIpAddresses.Count - 1)
-                        rule.FallbackIpAddresses.Move(index, index + 1);
+                    int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
+                    if (index < SelectedSource.FallbackIpAddresses.Count - 1)
+                        SelectedSource.FallbackIpAddresses.Move(index, index + 1);
                 }
             }
         }
 
-        private bool CanExecuteDeleteAllFallbackAddresses() => CanExecuteOnSelectedRule() && (SelectedTreeItem as DnsMappingRule)?.FallbackIpAddresses.Any() == true;
+        private void ExecuteLockFallbackAddress(FallbackAddress address)
+        {
+            if (SelectedSource != null && address != null)
+            {
+                if (SelectedSource.FallbackIpAddresses.Contains(address))
+                {
+                    int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
+                    if (index >= 0) SelectedSource.FallbackIpAddresses[index].IsLocked = true;
+                }
+            }
+        }
+
+        private void ExecuteUnlockFallbackAddress(FallbackAddress address)
+        {
+            if (SelectedSource != null && address != null)
+            {
+                if (SelectedSource.FallbackIpAddresses.Contains(address))
+                {
+                    int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
+                    if (index >= 0) SelectedSource.FallbackIpAddresses[index].IsLocked = false;
+                }
+            }
+        }
+
+        private bool CanExecuteLockFallbackAddress(FallbackAddress address) =>
+            CanExecuteOnSelectedSource() && SelectedSource.FallbackIpAddresses.Contains(address) && !address.IsLocked;
+
+        private bool CanExecuteUnlockFallbackAddress(FallbackAddress address) =>
+            CanExecuteOnSelectedSource() && SelectedSource.FallbackIpAddresses.Contains(address) && address.IsLocked;
+
+        private bool CanExecuteDeleteAllFallbackAddresses() =>
+            CanExecuteOnSelectedSource() && SelectedSource.FallbackIpAddresses.Any();
         #endregion
 
         #region Group Icon Management
@@ -1292,9 +1534,11 @@ namespace SNIBypassGUI.ViewModels
                     if (EditingTableCopy != null)
                     {
                         foreach (var rule in EditingTableCopy.MappingGroups.SelectMany(g => g.MappingRules))
-                            if (rule.ResolverId == removedResolverId)
-                                rule.ResolverId = null;
-                        if (SelectedTreeItem is DnsMappingRule selectedRule && selectedRule.ResolverId == null)
+                            foreach (var source in rule.TargetSources)
+                                if (source.ResolverId == removedResolverId)
+                                    source.ResolverId = null;
+
+                        if (SelectedSource != null && SelectedSource.ResolverId == removedResolverId)
                             UpdateAssociatedResolverName();
                     }
 
@@ -1302,13 +1546,12 @@ namespace SNIBypassGUI.ViewModels
                     {
                         bool wasModified = false;
                         foreach (var rule in table.MappingGroups.SelectMany(g => g.MappingRules))
-                        {
-                            if (rule.ResolverId == removedResolverId)
-                            {
-                                rule.ResolverId = null;
-                                wasModified = true;
-                            }
-                        }
+                            foreach (var source in rule.TargetSources)
+                                if (source.ResolverId == removedResolverId)
+                                {
+                                    source.ResolverId = null;
+                                    wasModified = true;
+                                }
                         if (wasModified) modifiedTables.Add(table);
                     }
 
@@ -1332,7 +1575,7 @@ namespace SNIBypassGUI.ViewModels
 
         private void HandleResolverRenamed(Guid resolverId, string newName)
         {
-            if (SelectedTreeItem is DnsMappingRule rule && rule.ResolverId == resolverId)
+            if (SelectedSource != null && SelectedSource.ResolverId == resolverId)
                 UpdateAssociatedResolverName();
         }
         #endregion
@@ -1383,9 +1626,15 @@ namespace SNIBypassGUI.ViewModels
         {
             if (item is DnsMappingGroup group) return group;
             if (item is DnsMappingRule rule)
-                return EditingTableCopy?.MappingGroups.FirstOrDefault(g => g.MappingRules.Contains(rule));
+            {
+                if (rule.Parent != null) return rule.Parent;
+                return EditingTableCopy?.MappingGroups?
+                    .FirstOrDefault(g => g.MappingRules?.Contains(rule) == true);
+            }
             return null;
         }
+
+
         #endregion
         #endregion
 

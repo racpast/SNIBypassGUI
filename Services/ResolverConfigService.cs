@@ -79,10 +79,14 @@ namespace SNIBypassGUI.Services
 
                     if (originalConfig.ConfigName != oldName)
                     {
-                        Application.Current.Dispatcher.Invoke(() =>
+                        if (Application.Current != null)
                         {
-                            ConfigRenamed?.Invoke(originalConfig.Id, originalConfig.ConfigName);
-                        });
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                ConfigRenamed?.Invoke(originalConfig.Id, originalConfig.ConfigName);
+                            });
+                        }
+                        else ConfigRenamed?.Invoke(originalConfig.Id, originalConfig.ConfigName);
                     }
                 });
             }

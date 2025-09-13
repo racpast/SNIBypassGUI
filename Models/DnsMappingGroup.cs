@@ -1,14 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media.Imaging;
 using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Utils.Extensions;
 using SNIBypassGUI.Utils.IO;
 using SNIBypassGUI.Utils.Results;
-
 
 namespace SNIBypassGUI.Models
 {
@@ -82,15 +81,29 @@ namespace SNIBypassGUI.Models
             get => _mappingRules;
             set
             {
+                // 清理旧集合
                 if (_mappingRules != null)
+                {
                     _mappingRules.CollectionChanged -= OnMappingRulesChanged;
+                    foreach (var rule in _mappingRules)
+                    {
+                        rule.PropertyChanged -= OnMappingRulePropertyChanged;
+                        if (rule.Parent == this)
+                            rule.Parent = null;
+                    }
+                }
 
+                // If you know, you know. This is some seriously elegant hierarchical subscription.
                 if (SetProperty(ref _mappingRules, value))
                 {
+                    // 设置新集合
                     if (_mappingRules != null)
                     {
                         foreach (var rule in _mappingRules)
+                        {
                             rule.Parent = this;
+                            rule.PropertyChanged += OnMappingRulePropertyChanged;
+                        }
                         _mappingRules.CollectionChanged += OnMappingRulesChanged;
                     }
                 }
@@ -103,26 +116,52 @@ namespace SNIBypassGUI.Models
         public string DisplayText { get => $"{GroupName} ({MappingRules?.Count ?? 0})"; }
 
         /// <summary>
-        /// 此映射组是否在展开，供 UI 使用。
+        /// 此映射组是否展开，供 UI 使用。
         /// </summary>
         public bool IsExpanded
         {
             get => _isExpanded;
             set => SetProperty(ref _isExpanded, value);
         }
+
+        /// <summary>
+        /// 此映射组是否包含需要 IPv6 支持的规则。
+        /// </summary>
+        public bool RequiresIPv6 => MappingRules?.Any(rule => rule.RequiresIPv6) == true;
         #endregion
 
         #region Methods
         private void OnMappingRulesChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            // 处理新增项
             if (e.NewItems != null)
-                foreach (DnsMappingRule rule in e.NewItems) rule.Parent = this;
+            {
+                foreach (DnsMappingRule rule in e.NewItems)
+                {
+                    rule.Parent = this;
+                    rule.PropertyChanged += OnMappingRulePropertyChanged;
+                }
+            }
 
-            if (e.OldItems != null)
+            // 处理移除项
+            if (e.OldItems != null && e.Action != NotifyCollectionChangedAction.Move)
+            {
                 foreach (DnsMappingRule rule in e.OldItems)
-                    if (rule.Parent == this) rule.Parent = null;
+                {
+                    rule.PropertyChanged -= OnMappingRulePropertyChanged;
+                    if (rule.Parent == this)
+                        rule.Parent = null;
+                }
+            }
 
             OnPropertyChanged(nameof(DisplayText));
+            OnPropertyChanged(nameof(RequiresIPv6));
+        }
+
+        private void OnMappingRulePropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DnsMappingRule.RequiresIPv6))
+                OnPropertyChanged(nameof(RequiresIPv6));
         }
 
         /// <summary>

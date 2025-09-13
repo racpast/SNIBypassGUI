@@ -376,19 +376,18 @@ namespace SNIBypassGUI.ViewModels
                     if (result == SaveChangesResult.Cancel) return;
                 }
 
-                var originalConfig = ConfigSelector.SelectedItem;
-                var newName = await _dialogService.ShowTextInputAsync("重命名配置", $"为 \"{originalConfig.ConfigName}\" 输入新名称：", originalConfig.ConfigName);
+                var newName = await _dialogService.ShowTextInputAsync("重命名配置", $"为 \"{EditingConfigCopy.ConfigName}\" 输入新名称：", EditingConfigCopy.ConfigName);
                 if (newName != null)
                 {
                     if (!string.IsNullOrWhiteSpace(newName))
                     {
-                        if (newName != originalConfig.ConfigName)
+                        if (newName != EditingConfigCopy.ConfigName)
                         {
-                            originalConfig.ConfigName = newName;
-                            await _configService.SaveChangesAsync(originalConfig);
+                            EditingConfigCopy.ConfigName = newName;
+                            await _configService.SaveChangesAsync(EditingConfigCopy);
                         }
                         // 刷新显示并确保选中状态正确
-                        SwitchToConfig(originalConfig);
+                        SwitchToConfig(EditingConfigCopy);
                     }
                     else
                     {

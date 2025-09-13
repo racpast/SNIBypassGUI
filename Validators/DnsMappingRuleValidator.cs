@@ -4,7 +4,7 @@ using FluentValidation.Results;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Interop.Pcre;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Utils.Network;
+using SNIBypassGUI.ViewModels.Validation;
 
 namespace SNIBypassGUI.Validators
 {
@@ -50,57 +50,60 @@ namespace SNIBypassGUI.Validators
                 })
                 .When(rule => !string.IsNullOrWhiteSpace(rule.DomainPattern) &&
                               !rule.DomainPattern.Trim().StartsWith("/"));
-            
+
             When(rule => rule.RuleAction == DnsMappingRuleAction.IP, () =>
             {
-                When(rule => rule.TargetIpType == IpAddressSourceType.Static, () =>
-                {
-                    RuleFor(rule => rule.TargetIp)
-                        .Must(x => !string.IsNullOrWhiteSpace(x))
-                        .WithMessage("目标地址不能为空。");
-                    RuleFor(rule => rule.TargetIp)
-                        .Must(NetworkUtils.IsValidIP)
-                        .WithMessage("“{PropertyValue}” 不是有效的目标地址：应为合法的 IP 地址。")
-                        .When(rule => !string.IsNullOrWhiteSpace(rule.TargetIp));
-                });
-
-                When(rule => rule.TargetIpType == IpAddressSourceType.Dynamic, () =>
-                {
-                    RuleFor(rule => rule.QueryDomain)
-                        .Must(x => !string.IsNullOrWhiteSpace(x))
-                        .WithMessage("查询域名不能为空。");
-                    RuleFor(rule => rule.QueryDomain)
-                        .Must(NetworkUtils.IsValidDomain)
-                        .WithMessage("“{PropertyValue}” 不是有效的查询域名：应符合 RFC 1035、RFC 1123 及国际化域名规范。")
-                        .When(rule => !string.IsNullOrWhiteSpace(rule.QueryDomain));
-
-                    RuleFor(rule => rule.FallbackIpAddresses)
-                        .Custom((fallbackIps, context) =>
+                RuleFor(rule => rule.TargetSources)
+                    .Custom((sources, context) =>
+                    {
+                        if (sources.Count == 0)
                         {
-                            if (fallbackIps.Count == 0)
-                            {
-                                var failure = new ValidationFailure(context.PropertyPath, "此规则未关联解析器且无有效回落地址，将不会生效。")
-                                { Severity = Severity.Warning };
-                                context.AddFailure(failure);
-                                return;
-                            }
+                            context.AddFailure(new ValidationFailure(context.PropertyPath, "此规则未配置任何目标 IP 来源，将不会生效。") { Severity = Severity.Warning });
+                            return;
+                        }
 
-                            var invalidIps = fallbackIps.Where(ip => !NetworkUtils.IsValidIP(ip)).ToList();
+                        var sourceValidator = new TargetIpSourceValidator();
 
-                            if (invalidIps.Any())
+                        for (int i = 0; i < sources.Count; i++)
+                        {
+                            var result = sourceValidator.Validate(sources[i]);
+                            if (result.Errors.Any())
                             {
-                                foreach (var invalidIp in invalidIps)
-                                    context.AddFailure($"“{invalidIp}” 不是有效的回落地址：应为合法的 IP 地址。");
+                                var errors = result.Errors.Where(e => e.Severity == Severity.Error).ToList();
+                                var warnings = result.Errors.Where(e => e.Severity == Severity.Warning).ToList();
+
+                                if (errors.Any())
+                                {
+                                    var sourceNode = new ValidationErrorNode { Message = $"第 {i + 1} 个来源：" };
+
+                                    foreach (var error in errors)
+                                    {
+                                        // 检查是否有结构化的错误节点
+                                        if (error.CustomState is ValidationErrorNode structuredError)
+                                            sourceNode.AddChild(structuredError);
+                                        else sourceNode.AddChild(new ValidationErrorNode { Message = error.ErrorMessage });
+                                    }
+
+                                    context.AddFailure(new ValidationFailure(context.PropertyPath, sourceNode.Message) { CustomState = sourceNode });
+                                }
+
+                                if (warnings.Any())
+                                {
+                                    var sourceNode = new ValidationErrorNode { Message = $"第 {i + 1} 个来源：" };
+
+                                    foreach (var warning in warnings)
+                                    {
+                                        // 检查是否有结构化的警告节点
+                                        if (warning.CustomState is ValidationErrorNode structuredWarning)
+                                            sourceNode.AddChild(structuredWarning);
+                                        else sourceNode.AddChild(new ValidationErrorNode { Message = warning.ErrorMessage });
+                                    }
+
+                                    context.AddFailure(new ValidationFailure(context.PropertyPath, sourceNode.Message) { CustomState = sourceNode, Severity = Severity.Warning });
+                                }
                             }
-                            else
-                            {
-                                var failure = new ValidationFailure(context.PropertyPath, "此规则未关联解析器，将使用回落地址。")
-                                { Severity = Severity.Warning };
-                                context.AddFailure(failure);
-                            }
-                        })
-                        .When(rule => rule.ResolverId == null);
-                });
+                        }
+                    });
             });
         }
     }

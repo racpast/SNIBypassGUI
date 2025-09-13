@@ -1,10 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
 using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Utils.Extensions;
+using SNIBypassGUI.Utils.Network;
 using SNIBypassGUI.Utils.Results;
 
 namespace SNIBypassGUI.Models
@@ -17,12 +19,7 @@ namespace SNIBypassGUI.Models
         #region Fields
         private string _domainPattern;
         private DnsMappingRuleAction _ruleAction;
-        private IpAddressSourceType _targetIpType;
-        private string _targetIp;
-        private string _queryDomain;
-        private Guid? _resolverId;
-        private IpAddressType _ipAddressType;
-        private ObservableCollection<string> _fallbackIpAddresses;
+        private ObservableCollection<TargetIpSource> _targetSources;
         private DnsMappingGroup _parent;
         #endregion
 
@@ -36,7 +33,7 @@ namespace SNIBypassGUI.Models
             set
             {
                 if (SetProperty(ref _domainPattern, value))
-                    OnPropertyChanged(nameof(PrimaryDisplayText));
+                    OnPropertyChanged(nameof(DisplayText));
             }
         }
 
@@ -49,77 +46,48 @@ namespace SNIBypassGUI.Models
             set
             {
                 if (SetProperty(ref _ruleAction, value))
-                    OnPropertyChanged(nameof(ListIconKind));
-            }
-        }
-
-        /// <summary>
-        /// 此规则的目标地址模式。
-        /// </summary>
-        public IpAddressSourceType TargetIpType
-        {
-            get => _targetIpType;
-            set
-            {
-                if (SetProperty(ref _targetIpType, value))
                 {
                     OnPropertyChanged(nameof(ListIconKind));
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
+                    OnPropertyChanged(nameof(RequiresIPv6));
                 }
             }
         }
 
         /// <summary>
-        /// 此规则匹配的域名或模式指向的值。
+        /// 此规则的目标地址来源列表。
         /// </summary>
-        public string TargetIp
+        public ObservableCollection<TargetIpSource> TargetSources
         {
-            get => _targetIp;
+            get => _targetSources;
             set
             {
-                if (SetProperty(ref _targetIp, value))
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
+                if (SetProperty(ref _targetSources, value))
+                {
+                    OnPropertyChanged(nameof(RequiresIPv6));
+
+                    if (_targetSources != null)
+                    {
+                        _targetSources.CollectionChanged += (s, e) =>
+                        {
+                            if (e.OldItems != null)
+                            {
+                                foreach (TargetIpSource oldItem in e.OldItems)
+                                    oldItem.PropertyChanged -= TargetSource_PropertyChanged;
+                            }
+                            if (e.NewItems != null)
+                            {
+                                foreach (TargetIpSource newItem in e.NewItems)
+                                    newItem.PropertyChanged += TargetSource_PropertyChanged;
+                            }
+
+                            OnPropertyChanged(nameof(RequiresIPv6));
+                        };
+
+                        foreach (var item in _targetSources)
+                            item.PropertyChanged += TargetSource_PropertyChanged;
+                    }
+                }
             }
-        }
-
-        /// <summary>
-        /// 使用解析器解析的域名。
-        /// </summary>
-        public string QueryDomain
-        {
-            get => _queryDomain;
-            set
-            {
-                if (SetProperty(ref _queryDomain, value))
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
-            }
-        }
-
-        /// <summary>
-        /// 用于解析指定域名的解析器 ID。
-        /// </summary>
-        public Guid? ResolverId
-        {
-            get => _resolverId;
-            set => SetProperty(ref _resolverId, value);
-        }
-
-        /// <summary>
-        /// 此规则的 IP 查询类型。
-        /// </summary>
-        public IpAddressType IpAddressType
-        {
-            get => _ipAddressType;
-            set => SetProperty(ref _ipAddressType, value);
-        }
-
-        /// <summary>
-        /// 解析域名失败后使用的回退 IP 地址列表。
-        /// </summary>
-        public ObservableCollection<string> FallbackIpAddresses
-        {
-            get => _fallbackIpAddresses;
-            set => SetProperty(ref _fallbackIpAddresses, value);
         }
 
         /// <summary>
@@ -131,7 +99,7 @@ namespace SNIBypassGUI.Models
             {
                 return RuleAction switch
                 {
-                    DnsMappingRuleAction.IP => TargetIpType == IpAddressSourceType.Static ? PackIconKind.ArrowDecisionOutline : PackIconKind.ArrowDecisionAutoOutline,
+                    DnsMappingRuleAction.IP => PackIconKind.ArrowDecisionOutline,
                     DnsMappingRuleAction.Forward => PackIconKind.ShareOutline,
                     DnsMappingRuleAction.Block => PackIconKind.ShareOffOutline,
                     _ => PackIconKind.HelpCircle,
@@ -142,20 +110,45 @@ namespace SNIBypassGUI.Models
         /// <summary>
         /// 此规则在列表中的主要展示文本，供 UI 使用。
         /// </summary>
-        public string PrimaryDisplayText { get => DomainPattern.OrDefault("未指定"); }
+        public string DisplayText { get => DomainPattern.OrDefault("未指定"); }
 
         /// <summary>
-        /// 此规则在列表中的次要展示文本，供 UI 使用。
+        /// 此规则是否需要 IPv6 支持。
         /// </summary>
-        public string SecondaryDisplayText
+        public bool RequiresIPv6
         {
-            get =>
-                TargetIpType switch
+            get
+            {
+                if (RuleAction != DnsMappingRuleAction.IP)
+                    return false;
+
+                return TargetSources?.All(source =>
                 {
-                    IpAddressSourceType.Static => $"{TargetIp.OrDefault("未指定")}",
-                    IpAddressSourceType.Dynamic => $"{QueryDomain.OrDefault("未指定")}",
-                    _ => null
-                };
+                    if (source.SourceType == IpAddressSourceType.Static)
+                        return NetworkUtils.RequiresPublicIPv6(source.Address);
+                    else if (source.SourceType == IpAddressSourceType.Dynamic)
+                    {
+                        if (source.ResolverId == null)
+                        {
+                            if (source.FallbackIpAddresses?.All(fallback =>
+                                NetworkUtils.RequiresPublicIPv6(fallback.Address)) == true)
+                                return true;
+                        }
+                        else if (source.IpAddressType == IpAddressType.IPv6Only)
+                        {
+                            var relevantFallbacks = source.EnableFallbackAutoUpdate
+                                ? source.FallbackIpAddresses?.Where(f => f.IsLocked)
+                                : source.FallbackIpAddresses;
+
+                            // 如果没有任何锁定回落或所有回落都是公网 IPv6
+                            if (relevantFallbacks == null || !relevantFallbacks.Any() ||
+                                relevantFallbacks.All(f => NetworkUtils.RequiresPublicIPv6(f.Address)))
+                                return true;
+                        }
+                    }
+                    return false;
+                }) == true;
+            }
         }
 
         /// <summary>
@@ -169,6 +162,16 @@ namespace SNIBypassGUI.Models
         #endregion
 
         #region Methods
+        private void TargetSource_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is nameof(TargetIpSource.Address)
+                or nameof(TargetIpSource.SourceType)
+                or nameof(TargetIpSource.IpAddressType)
+                or nameof(TargetIpSource.ResolverId)
+                or nameof(TargetIpSource.FallbackIpAddresses))
+                OnPropertyChanged(nameof(RequiresIPv6));
+        }
+
         /// <summary>
         /// 创建当前 <see cref="DnsMappingRule"/> 实例的完整副本。
         /// </summary>
@@ -178,13 +181,8 @@ namespace SNIBypassGUI.Models
             var clone = new DnsMappingRule
             {
                 RuleAction = RuleAction,
-                TargetIpType = TargetIpType,
-                TargetIp = TargetIp,
-                QueryDomain = QueryDomain,
-                IpAddressType = IpAddressType,
-                ResolverId = ResolverId,
                 DomainPattern = DomainPattern,
-                FallbackIpAddresses = [.. FallbackIpAddresses ?? []]
+                TargetSources = [.. TargetSources.OrEmpty().Select(s => s.Clone())]
             };
 
             return clone;
@@ -197,13 +195,8 @@ namespace SNIBypassGUI.Models
         {
             if (source == null) return;
             RuleAction = source.RuleAction;
-            TargetIpType = source.TargetIpType;
-            QueryDomain = source.QueryDomain;
             DomainPattern = source.DomainPattern;
-            TargetIp = source.TargetIp;
-            ResolverId = source.ResolverId;
-            IpAddressType = source.IpAddressType;
-            FallbackIpAddresses = [.. source.FallbackIpAddresses];
+            TargetSources = [.. source.TargetSources.OrEmpty().Select(s => s.Clone())];
         }
 
         /// <summary>
@@ -218,23 +211,7 @@ namespace SNIBypassGUI.Models
             };
 
             if (RuleAction == DnsMappingRuleAction.IP)
-            {
-                jObject["targetIpType"] = TargetIpType.ToString();
-                switch (TargetIpType)
-                {
-                    case IpAddressSourceType.Static:
-                        jObject["targetIp"] = TargetIp.OrDefault();
-                        break;
-                    case IpAddressSourceType.Dynamic:
-                        jObject["queryDomain"] = QueryDomain.OrDefault();
-                        jObject["resolverId"] = ResolverId.ToString();
-                        jObject["ipAddressType"] = IpAddressType.ToString();
-                        jObject["fallbackIpAddresses"] = new JArray(FallbackIpAddresses.OrEmpty());
-                        break;
-                    default:
-                        break;
-                }
-            }
+                jObject["targetSources"] = new JArray(TargetSources?.Select(s => s.ToJObject()).OrEmpty());
 
             return jObject;
         }
@@ -259,30 +236,17 @@ namespace SNIBypassGUI.Models
 
             if (ruleAction == DnsMappingRuleAction.IP)
             {
-                if (!jObject.TryGetEnum("targetIpType", out IpAddressSourceType targetIpType))
+                if (!jObject.TryGetArray("targetSources", out IReadOnlyList<JObject> targetSourceObjects))
                     return ParseResult<DnsMappingRule>.Failure("返回地址动作所需的字段缺失或类型错误。");
-                rule.TargetIpType = targetIpType;
-
-                switch (targetIpType)
+                ObservableCollection<TargetIpSource> targetSources = [];
+                foreach (var item in targetSourceObjects.OfType<JObject>())
                 {
-                    case IpAddressSourceType.Static:
-                        if (!jObject.TryGetString("targetIp", out string targetIp))
-                            return ParseResult<DnsMappingRule>.Failure("直接指定模式所需的字段缺失或类型错误。");
-                        rule.TargetIp = targetIp;
-                        break;
-
-                    case IpAddressSourceType.Dynamic:
-                        if (!jObject.TryGetString("queryDomain", out string queryDomain) ||
-                            !jObject.TryGetNullableGuid("resolverId", out Guid? resolverId) ||
-                            !jObject.TryGetEnum("ipAddressType", out IpAddressType ipAddressType) ||
-                            !jObject.TryGetArray("fallbackIpAddresses", out IReadOnlyList<string> fallbackIpAddresses))
-                            return ParseResult<DnsMappingRule>.Failure("自动解析模式所需的字段缺失或类型错误。");
-                        rule.QueryDomain = queryDomain;
-                        rule.ResolverId = resolverId;
-                        rule.FallbackIpAddresses = [.. fallbackIpAddresses];
-                        rule.IpAddressType = ipAddressType;
-                        break;
+                    var parsed = TargetIpSource.FromJObject(item);
+                    if (!parsed.IsSuccess)
+                        return ParseResult<DnsMappingRule>.Failure($"解析 targetSources 时出错：{parsed.ErrorMessage}");
+                    targetSources.Add(parsed.Value);
                 }
+                rule.TargetSources = targetSources;
             }
 
             return ParseResult<DnsMappingRule>.Success(rule);
