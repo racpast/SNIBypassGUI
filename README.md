@@ -1,4 +1,14 @@
 ![social_compressed](https://snibypassgui.netlib.re/images/wiki/social.webp)
+## 🚀 V4.7 功能预览（开发中）
+### <div align="center"> 域名映射表 </div>
+https://github.com/user-attachments/assets/d54289b3-1fed-4a94-bdce-7ca790219117
+### <div align="center"> 解析器 </div>
+https://github.com/user-attachments/assets/eaa9c7fa-0939-4996-8489-2b095c4b6374
+### <div align="center"> DNS 服务 </div>
+https://github.com/user-attachments/assets/b492720b-3030-4753-ab47-f1517f01ed2a
+
+**<div align="center"> V4.7 是 SNIBypassGUI 迄今为止最大规模的一次更新，在性能、界面和交互上全面升级，同时加入了用户们期待已久的新功能，并修复了众多问题。敬请期待正式版本的到来！ </div>**
+
 ## 📝 简介
 一个**通过 Nginx 反向代理实现绕过 SNI 阻断** 的工具，基于 [Pixiv-Nginx-GUI](https://github.com/racpast/Pixiv-Nginx-GUI) 进行功能扩展与改进。
 
