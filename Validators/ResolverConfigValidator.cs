@@ -749,7 +749,8 @@ namespace SNIBypassGUI.Validators
             When(config => config.ProtocolType == ResolverConfigProtocol.Plain, () =>
             {
                 RuleFor(config => config.UdpBufferSize)
-                    .NotEmpty().WithMessage("EDNS0 UDP 缓冲区大小为空，将使用默认值 “1232”。")
+                    .Must(x => !string.IsNullOrWhiteSpace(x))
+                    .WithMessage("EDNS0 UDP 缓冲区大小为空，将使用默认值 “1232”。")
                     .WithSeverity(Severity.Warning);
                 RuleFor(config => config.UdpBufferSize)
                     .Custom((value, context) =>

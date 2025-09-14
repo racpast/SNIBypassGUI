@@ -122,6 +122,9 @@ namespace SNIBypassGUI.Models
                 if (RuleAction != DnsMappingRuleAction.IP)
                     return false;
 
+                if (TargetSources == null || TargetSources.Count == 0)
+                    return false;
+
                 return TargetSources?.All(source =>
                 {
                     if (source.SourceType == IpAddressSourceType.Static)
@@ -130,8 +133,10 @@ namespace SNIBypassGUI.Models
                     {
                         if (source.ResolverId == null)
                         {
-                            if (source.FallbackIpAddresses?.All(fallback =>
-                                NetworkUtils.RequiresPublicIPv6(fallback.Address)) == true)
+                            if (source.FallbackIpAddresses != null
+                                && source.FallbackIpAddresses.Count > 0
+                                && source.FallbackIpAddresses.All(fallback =>
+                                NetworkUtils.RequiresPublicIPv6(fallback.Address)))
                                 return true;
                         }
                         else if (source.IpAddressType == IpAddressType.IPv6Only)
@@ -168,7 +173,8 @@ namespace SNIBypassGUI.Models
                 or nameof(TargetIpSource.SourceType)
                 or nameof(TargetIpSource.IpAddressType)
                 or nameof(TargetIpSource.ResolverId)
-                or nameof(TargetIpSource.FallbackIpAddresses))
+                or nameof(TargetIpSource.FallbackIpAddresses)
+                or nameof(TargetIpSource.EnableFallbackAutoUpdate))
                 OnPropertyChanged(nameof(RequiresIPv6));
         }
 

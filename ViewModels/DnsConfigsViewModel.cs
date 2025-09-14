@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using FluentValidation;
 using Microsoft.Win32;
 using SNIBypassGUI.Behaviors;
 using SNIBypassGUI.Commands;
@@ -42,6 +43,7 @@ namespace SNIBypassGUI.ViewModels
         private DnsConfig _editingConfigCopy;
         private DnsServer _selectedDnsServer;
         private IReadOnlyList<ValidationErrorNode> _validationErrors;
+        private IReadOnlyList<ValidationErrorNode> _validationWarnings;
         #endregion
 
         #region Constructor
@@ -122,6 +124,14 @@ namespace SNIBypassGUI.ViewModels
         }
 
         public bool HasValidationErrors => ValidationErrors?.Any() == true;
+
+        public IReadOnlyList<ValidationErrorNode> ValidationWarnings
+        {
+            get => _validationWarnings;
+            private set => SetProperty(ref _validationWarnings, value);
+        }
+
+        public bool HasValidationWarnings => ValidationWarnings?.Any() == true;
         #endregion
 
         #region Public Commands
@@ -579,16 +589,16 @@ namespace SNIBypassGUI.ViewModels
 
         private void ValidateEditingCopy()
         {
-            if (EditingConfigCopy == null) ValidationErrors = null;
+            if (EditingConfigCopy == null) ValidationErrors = ValidationWarnings = null;
             else
             {
                 var result = _configValidator.Validate(EditingConfigCopy);
-                if (result.IsValid) ValidationErrors = null;
+                if (result.IsValid) ValidationErrors = ValidationWarnings = null;
                 else
                 {
                     var errors = new List<ValidationErrorNode>();
 
-                    foreach (var error in result.Errors)
+                    foreach (var error in result.Errors.Where(e => e.Severity == Severity.Error))
                     {
                         if (error.CustomState is ValidationErrorNode structuredError)
                         {
@@ -606,9 +616,32 @@ namespace SNIBypassGUI.ViewModels
                     }
 
                     ValidationErrors = errors;
+
+                    var warnings = new List<ValidationErrorNode>();
+
+                    foreach (var warn in result.Errors.Where(e => e.Severity == Severity.Warning))
+                    {
+                        if (warn.CustomState is ValidationErrorNode structuredError)
+                        {
+                            structuredError.Depth = 0;
+                            warnings.Add(structuredError);
+                        }
+                        else
+                        {
+                            warnings.Add(new ValidationErrorNode
+                            {
+                                Message = warn.ErrorMessage,
+                                Depth = 0
+                            });
+                        }
+                    }
+
+                    ValidationWarnings = warnings;
                 }
             }
 
+            OnPropertyChanged(nameof(ValidationWarnings));
+            OnPropertyChanged(nameof(HasValidationWarnings));
             OnPropertyChanged(nameof(ValidationErrors));
             OnPropertyChanged(nameof(HasValidationErrors));
             UpdateCommandStates();
