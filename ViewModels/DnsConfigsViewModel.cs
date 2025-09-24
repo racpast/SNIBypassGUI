@@ -9,15 +9,17 @@ using System.Windows;
 using System.Windows.Input;
 using FluentValidation;
 using Microsoft.Win32;
-using SNIBypassGUI.Behaviors;
-using SNIBypassGUI.Commands;
+using SNIBypassGUI.Common;
+using SNIBypassGUI.Common.Codecs;
+using SNIBypassGUI.Common.Commands;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Interfaces;
 using SNIBypassGUI.Models;
 using SNIBypassGUI.Services;
-using SNIBypassGUI.Utils.Codecs;
 using SNIBypassGUI.Validators;
 using SNIBypassGUI.ViewModels.Validation;
+using SNIBypassGUI.ViewModels.Helpers;
+
 
 namespace SNIBypassGUI.ViewModels
 {
@@ -40,6 +42,7 @@ namespace SNIBypassGUI.ViewModels
         private EditingState _currentState = EditingState.None;
         private bool _isBusy;
         private bool _canExecuteCopy = true;
+        private DnsConfig _originalConfig;
         private DnsConfig _editingConfigCopy;
         private DnsServer _selectedDnsServer;
         private IReadOnlyList<ValidationErrorNode> _validationErrors;
@@ -201,7 +204,8 @@ namespace SNIBypassGUI.ViewModels
             // 保存当前选中的服务器（如果有）
             var currentSelectedServer = SelectedDnsServer;
 
-            EditingConfigCopy = ConfigSelector.SelectedItem?.Clone();
+            _originalConfig = ConfigSelector.SelectedItem;
+            EditingConfigCopy = _originalConfig?.Clone();
 
             // 重置后总是尝试选中第一个服务器
             if (EditingConfigCopy != null && EditingConfigCopy.DnsServers.Any())
@@ -219,6 +223,7 @@ namespace SNIBypassGUI.ViewModels
         private void EnterCreationMode(string configName)
         {
             ConfigSelector.SetItemSilently(null);
+            _originalConfig = null;
             EditingConfigCopy = _configService.CreateDefault();
             EditingConfigCopy.ConfigName = configName;
 
@@ -674,9 +679,8 @@ namespace SNIBypassGUI.ViewModels
                 }
                 else if (_currentState == EditingState.Editing)
                 {
-                    var originalConfig = ConfigSelector.SelectedItem;
-                    originalConfig.UpdateFrom(EditingConfigCopy);
-                    await _configService.SaveChangesAsync(originalConfig);
+                    _originalConfig.UpdateFrom(EditingConfigCopy);
+                    await _configService.SaveChangesAsync(_originalConfig);
                     TransitionToState(EditingState.None);
                 }
             }
@@ -697,7 +701,11 @@ namespace SNIBypassGUI.ViewModels
         private void ExecuteDiscardChanges()
         {
             if (_currentState == EditingState.Creating) SwitchToConfig(AllConfigs.FirstOrDefault());
-            else ResetToSelectedConfig();
+            else
+            {
+                EditingConfigCopy = _originalConfig?.Clone();
+                TransitionToState(EditingState.None);
+            }
         }
 
         private bool CanExecuteWhenDirty() =>
@@ -872,7 +880,7 @@ namespace SNIBypassGUI.ViewModels
         #endregion
         #endregion
 
-        #region Disposal
+        #region IDisposable Implementation
         public void Dispose()
         {
             if (_editingConfigCopy != null)

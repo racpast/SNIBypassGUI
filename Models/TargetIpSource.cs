@@ -7,8 +7,9 @@ using System.Linq;
 using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Enums;
-using SNIBypassGUI.Utils.Extensions;
-using SNIBypassGUI.Utils.Results;
+using SNIBypassGUI.Common;
+using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Common.Results;
 
 namespace SNIBypassGUI.Models
 {

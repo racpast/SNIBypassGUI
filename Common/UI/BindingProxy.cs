@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-namespace SNIBypassGUI.Utils.UI
+namespace SNIBypassGUI.Common.UI
 {
     public class BindingProxy : Freezable
     {

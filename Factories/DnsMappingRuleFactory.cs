@@ -13,7 +13,7 @@ namespace SNIBypassGUI.Factories
         {
             return new DnsMappingRule
             {
-                DomainPattern = "",
+                DomainPatterns = [],
                 RuleAction = DnsMappingRuleAction.IP,
                 TargetSources = []
             };

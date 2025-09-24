@@ -1,7 +1,7 @@
 ﻿using FluentValidation;
 using FluentValidation.Results;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Utils.Network;
+using SNIBypassGUI.Common.Network;
 using SNIBypassGUI.ViewModels.Validation;
 
 namespace SNIBypassGUI.Validators

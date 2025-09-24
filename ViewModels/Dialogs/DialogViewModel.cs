@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using SNIBypassGUI.Interfaces;
-using SNIBypassGUI.Models;
+using SNIBypassGUI.Common;
 
 namespace SNIBypassGUI.ViewModels.Dialogs
 {

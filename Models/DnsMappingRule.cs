@@ -1,13 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
-using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json.Linq;
+using SNIBypassGUI.Common;
+using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Common.Results;
 using SNIBypassGUI.Enums;
-using SNIBypassGUI.Utils.Extensions;
-using SNIBypassGUI.Utils.Network;
-using SNIBypassGUI.Utils.Results;
 
 namespace SNIBypassGUI.Models
 {
@@ -17,24 +15,19 @@ namespace SNIBypassGUI.Models
     public class DnsMappingRule : NotifyPropertyChangedBase
     {
         #region Fields
-        private string _domainPattern;
+        private ObservableCollection<string> _domainPatterns;
         private DnsMappingRuleAction _ruleAction;
         private ObservableCollection<TargetIpSource> _targetSources;
-        private DnsMappingGroup _parent;
         #endregion
 
         #region Properties
         /// <summary>
         /// 此规则匹配的域名模式。
         /// </summary>
-        public string DomainPattern
+        public ObservableCollection<string> DomainPatterns
         {
-            get => _domainPattern;
-            set
-            {
-                if (SetProperty(ref _domainPattern, value))
-                    OnPropertyChanged(nameof(DisplayText));
-            }
+            get => _domainPatterns;
+            set => SetProperty(ref _domainPatterns, value);
         }
 
         /// <summary>
@@ -43,14 +36,7 @@ namespace SNIBypassGUI.Models
         public DnsMappingRuleAction RuleAction
         {
             get => _ruleAction;
-            set
-            {
-                if (SetProperty(ref _ruleAction, value))
-                {
-                    OnPropertyChanged(nameof(ListIconKind));
-                    OnPropertyChanged(nameof(RequiresIPv6));
-                }
-            }
+            set => SetProperty(ref _ruleAction, value);
         }
 
         /// <summary>
@@ -59,125 +45,11 @@ namespace SNIBypassGUI.Models
         public ObservableCollection<TargetIpSource> TargetSources
         {
             get => _targetSources;
-            set
-            {
-                if (SetProperty(ref _targetSources, value))
-                {
-                    OnPropertyChanged(nameof(RequiresIPv6));
-
-                    if (_targetSources != null)
-                    {
-                        _targetSources.CollectionChanged += (s, e) =>
-                        {
-                            if (e.OldItems != null)
-                            {
-                                foreach (TargetIpSource oldItem in e.OldItems)
-                                    oldItem.PropertyChanged -= TargetSource_PropertyChanged;
-                            }
-                            if (e.NewItems != null)
-                            {
-                                foreach (TargetIpSource newItem in e.NewItems)
-                                    newItem.PropertyChanged += TargetSource_PropertyChanged;
-                            }
-
-                            OnPropertyChanged(nameof(RequiresIPv6));
-                        };
-
-                        foreach (var item in _targetSources)
-                            item.PropertyChanged += TargetSource_PropertyChanged;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// 此规则的图标类型，供 UI 使用。
-        /// </summary>
-        public PackIconKind ListIconKind
-        {
-            get
-            {
-                return RuleAction switch
-                {
-                    DnsMappingRuleAction.IP => PackIconKind.ArrowDecisionOutline,
-                    DnsMappingRuleAction.Forward => PackIconKind.ShareOutline,
-                    DnsMappingRuleAction.Block => PackIconKind.ShareOffOutline,
-                    _ => PackIconKind.HelpCircle,
-                };
-            }
-        }
-
-        /// <summary>
-        /// 此规则在列表中的主要展示文本，供 UI 使用。
-        /// </summary>
-        public string DisplayText { get => DomainPattern.OrDefault("未指定"); }
-
-        /// <summary>
-        /// 此规则是否需要 IPv6 支持。
-        /// </summary>
-        public bool RequiresIPv6
-        {
-            get
-            {
-                if (RuleAction != DnsMappingRuleAction.IP)
-                    return false;
-
-                if (TargetSources == null || TargetSources.Count == 0)
-                    return false;
-
-                return TargetSources?.All(source =>
-                {
-                    if (source.SourceType == IpAddressSourceType.Static)
-                        return NetworkUtils.RequiresPublicIPv6(source.Address);
-                    else if (source.SourceType == IpAddressSourceType.Dynamic)
-                    {
-                        if (source.ResolverId == null)
-                        {
-                            if (source.FallbackIpAddresses != null
-                                && source.FallbackIpAddresses.Count > 0
-                                && source.FallbackIpAddresses.All(fallback =>
-                                NetworkUtils.RequiresPublicIPv6(fallback.Address)))
-                                return true;
-                        }
-                        else if (source.IpAddressType == IpAddressType.IPv6Only)
-                        {
-                            var relevantFallbacks = source.EnableFallbackAutoUpdate
-                                ? source.FallbackIpAddresses?.Where(f => f.IsLocked)
-                                : source.FallbackIpAddresses;
-
-                            // 如果没有任何锁定回落或所有回落都是公网 IPv6
-                            if (relevantFallbacks == null || !relevantFallbacks.Any() ||
-                                relevantFallbacks.All(f => NetworkUtils.RequiresPublicIPv6(f.Address)))
-                                return true;
-                        }
-                    }
-                    return false;
-                }) == true;
-            }
-        }
-
-        /// <summary>
-        /// 此规则所属的映射组。
-        /// </summary>
-        public DnsMappingGroup Parent
-        {
-            get => _parent;
-            internal set => SetProperty(ref _parent, value);
+            set => SetProperty(ref _targetSources, value);
         }
         #endregion
 
         #region Methods
-        private void TargetSource_PropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName is nameof(TargetIpSource.Address)
-                or nameof(TargetIpSource.SourceType)
-                or nameof(TargetIpSource.IpAddressType)
-                or nameof(TargetIpSource.ResolverId)
-                or nameof(TargetIpSource.FallbackIpAddresses)
-                or nameof(TargetIpSource.EnableFallbackAutoUpdate))
-                OnPropertyChanged(nameof(RequiresIPv6));
-        }
-
         /// <summary>
         /// 创建当前 <see cref="DnsMappingRule"/> 实例的完整副本。
         /// </summary>
@@ -187,7 +59,7 @@ namespace SNIBypassGUI.Models
             var clone = new DnsMappingRule
             {
                 RuleAction = RuleAction,
-                DomainPattern = DomainPattern,
+                DomainPatterns = [.. DomainPatterns.OrEmpty()],
                 TargetSources = [.. TargetSources.OrEmpty().Select(s => s.Clone())]
             };
 
@@ -201,7 +73,7 @@ namespace SNIBypassGUI.Models
         {
             if (source == null) return;
             RuleAction = source.RuleAction;
-            DomainPattern = source.DomainPattern;
+            DomainPatterns = [.. source.DomainPatterns.OrEmpty()];
             TargetSources = [.. source.TargetSources.OrEmpty().Select(s => s.Clone())];
         }
 
@@ -212,7 +84,7 @@ namespace SNIBypassGUI.Models
         {
             var jObject = new JObject
             {
-                ["domainPattern"] = DomainPattern.OrDefault(),
+                ["domainPatterns"] = new JArray(DomainPatterns.OrEmpty()),
                 ["ruleAction"] = RuleAction.ToString()
             };
 
@@ -230,13 +102,13 @@ namespace SNIBypassGUI.Models
             if (jObject == null)
                 return ParseResult<DnsMappingRule>.Failure("JSON 对象为空。");
 
-            if (!jObject.TryGetString("domainPattern", out string domainPattern) ||
+            if (!jObject.TryGetArray("domainPatterns", out IReadOnlyList<string> domainPatterns) ||
                 !jObject.TryGetEnum("ruleAction", out DnsMappingRuleAction ruleAction))
                 return ParseResult<DnsMappingRule>.Failure("一个或多个通用字段缺失或类型错误。");
 
             var rule = new DnsMappingRule
             {
-                DomainPattern = domainPattern,
+                DomainPatterns = [.. domainPatterns],
                 RuleAction = ruleAction
             };
 

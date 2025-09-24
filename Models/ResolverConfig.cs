@@ -5,10 +5,12 @@ using System.Globalization;
 using System.Linq;
 using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json.Linq;
+using SNIBypassGUI.Common;
+using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Common.Network;
+using SNIBypassGUI.Common.Results;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Interfaces;
-using SNIBypassGUI.Utils.Extensions;
-using SNIBypassGUI.Utils.Results;
 
 namespace SNIBypassGUI.Models
 {
@@ -103,7 +105,15 @@ namespace SNIBypassGUI.Models
         /// <summary>
         /// 此解析器配置的 DNS 服务器地址。
         /// </summary>
-        public string ServerAddress { get => _serverAddress; set => SetProperty(ref _serverAddress, value); }
+        public string ServerAddress
+        {
+            get => _serverAddress;
+            set
+            {
+                if (SetProperty(ref _serverAddress, value))
+                    OnPropertyChanged(nameof(RequiresIPv6));
+            }
+        }
 
         /// <summary>
         /// 查询超时时间。
@@ -291,6 +301,42 @@ namespace SNIBypassGUI.Models
         /// 引导 DNS 服务器的查询超时时间。
         /// </summary>
         public string BootstrapTimeout { get => _bootstrapTimeout; set => SetProperty(ref _bootstrapTimeout, value); }
+
+        /// <summary>
+        /// 此解析器配置是否需要 IPv6 支持。
+        /// </summary>
+        public bool RequiresIPv6
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(ServerAddress)) return false;
+
+                string hostCandidate = ServerAddress;
+
+                int pathSlashIndex = hostCandidate.IndexOf('/');
+                if (pathSlashIndex >= 0)
+                    hostCandidate = hostCandidate.Substring(0, pathSlashIndex);
+
+                // 如果剥离后为空，则无效
+                if (string.IsNullOrWhiteSpace(hostCandidate)) return false;
+
+                // 处理方括号格式，这是 IPv6 带端口的唯一标准形式
+                if (hostCandidate.StartsWith("["))
+                {
+                    int closingBracketIndex = hostCandidate.IndexOf(']');
+                    // 如果没有找到结束括号，或者括号是空的，则格式无效
+                    if (closingBracketIndex <= 1) return false;
+
+                    // 提取方括号内的内容
+                    string addressInBrackets = hostCandidate.Substring(1, closingBracketIndex - 1);
+
+                    // 判断括号内的内容是不是一个有效的 IPv6 地址
+                    return NetworkUtils.IsValidIPv6(addressInBrackets);
+                }
+
+                return NetworkUtils.IsValidIPv6(hostCandidate);
+            }
+        }
         #endregion
 
         #region Methods

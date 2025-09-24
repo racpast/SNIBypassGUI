@@ -3,7 +3,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Utils.Network;
+using SNIBypassGUI.Common.Network;
 
 namespace SNIBypassGUI.Validators
 {
@@ -14,10 +14,10 @@ namespace SNIBypassGUI.Validators
             When(source => source.SourceType == IpAddressSourceType.Static, () =>
             {
                 RuleFor(source => source.Address)
-                    .NotEmpty().WithMessage("服务器地址不能为空。");
+                    .NotEmpty().WithMessage("目标地址不能为空。");
                 RuleFor(source => source.Address)
                     .Must(NetworkUtils.IsValidIP)
-                    .WithMessage("“{PropertyValue}” 不是有效的服务器地址：应为合法的 IP 地址。")
+                    .WithMessage("“{PropertyValue}” 不是有效的目标地址：应为合法的 IP 地址。")
                     .When(source => !string.IsNullOrEmpty(source.Address));
             });
 

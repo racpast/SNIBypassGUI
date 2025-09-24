@@ -9,11 +9,11 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Interfaces;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Utils.Cryptography;
-using SNIBypassGUI.Utils.Extensions;
+using SNIBypassGUI.Common.Cryptography;
+using SNIBypassGUI.Common.Extensions;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.PathConsts;
-using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Common.LogManager;
 
 namespace SNIBypassGUI.Services
 {
@@ -28,6 +28,11 @@ namespace SNIBypassGUI.Services
         /// 事件，当映射表被重命名时触发。
         /// </summary>
         public event Action<Guid, string> ConfigRenamed;
+
+        /// <summary>
+        /// 事件，当映射表被更新时触发。
+        /// </summary>
+        public event Action<Guid> ConfigUpdated;
 
         /// <summary>
         /// 事件，当映射表被移除时触发。
@@ -76,6 +81,8 @@ namespace SNIBypassGUI.Services
                 return Task.Run(() =>
                 {
                     repository.Save(UserDnsMappingTablesPath, originalTable);
+
+                    ConfigUpdated?.Invoke(originalTable.Id);
 
                     if (originalTable.TableName != oldName)
                     {

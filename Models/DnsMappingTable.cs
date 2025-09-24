@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json.Linq;
+using SNIBypassGUI.Common;
+using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Common.Results;
 using SNIBypassGUI.Interfaces;
-using SNIBypassGUI.Utils.Extensions;
-using SNIBypassGUI.Utils.Results;
 
 namespace SNIBypassGUI.Models
 {
@@ -47,32 +47,8 @@ namespace SNIBypassGUI.Models
         public bool IsBuiltIn
         {
             get => _isBuiltIn;
-            set
-            {
-                if (SetProperty(ref _isBuiltIn, value))
-                {
-                    OnPropertyChanged(nameof(ListIconKind));
-                    OnPropertyChanged(nameof(ListTypeDescription));
-                }
-            }
+            set => SetProperty(ref _isBuiltIn, value);
         }
-
-        /// <summary>
-        /// 此映射表的图标类型，供 UI 使用。
-        /// </summary>
-        public PackIconKind ListIconKind
-        {
-            get
-            {
-                if (IsBuiltIn) return PackIconKind.ArchiveLockOutline;
-                else return PackIconKind.ListBoxOutline;
-            }
-        }
-
-        /// <summary>
-        /// 此映射表的类型描述，供 UI 使用。
-        /// </summary>
-        public string ListTypeDescription => IsBuiltIn ? "(内置)" : "(用户)";
 
         /// <summary>
         /// 此映射表的映射组列表。

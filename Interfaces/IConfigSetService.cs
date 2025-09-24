@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-using SNIBypassGUI.Utils.Extensions;
+using SNIBypassGUI.Common.Extensions;
 
 namespace SNIBypassGUI.Interfaces
 {
@@ -10,6 +10,11 @@ namespace SNIBypassGUI.Interfaces
         /// 所有 <typeparamref name="T"/> 配置的集合。
         /// </summary>
         public RangeObservableCollection<T> AllConfigs { get; }
+
+        /// <summary>
+        /// 事件，当 <typeparamref name="T"/> 配置被更新时触发。
+        /// </summary>
+        public event Action<Guid> ConfigUpdated;
 
         /// <summary>
         /// 事件，当 <typeparamref name="T"/> 配置被重命名时触发。

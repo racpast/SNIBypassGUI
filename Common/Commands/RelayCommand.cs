@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Input;
 
-namespace SNIBypassGUI.Commands
+namespace SNIBypassGUI.Common.Commands
 {
     public class RelayCommand : ICommand
     {

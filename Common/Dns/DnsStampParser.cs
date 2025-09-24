@@ -4,9 +4,9 @@ using System.Net;
 using System.Text;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Utils.Extensions;
+using SNIBypassGUI.Common.Extensions;
 
-namespace SNIBypassGUI.Utils.Dns
+namespace SNIBypassGUI.Common.Dns
 {
     public static class DnsStampParser
     {

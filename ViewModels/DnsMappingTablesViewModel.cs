@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,15 +9,18 @@ using System.Windows;
 using System.Windows.Input;
 using FluentValidation;
 using Microsoft.Win32;
-using SNIBypassGUI.Behaviors;
-using SNIBypassGUI.Commands;
+using SNIBypassGUI.Common;
+using SNIBypassGUI.Common.Codecs;
+using SNIBypassGUI.Common.Commands;
+using SNIBypassGUI.Common.IO;
+using SNIBypassGUI.Common.Network;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Interfaces;
+using SNIBypassGUI.Interop.Pcre;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Utils.Codecs;
-using SNIBypassGUI.Utils.IO;
-using SNIBypassGUI.Utils.Network;
 using SNIBypassGUI.Validators;
+using SNIBypassGUI.ViewModels.Helpers;
+using SNIBypassGUI.ViewModels.Items;
 using SNIBypassGUI.ViewModels.Validation;
 
 namespace SNIBypassGUI.ViewModels
@@ -217,7 +219,9 @@ namespace SNIBypassGUI.ViewModels
         private readonly IFactory<TargetIpSource> _sourceFactory;
         private readonly IFactory<FallbackAddress> _addressFactory;
         private readonly DnsMappingTableValidator _configValidator;
+        private DnsMappingTable _originalTable;
         private DnsMappingTable _editingTableCopy;
+        private DnsMappingTableViewModel _editingTableVM;
         private TargetIpSource _selectedSource;
         private object _selectedTreeItem;
         private string _associatedResolverName;
@@ -228,6 +232,7 @@ namespace SNIBypassGUI.ViewModels
         private EditingState _currentState;
         private IReadOnlyList<ValidationErrorNode> _validationErrors;
         private IReadOnlyList<ValidationErrorNode> _validationWarnings;
+        private readonly ObservableCollection<DnsMappingTableViewModel> _allTableVMs = [];
         #endregion
         #endregion
 
@@ -245,12 +250,16 @@ namespace SNIBypassGUI.ViewModels
             _configValidator = new DnsMappingTableValidator();
 
             AllTables = new ReadOnlyObservableCollection<DnsMappingTable>(_tableService.AllConfigs);
-            TableSelector = new SilentSelector<DnsMappingTable>(HandleUserSelectionChangedAsync);
+            AllTableVMs = new ReadOnlyObservableCollection<DnsMappingTableViewModel>(_allTableVMs);
+            TableSelector = new SilentSelector<DnsMappingTableViewModel>(HandleUserSelectionChangedAsync);
 
             _resolverService.ConfigRemoved += HandleResolverRemoved;
             _resolverService.ConfigRenamed += HandleResolverRenamed;
+            _resolverService.ConfigUpdated += HandleResolverUpdated;
 
-            CopyLinkCodeCommand = new AsyncCommand<DnsMappingTable>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+            _tableService.AllConfigs.CollectionChanged += OnAllTablesCollectionChanged;
+
+            CopyLinkCodeCommand = new AsyncCommand<DnsMappingTableViewModel>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
 
             AddNewTableCommand = new AsyncCommand(ExecuteAddNewTableAsync, CanExecuteWhenNotBusy);
             DuplicateTableCommand = new AsyncCommand(ExecuteDuplicateTableAsync, CanExecuteDuplicateTable);
@@ -264,18 +273,21 @@ namespace SNIBypassGUI.ViewModels
             RenameSelectedGroupCommand = new AsyncCommand(ExecuteRenameSelectedGroupAsync, CanExecuteOnSelectedGroup);
             MoveSelectedGroupUpCommand = new RelayCommand(ExecuteMoveSelectedGroupUp, CanExecuteMoveSelectedGroupUp);
             MoveSelectedGroupDownCommand = new RelayCommand(ExecuteMoveSelectedGroupDown, CanExecuteMoveSelectedGroupDown);
-            AddGroupIconCommand = new AsyncCommand<DnsMappingGroup>(ExecuteAddGroupIconAsync, CanExecuteAddGroupIcon);
-            RemoveGroupIconCommand = new RelayCommand<DnsMappingGroup>(ExecuteRemoveGroupIcon, CanExecuteRemoveGroupIcon);
+            AddGroupIconCommand = new AsyncCommand<DnsMappingGroupViewModel>(ExecuteAddGroupIconAsync, CanExecuteAddGroupIcon);
+            RemoveGroupIconCommand = new RelayCommand<DnsMappingGroupViewModel>(ExecuteRemoveGroupIcon, CanExecuteRemoveGroupIcon);
 
             AddNewRuleCommand = new RelayCommand(ExecuteAddNewRule, CanExecuteAddRule);
             RemoveSelectedRuleCommand = new RelayCommand(ExecuteRemoveSelectedRule, CanExecuteOnSelectedRule);
             MoveSelectedRuleUpCommand = new RelayCommand(ExecuteMoveSelectedRuleUp, CanExecuteMoveSelectedRuleUp);
             MoveSelectedRuleDownCommand = new RelayCommand(ExecuteMoveSelectedRuleDown, CanExecuteMoveSelectedRuleDown);
 
+            AddDomainPatternCommand = new AsyncCommand(ExecuteAddDomainPatternAsync, CanExecuteOnSelectedRule);
+            DeleteDomainPatternCommand = new RelayCommand<string>(ExecuteDeleteDomainPattern, CanExecuteOnSelectedRule);
+
             AddNewSourceCommand = new RelayCommand(ExecuteAddNewSource, CanExecuteAddNewSource);
             RemoveSelectedSourceCommand = new RelayCommand(ExecuteRemoveSelectedSource, CanExecuteOnSelectedSource);
-            MoveSelectedSourceUpCommand = new RelayCommand(ExecuteMoveSelectedSourceUp, CanExecuteOnSelectedSource);
-            MoveSelectedSourceDownCommand = new RelayCommand(ExecuteMoveSelectedSourceDown, CanExecuteOnSelectedSource);
+            MoveSelectedSourceUpCommand = new RelayCommand(ExecuteMoveSelectedSourceUp, CanExecuteMoveSelectedSourceUp);
+            MoveSelectedSourceDownCommand = new RelayCommand(ExecuteMoveSelectedSourceDown, CanExecuteMoveSelectedSourceDown);
 
             PasteResolverLinkCodeCommand = new AsyncCommand(ExecutePasteResolverLinkCodeAsync, CanExecuteOnSelectedRule);
             UnlinkResolverCommand = new RelayCommand(ExecuteUnlinkResolver, CanExecuteOnSelectedRule);
@@ -292,7 +304,9 @@ namespace SNIBypassGUI.ViewModels
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, CanExecuteWhenDirty);
 
             _tableService.LoadData();
-            if (AllTables.Any()) SwitchToTable(AllTables.First());
+
+            if (AllTableVMs.Any())
+                SwitchToTable(AllTableVMs.First());
         }
         #endregion
 
@@ -313,9 +327,17 @@ namespace SNIBypassGUI.ViewModels
 
         public ReadOnlyObservableCollection<DnsMappingTable> AllTables { get; }
 
-        public SilentSelector<DnsMappingTable> TableSelector { get; }
+        public ReadOnlyObservableCollection<DnsMappingTableViewModel> AllTableVMs { get; }
+
+        public SilentSelector<DnsMappingTableViewModel> TableSelector { get; }
 
         public EditingState CurrentState { get => _currentState; private set => SetProperty(ref _currentState, value); }
+
+        public DnsMappingTableViewModel EditingTableVM
+        {
+            get => _editingTableVM;
+            private set => SetProperty(ref _editingTableVM, value);
+        }
 
         public DnsMappingTable EditingTableCopy
         {
@@ -323,9 +345,20 @@ namespace SNIBypassGUI.ViewModels
             private set
             {
                 if (_editingTableCopy != null) StopListeningToChanges(_editingTableCopy);
+
                 if (SetProperty(ref _editingTableCopy, value))
                 {
-                    if (_editingTableCopy != null) StartListeningToChanges(_editingTableCopy);
+                    EditingTableVM?.Dispose(); // 销毁
+
+                    if (_editingTableCopy != null)
+                    {
+                        EditingTableVM = new DnsMappingTableViewModel(_editingTableCopy, GetResolverById);
+                        StartListeningToChanges(_editingTableCopy);
+                    }
+                    else EditingTableVM = null;
+
+                    OnPropertyChanged(nameof(EditingTableVM)); // 通知UI更新
+
                     SelectedTreeItem = null;
                     SelectedSource = null;
                 }
@@ -339,33 +372,28 @@ namespace SNIBypassGUI.ViewModels
             {
                 if (SetProperty(ref _selectedTreeItem, value))
                 {
-                    IsGroupSelected = value is DnsMappingGroup;
-                    IsRuleSelected = value is DnsMappingRule;
+                    // 更新选中项的类型状态
+                    IsGroupSelected = value is DnsMappingGroupViewModel;
+                    IsRuleSelected = value is DnsMappingRuleViewModel;
 
-                    // 当选择规则时，默认选择第一个目标源
-                    if (IsRuleSelected && value is DnsMappingRule rule)
+                    // 当选中的是“规则”时
+                    if (value is DnsMappingRuleViewModel ruleVM)
                     {
-                        if (rule.Parent != null)
+                        var parentGroupVM = ruleVM.Parent;
+                        if (parentGroupVM != null)
                         {
-                            rule.Parent.IsExpanded = true;
-                            SelectedSource = rule.TargetSources?.FirstOrDefault();
+                            parentGroupVM.IsExpanded = true;
                         }
-                        else
-                        {
-                            var actualParent = FindParentGroup(rule);
-                            if (actualParent != null)
-                            {
-                                rule.Parent = actualParent;
-                                actualParent.IsExpanded = true;
-                                SelectedSource = rule.TargetSources?.FirstOrDefault();
-                            }
-                        }
+
+                        SelectedSource = ruleVM.Model.TargetSources?.FirstOrDefault();
                     }
-                    else SelectedSource = null;
+                    else
+                    {
+                        SelectedSource = null;
+                    }
 
                     UpdateAssociatedResolverName();
                     UpdateCommandStates();
-                    OnPropertyChanged(nameof(IsDomainPatternPcre));
                 }
             }
         }
@@ -386,8 +414,6 @@ namespace SNIBypassGUI.ViewModels
         public bool IsGroupSelected { get => _isGroupSelected; private set => SetProperty(ref _isGroupSelected, value); }
 
         public bool IsRuleSelected { get => _isRuleSelected; private set => SetProperty(ref _isRuleSelected, value); }
-
-        public bool IsDomainPatternPcre => SelectedTreeItem is DnsMappingRule rule && rule.DomainPattern.Trim().StartsWith("/");
 
         public string AssociatedResolverName { get => _associatedResolverName; private set => SetProperty(ref _associatedResolverName, value); }
 
@@ -419,6 +445,8 @@ namespace SNIBypassGUI.ViewModels
         public ICommand RemoveSelectedRuleCommand { get; }
         public ICommand MoveSelectedRuleUpCommand { get; }
         public ICommand MoveSelectedRuleDownCommand { get; }
+        public ICommand AddDomainPatternCommand { get; }
+        public ICommand DeleteDomainPatternCommand { get; }
         public ICommand AddNewSourceCommand { get; }
         public ICommand RemoveSelectedSourceCommand { get; }
         public ICommand MoveSelectedSourceUpCommand { get; }
@@ -437,7 +465,7 @@ namespace SNIBypassGUI.ViewModels
         #endregion
 
         #region Lifecycle & State Management
-        private async Task HandleUserSelectionChangedAsync(DnsMappingTable newItem, DnsMappingTable oldItem)
+        private async Task HandleUserSelectionChangedAsync(DnsMappingTableViewModel newItem, DnsMappingTableViewModel oldItem)
         {
             _isBusy = true;
             UpdateCommandStates();
@@ -447,7 +475,6 @@ namespace SNIBypassGUI.ViewModels
                 if (_currentState != EditingState.None)
                 {
                     var result = await PromptToSaveChangesAndContinueAsync();
-
                     switch (result)
                     {
                         case SaveChangesResult.Save:
@@ -468,21 +495,23 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private void SwitchToTable(DnsMappingTable newTable)
+        private void SwitchToTable(DnsMappingTableViewModel newTableVM)
         {
-            TableSelector.SetItemSilently(newTable);
+            TableSelector.SetItemSilently(newTableVM);
             ResetToSelectedTable();
         }
 
         private void ResetToSelectedTable()
         {
-            EditingTableCopy = TableSelector.SelectedItem?.Clone();
+            _originalTable = TableSelector.SelectedItem?.Model;
+            EditingTableCopy = _originalTable?.Clone();
             TransitionToState(EditingState.None);
         }
 
         private void EnterCreationMode(string name)
         {
             TableSelector.SetItemSilently(null);
+            _originalTable = null;
             EditingTableCopy = _tableService.CreateDefault();
             EditingTableCopy.TableName = name;
             TransitionToState(EditingState.Creating);
@@ -497,7 +526,7 @@ namespace SNIBypassGUI.ViewModels
 
         private void UpdateCommandStates()
         {
-            (CopyLinkCodeCommand as AsyncCommand<DnsMappingTable>)?.RaiseCanExecuteChanged();
+            (CopyLinkCodeCommand as AsyncCommand<DnsMappingTableViewModel>)?.RaiseCanExecuteChanged();
 
             (AddNewTableCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteTableCommand as AsyncCommand)?.RaiseCanExecuteChanged();
@@ -511,13 +540,16 @@ namespace SNIBypassGUI.ViewModels
             (RenameSelectedGroupCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedGroupUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedGroupDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (AddGroupIconCommand as AsyncCommand<DnsMappingGroup>)?.RaiseCanExecuteChanged();
-            (RemoveGroupIconCommand as RelayCommand<DnsMappingGroup>)?.RaiseCanExecuteChanged();
+            (AddGroupIconCommand as AsyncCommand<DnsMappingGroupViewModel>)?.RaiseCanExecuteChanged();
+            (RemoveGroupIconCommand as RelayCommand<DnsMappingGroupViewModel>)?.RaiseCanExecuteChanged();
 
             (AddNewRuleCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (RemoveSelectedRuleCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedRuleUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedRuleDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+
+            (AddDomainPatternCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DeleteDomainPatternCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
 
             (AddNewSourceCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (RemoveSelectedSourceCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -574,38 +606,42 @@ namespace SNIBypassGUI.ViewModels
             _isBusy = true;
             UpdateCommandStates();
 
-            if (_currentState != EditingState.None)
+            try
             {
-                var result = await PromptToSaveChangesAndContinueAsync();
-                if (result == SaveChangesResult.Cancel)
+                if (_currentState != EditingState.None)
                 {
-                    _isBusy = false;
-                    UpdateCommandStates();
-                    return;
+                    var result = await PromptToSaveChangesAndContinueAsync();
+                    if (result == SaveChangesResult.Cancel) return;
                 }
+
+                var tableToCloneVM = TableSelector.SelectedItem;
+                if (tableToCloneVM == null) return;
+
+                var tableToCloneModel = tableToCloneVM.Model;
+                var suggestedName = $"{tableToCloneModel.TableName} - 副本";
+                var newName = await _dialogService.ShowTextInputAsync("创建副本", "请输入新映射表的名称：", suggestedName);
+
+                if (newName != null && !string.IsNullOrWhiteSpace(newName))
+                {
+                    var newTable = tableToCloneModel.Clone();
+                    newTable.TableName = newName;
+                    newTable.IsBuiltIn = false;
+                    newTable.Id = Guid.NewGuid();
+
+                    _tableService.AllConfigs.Add(newTable);
+                    await _tableService.SaveChangesAsync(newTable);
+
+                    var newTableVM = AllTableVMs.FirstOrDefault(vm => vm.Model == newTable);
+                    if (newTableVM != null) SwitchToTable(newTableVM);
+                }
+                else if (newName != null)
+                    await _dialogService.ShowInfoAsync("创建失败", "映射表名称不能为空！");
             }
-
-            var tableToClone = TableSelector.SelectedItem;
-            var suggestedName = $"{tableToClone.TableName} - 副本";
-            var newName = await _dialogService.ShowTextInputAsync("创建副本", "请输入新映射表的名称：", suggestedName);
-
-            if (newName != null && !string.IsNullOrWhiteSpace(newName))
+            finally
             {
-                var newTable = tableToClone.Clone();
-                newTable.TableName = newName;
-                newTable.IsBuiltIn = false;
-                newTable.Id = Guid.NewGuid();
-
-                _tableService.AllConfigs.Add(newTable);
-                await _tableService.SaveChangesAsync(newTable);
-
-                SwitchToTable(newTable);
+                _isBusy = false;
+                UpdateCommandStates();
             }
-            else if (newName != null)
-                await _dialogService.ShowInfoAsync("创建失败", "映射表名称不能为空！");
-
-            _isBusy = false;
-            UpdateCommandStates();
         }
 
         private bool CanExecuteDuplicateTable() => TableSelector.SelectedItem != null && !_isBusy;
@@ -628,21 +664,22 @@ namespace SNIBypassGUI.ViewModels
                 }
             }
 
-            var tableToDelete = TableSelector.SelectedItem;
+            var tableToDeleteVM = TableSelector.SelectedItem;
+            var tableToDelete = tableToDeleteVM.Model;
             var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", $"您确定要删除 “{tableToDelete.TableName}” 吗？\n此操作不可恢复！", "删除");
 
             if (confirmResult)
             {
-                DnsMappingTable nextSelection = null;
-                if (AllTables.Count > 1)
+                DnsMappingTableViewModel nextSelectionVM = null;
+                if (AllTableVMs.Count > 1)
                 {
-                    int currentIndex = AllTables.IndexOf(tableToDelete);
-                    nextSelection = currentIndex == AllTables.Count - 1
-                        ? AllTables[currentIndex - 1]
-                        : AllTables[currentIndex + 1];
+                    int currentIndex = AllTableVMs.IndexOf(tableToDeleteVM);
+                    nextSelectionVM = currentIndex == AllTableVMs.Count - 1
+                        ? AllTableVMs[currentIndex - 1]
+                        : AllTableVMs[currentIndex + 1];
                 }
                 _tableService.DeleteConfig(tableToDelete);
-                SwitchToTable(nextSelection);
+                SwitchToTable(nextSelectionVM);
             }
 
             _isBusy = false;
@@ -708,8 +745,12 @@ namespace SNIBypassGUI.ViewModels
 
                 if (openFileDialog.ShowDialog() == true)
                 {
-                    var importedTable = _tableService.ImportConfig(openFileDialog.FileName);
-                    if (importedTable != null) SwitchToTable(importedTable);
+                    var importedTableModel = _tableService.ImportConfig(openFileDialog.FileName);
+                    if (importedTableModel != null)
+                    {
+                        var importedTableVM = AllTableVMs.FirstOrDefault(vm => vm.Model == importedTableModel);
+                        if (importedTableVM != null) SwitchToTable(importedTableVM);
+                    }
                     else await _dialogService.ShowInfoAsync("错误", "映射表导入失败。");
                 }
             }
@@ -747,13 +788,14 @@ namespace SNIBypassGUI.ViewModels
                 }
             }
 
-            var tableToExport = TableSelector.SelectedItem;
-            if (tableToExport == null)
+            var tableToExportVM = TableSelector.SelectedItem;
+            if (tableToExportVM == null)
             {
                 await _dialogService.ShowInfoAsync("错误", "没有可导出的映射表。");
                 return;
             }
 
+            var tableToExport = tableToExportVM.Model;
             var saveFileDialog = new SaveFileDialog
             {
                 Filter = "映射表文件 (*.smt)|*.smt",
@@ -825,6 +867,8 @@ namespace SNIBypassGUI.ViewModels
         private void ListenToRule(DnsMappingRule rule)
         {
             rule.PropertyChanged += OnEditingCopyPropertyChanged;
+            if (rule.DomainPatterns != null)
+                rule.DomainPatterns.CollectionChanged += OnEditingCopyPropertyChanged;
             if (rule.TargetSources != null)
             {
                 rule.TargetSources.CollectionChanged += OnSourcesCollectionChanged;
@@ -835,6 +879,8 @@ namespace SNIBypassGUI.ViewModels
         private void StopListeningToRule(DnsMappingRule rule)
         {
             rule.PropertyChanged -= OnEditingCopyPropertyChanged;
+            if (rule.DomainPatterns != null)
+                rule.DomainPatterns.CollectionChanged -= OnEditingCopyPropertyChanged;
             if (rule.TargetSources != null)
             {
                 rule.TargetSources.CollectionChanged -= OnSourcesCollectionChanged;
@@ -900,16 +946,11 @@ namespace SNIBypassGUI.ViewModels
             ValidateEditingCopy();
         }
 
-        private void OnEditingCopyPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnEditingCopyPropertyChanged(object sender, EventArgs e)
         {
-            if (e.PropertyName == nameof(DnsMappingGroup.IsExpanded)) return;
-
             if (CurrentState == EditingState.None)
                 TransitionToState(EditingState.Editing);
             ValidateEditingCopy();
-
-            if (e.PropertyName == nameof(DnsMappingRule.DomainPattern) && sender == SelectedTreeItem)
-                OnPropertyChanged(nameof(IsDomainPatternPcre));
         }
 
         private void ValidateEditingCopy()
@@ -995,13 +1036,13 @@ namespace SNIBypassGUI.ViewModels
                     var newTable = EditingTableCopy;
                     _tableService.AllConfigs.Add(newTable);
                     await _tableService.SaveChangesAsync(newTable);
-                    SwitchToTable(newTable);
+                    var newTableVM = AllTableVMs.FirstOrDefault(vm => vm.Model == newTable);
+                    SwitchToTable(newTableVM);
                 }
                 else if (_currentState == EditingState.Editing)
                 {
-                    var originalTable = TableSelector.SelectedItem;
-                    originalTable.UpdateFrom(EditingTableCopy);
-                    await _tableService.SaveChangesAsync(originalTable);
+                    _originalTable.UpdateFrom(EditingTableCopy);
+                    await _tableService.SaveChangesAsync(_originalTable);
                     TransitionToState(EditingState.None);
                 }
             }
@@ -1014,8 +1055,12 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteDiscardChanges()
         {
-            if (_currentState == EditingState.Creating) SwitchToTable(AllTables.FirstOrDefault());
-            else ResetToSelectedTable();
+            if (_currentState == EditingState.Creating) SwitchToTable(AllTableVMs.FirstOrDefault());
+            else
+            {
+                EditingTableCopy = _originalTable?.Clone();
+                TransitionToState(EditingState.None);
+            }
         }
 
         private bool CanExecuteSave() => CanExecuteWhenDirty() && !HasValidationErrors;
@@ -1053,48 +1098,56 @@ namespace SNIBypassGUI.ViewModels
             _isBusy = true;
             UpdateCommandStates();
 
-            var newName = await _dialogService.ShowTextInputAsync("新建映射组", "请输入新映射组的名称：", "新映射组");
-            if (newName != null)
+            try
             {
-                if (string.IsNullOrWhiteSpace(newName))
-                    await _dialogService.ShowInfoAsync("创建失败", "映射组名称不能为空！");
-                else if (EditingTableCopy.MappingGroups.Select(r => r.GroupName).Contains(newName))
-                    await _dialogService.ShowInfoAsync("创建失败", $"已存在名为 “{newName}” 的映射组！");
-                else
+                var newName = await _dialogService.ShowTextInputAsync("新建映射组", "请输入新映射组的名称：", "新映射组");
+                if (newName != null)
                 {
-                    var newGroup = _groupFactory.CreateDefault();
-                    newGroup.GroupName = newName;
-                    EditingTableCopy.MappingGroups.Add(newGroup);
-                    SelectedTreeItem = newGroup;
+                    if (string.IsNullOrWhiteSpace(newName))
+                        await _dialogService.ShowInfoAsync("创建失败", "映射组名称不能为空！");
+                    else if (EditingTableCopy.MappingGroups.Select(r => r.GroupName).Contains(newName))
+                        await _dialogService.ShowInfoAsync("创建失败", $"已存在名为 “{newName}” 的映射组！");
+                    else
+                    {
+                        var newGroupModel = _groupFactory.CreateDefault();
+                        newGroupModel.GroupName = newName;
+                        EditingTableCopy.MappingGroups.Add(newGroupModel);
+
+                        var newGroupVM = EditingTableVM.MappingGroups.FirstOrDefault(vm => vm.Model == newGroupModel);
+                        if (newGroupVM != null) SelectedTreeItem = newGroupVM;
+                    }
                 }
             }
-
-            _isBusy = false;
-            UpdateCommandStates();
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
         }
 
         private void ExecuteRemoveSelectedGroup()
         {
-            if (SelectedTreeItem is DnsMappingGroup group)
+            if (SelectedTreeItem is DnsMappingGroupViewModel groupVM)
             {
-                // 在删除前获取组的索引位置
-                int index = EditingTableCopy.MappingGroups.IndexOf(group);
+                var groupModel = groupVM.Model;
+                int index = EditingTableCopy.MappingGroups.IndexOf(groupModel);
 
-                // 从集合中移除组
-                EditingTableCopy.MappingGroups.Remove(group);
+                EditingTableCopy.MappingGroups.Remove(groupModel);
 
-                SelectedTreeItem = EditingTableCopy.MappingGroups.Any()
-                    ? EditingTableCopy.MappingGroups[Math.Max(0, index - 1)] // 如果列表里还有组，就选中被删除组的前一个，或者新的第一个
-                    : null; // 列表空了
+                SelectedTreeItem = EditingTableVM.MappingGroups.Any()
+                    ? EditingTableVM.MappingGroups[Math.Max(0, index - 1)]
+                    : null;
             }
         }
 
         private async Task ExecuteRenameSelectedGroupAsync()
         {
-            if (SelectedTreeItem is DnsMappingGroup group)
+            if (SelectedTreeItem is DnsMappingGroupViewModel groupVM)
             {
                 _isBusy = true;
                 UpdateCommandStates();
+
+                var group = groupVM.Model;
 
                 var newName = await _dialogService.ShowTextInputAsync("重命名映射组", $"为 “{group.GroupName}” 输入新名称：", group.GroupName);
                 if (newName != null && newName != group.GroupName)
@@ -1114,8 +1167,10 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteMoveSelectedGroupUp()
         {
-            if (SelectedTreeItem is DnsMappingGroup group)
+            if (SelectedTreeItem is DnsMappingGroupViewModel groupVM)
             {
+                var group = groupVM.Model;
+
                 int index = EditingTableCopy.MappingGroups.IndexOf(group);
                 if (index > 0) EditingTableCopy.MappingGroups.Move(index, index - 1);
             }
@@ -1123,8 +1178,10 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteMoveSelectedGroupDown()
         {
-            if (SelectedTreeItem is DnsMappingGroup group)
+            if (SelectedTreeItem is DnsMappingGroupViewModel groupVM)
             {
+                var group = groupVM.Model;
+
                 int index = EditingTableCopy.MappingGroups.IndexOf(group);
                 if (index < EditingTableCopy.MappingGroups.Count - 1)
                     EditingTableCopy.MappingGroups.Move(index, index + 1);
@@ -1135,99 +1192,103 @@ namespace SNIBypassGUI.ViewModels
 
         private bool CanExecuteOnSelectedGroup() => IsGroupSelected && !_isBusy;
 
-        private bool CanExecuteMoveSelectedGroupUp() => CanExecuteOnSelectedGroup() && EditingTableCopy.MappingGroups.IndexOf(SelectedTreeItem as DnsMappingGroup) > 0;
+        private bool CanExecuteMoveSelectedGroupUp() =>
+            CanExecuteOnSelectedGroup() &&
+            SelectedTreeItem is DnsMappingGroupViewModel groupVM &&
+            EditingTableCopy.MappingGroups.IndexOf(groupVM.Model) > 0;
 
-        private bool CanExecuteMoveSelectedGroupDown() => CanExecuteOnSelectedGroup() && EditingTableCopy.MappingGroups.IndexOf(SelectedTreeItem as DnsMappingGroup) < EditingTableCopy.MappingGroups.Count - 1;
+        private bool CanExecuteMoveSelectedGroupDown() =>
+            CanExecuteOnSelectedGroup() &&
+            SelectedTreeItem is DnsMappingGroupViewModel groupVM &&
+            EditingTableCopy.MappingGroups.IndexOf(groupVM.Model) < EditingTableCopy.MappingGroups.Count - 1;
         #endregion
 
         #region Rule Management
         private void ExecuteAddNewRule()
         {
-            if (FindParentGroup(SelectedTreeItem) is DnsMappingGroup targetGroup)
+            if (FindParentGroupViewModel(SelectedTreeItem) is DnsMappingGroupViewModel targetGroupVM)
             {
-                var newRule = _ruleFactory.CreateDefault();
-                targetGroup.MappingRules.Add(newRule);
-                SelectedTreeItem = newRule;
+                var newRuleModel = _ruleFactory.CreateDefault();
+                targetGroupVM.Model.MappingRules.Add(newRuleModel);
+
+                var newRuleVM = targetGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == newRuleModel);
+                SelectedTreeItem = newRuleVM;
             }
         }
 
         private void ExecuteRemoveSelectedRule()
         {
-            if (SelectedTreeItem is DnsMappingRule rule && FindParentGroup(rule) is DnsMappingGroup parent)
+            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
             {
-                // 在删除前获取规则的索引位置
-                int index = parent.MappingRules.IndexOf(rule);
+                var parentVM = ruleVM.Parent;
+                if (parentVM != null)
+                {
+                    var parentModel = parentVM.Model;
+                    var ruleModel = ruleVM.Model;
+                    int index = parentModel.MappingRules.IndexOf(ruleModel);
 
-                // 从集合中移除规则
-                parent.MappingRules.Remove(rule);
+                    parentModel.MappingRules.Remove(ruleModel);
 
-                SelectedTreeItem = parent.MappingRules.Any()
-                    ? parent.MappingRules[Math.Max(0, index - 1)] // 如果组里还有规则，就选中被删除规则的前一个，或者新的第一个
-                    : parent; // 如果组里没规则了，就选中这个空组好了
+                    SelectedTreeItem = parentVM.MappingRules.Any()
+                        ? parentVM.MappingRules[Math.Max(0, index - 1)]
+                        : parentVM;
+                }
             }
         }
 
         private void ExecuteMoveSelectedRuleUp()
         {
-            if (SelectedTreeItem is DnsMappingRule rule)
+            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
             {
-                var currentGroup = FindParentGroup(rule);
-                if (currentGroup == null) return;
+                var currentGroupVM = ruleVM.Parent;
+                if (currentGroupVM == null) return;
 
-                int currentGroupIndex = EditingTableCopy.MappingGroups.IndexOf(currentGroup);
-                int ruleIndex = currentGroup.MappingRules.IndexOf(rule);
+                var currentGroupModel = currentGroupVM.Model;
+                var ruleModel = ruleVM.Model;
+                int ruleIndex = currentGroupModel.MappingRules.IndexOf(ruleModel);
 
-                // 如果在当前组内不是第一个规则，则在组内上移
-                if (ruleIndex > 0)
+                if (ruleIndex > 0) currentGroupModel.MappingRules.Move(ruleIndex, ruleIndex - 1);
+                else if (EditingTableVM.MappingGroups.IndexOf(currentGroupVM) > 0)
                 {
-                    currentGroup.MappingRules.Move(ruleIndex, ruleIndex - 1);
-                }
-                // 如果是当前组的第一个规则，且不是第一个组，则跨组移动到上一个组的末尾
-                else if (currentGroupIndex > 0)
-                {
-                    var previousGroup = EditingTableCopy.MappingGroups[currentGroupIndex - 1];
+                    int currentGroupIndex = EditingTableVM.MappingGroups.IndexOf(currentGroupVM);
 
-                    // 从当前组移除规则
-                    currentGroup.MappingRules.Remove(rule);
+                    var previousGroupVM = EditingTableVM.MappingGroups[currentGroupIndex - 1];
+                    var previousGroupModel = previousGroupVM.Model;
 
-                    // 添加到上一个组的末尾
-                    previousGroup.MappingRules.Add(rule);
+                    currentGroupModel.MappingRules.Remove(ruleModel);
+                    previousGroupModel.MappingRules.Add(ruleModel);
 
-                    // 保持选中状态
-                    SelectedTreeItem = rule;
+                    var newRuleVM = previousGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == ruleModel);
+                    SelectedTreeItem = newRuleVM;
                 }
             }
         }
 
         private void ExecuteMoveSelectedRuleDown()
         {
-            if (SelectedTreeItem is DnsMappingRule rule)
+            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
             {
-                var currentGroup = FindParentGroup(rule);
-                if (currentGroup == null) return;
+                var currentGroupVM = ruleVM.Parent;
+                if (currentGroupVM == null) return;
 
-                int currentGroupIndex = EditingTableCopy.MappingGroups.IndexOf(currentGroup);
-                int ruleIndex = currentGroup.MappingRules.IndexOf(rule);
-                int ruleCount = currentGroup.MappingRules.Count;
+                var currentGroupModel = currentGroupVM.Model;
+                var ruleModel = ruleVM.Model;
+                int ruleIndex = currentGroupModel.MappingRules.IndexOf(ruleModel);
 
-                // 如果在当前组内不是最后一个规则，则在组内下移
-                if (ruleIndex < ruleCount - 1)
+                if (ruleIndex < currentGroupModel.MappingRules.Count - 1)
+                    currentGroupModel.MappingRules.Move(ruleIndex, ruleIndex + 1);
+                else if (EditingTableVM.MappingGroups.IndexOf(currentGroupVM) < EditingTableVM.MappingGroups.Count - 1)
                 {
-                    currentGroup.MappingRules.Move(ruleIndex, ruleIndex + 1);
-                }
-                // 如果是当前组的最后一个规则，且不是最后一个组，则跨组移动到下一个组的开头
-                else if (currentGroupIndex < EditingTableCopy.MappingGroups.Count - 1)
-                {
-                    var nextGroup = EditingTableCopy.MappingGroups[currentGroupIndex + 1];
+                    int currentGroupIndex = EditingTableVM.MappingGroups.IndexOf(currentGroupVM);
 
-                    // 从当前组移除规则
-                    currentGroup.MappingRules.Remove(rule);
+                    var nextGroupVM = EditingTableVM.MappingGroups[currentGroupIndex + 1];
+                    var nextGroupModel = nextGroupVM.Model;
 
-                    // 添加到下一个组的开头
-                    nextGroup.MappingRules.Insert(0, rule);
+                    currentGroupModel.MappingRules.Remove(ruleModel);
+                    nextGroupModel.MappingRules.Insert(0, ruleModel);
 
-                    // 保持选中状态
-                    SelectedTreeItem = rule;
+                    var newRuleVM = nextGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == ruleModel);
+                    SelectedTreeItem = newRuleVM;
                 }
             }
         }
@@ -1240,12 +1301,13 @@ namespace SNIBypassGUI.ViewModels
         {
             if (!CanExecuteOnSelectedRule()) return false;
 
-            var rule = SelectedTreeItem as DnsMappingRule;
-            var currentGroup = FindParentGroup(rule);
+            var ruleVM = SelectedTreeItem as DnsMappingRuleViewModel;
+
+            var currentGroup = FindParentGroupViewModel(ruleVM).Model;
             if (currentGroup == null) return false;
 
             int currentGroupIndex = EditingTableCopy.MappingGroups.IndexOf(currentGroup);
-            int ruleIndex = currentGroup.MappingRules.IndexOf(rule);
+            int ruleIndex = currentGroup.MappingRules.IndexOf(ruleVM.Model);
 
             // 不是当前组的第一个规则，或者不是第一个组
             return ruleIndex > 0 || currentGroupIndex > 0;
@@ -1255,12 +1317,13 @@ namespace SNIBypassGUI.ViewModels
         {
             if (!CanExecuteOnSelectedRule()) return false;
 
-            var rule = SelectedTreeItem as DnsMappingRule;
-            var currentGroup = FindParentGroup(rule);
+            var ruleVM = SelectedTreeItem as DnsMappingRuleViewModel;
+
+            var currentGroup = FindParentGroupViewModel(ruleVM).Model;
             if (currentGroup == null) return false;
 
             int currentGroupIndex = EditingTableCopy.MappingGroups.IndexOf(currentGroup);
-            int ruleIndex = currentGroup.MappingRules.IndexOf(rule);
+            int ruleIndex = currentGroup.MappingRules.IndexOf(ruleVM.Model);
             int ruleCount = currentGroup.MappingRules.Count;
 
             // 不是当前组的最后一个规则，或者不是最后一个组
@@ -1268,13 +1331,81 @@ namespace SNIBypassGUI.ViewModels
         }
         #endregion
 
+        #region Domain Pattern Management
+        private async Task ExecuteAddDomainPatternAsync()
+        {
+            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
+            {
+                var rule = ruleVM.Model;
+
+                var newPattern = await _dialogService.ShowTextInputAsync("添加模式", "请输入新的域名匹配模式：");
+                if (newPattern != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(newPattern))
+                    {
+                        if (newPattern.Trim().StartsWith("/"))
+                        {
+                            var regexContent = newPattern.Substring(1).Trim();
+                            if (string.IsNullOrEmpty(regexContent))
+                            {
+                                await _dialogService.ShowInfoAsync("添加失败", $"“{newPattern}” 不是有效的域名匹配模式，正则表达式不能为空。");
+                                return;
+                            }
+                            int pcreOptions = PcreOptions.PCRE_UTF8 | PcreOptions.PCRE_CASELESS;
+                            if (!PcreRegex.TryValidatePattern(regexContent, pcreOptions, out string errorMessage, out int errorOffset))
+                            {
+                                await _dialogService.ShowInfoAsync("添加失败", $"“{newPattern}” 不是有效的域名匹配模式，正则表达式在位置 {errorOffset} 存在错误 “{errorMessage}”。");
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            var trimmed = newPattern.Trim();
+                            if (trimmed.StartsWith(">"))
+                            {
+                                if (trimmed.IndexOf('>', 1) >= 0)
+                                {
+                                    await _dialogService.ShowInfoAsync("添加失败", $"“{newPattern}” 不是有效的域名匹配模式，子域匹配符号 “>” 只能出现在模式开头。");
+                                    return;
+                                }
+                                if (trimmed.Length == 1)
+                                {
+                                    await _dialogService.ShowInfoAsync("添加失败", $"“{newPattern}” 不是有效的域名匹配模式，子域匹配符号 “>” 后必须提供域名模式。");
+                                    return;
+                                }
+                            }
+                        }
+                        if (rule.DomainPatterns.Contains(newPattern))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"域名匹配模式 “{newPattern}” 已存在！");
+                            return;
+                        }
+                        rule.DomainPatterns.Add(newPattern);
+                    }
+                    else await _dialogService.ShowInfoAsync("添加失败", "域名匹配模式不能为空！");
+                }
+            }
+        }
+
+        private void ExecuteDeleteDomainPattern(string pattern)
+        {
+            if (pattern is null) return;
+            else if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
+            {
+                var rule = ruleVM.Model;
+                if (rule.DomainPatterns.Contains(pattern))
+                    rule.DomainPatterns.Remove(pattern);
+            }
+        }
+        #endregion
+
         #region Source Management
         private void ExecuteAddNewSource()
         {
-            if (SelectedTreeItem is DnsMappingRule rule)
+            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
             {
                 var newSource = _sourceFactory.CreateDefault();
-                rule.TargetSources.Add(newSource);
+                ruleVM.Model.TargetSources.Add(newSource);
                 SelectedSource = newSource;
             }
         }
@@ -1282,8 +1413,9 @@ namespace SNIBypassGUI.ViewModels
         private void ExecuteRemoveSelectedSource()
         {
             if (SelectedSource == null) return;
-            else if (SelectedTreeItem is DnsMappingRule rule)
+            else if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
             {
+                var rule = ruleVM.Model;
                 int index = rule.TargetSources.IndexOf(SelectedSource);
                 rule.TargetSources.Remove(SelectedSource);
                 SelectedSource = rule.TargetSources.Any() ? rule.TargetSources[Math.Max(0, index - 1)] : null;
@@ -1293,8 +1425,9 @@ namespace SNIBypassGUI.ViewModels
         private void ExecuteMoveSelectedSourceUp()
         {
             if (SelectedSource == null) return;
-            else if (SelectedTreeItem is DnsMappingRule rule)
+            else if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
             {
+                var rule = ruleVM.Model;
                 int index = rule.TargetSources.IndexOf(SelectedSource);
                 if (index > 0) rule.TargetSources.Move(index, index - 1);
             }
@@ -1303,8 +1436,9 @@ namespace SNIBypassGUI.ViewModels
         private void ExecuteMoveSelectedSourceDown()
         {
             if (SelectedSource == null) return;
-            else if (SelectedTreeItem is DnsMappingRule rule)
+            else if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
             {
+                var rule = ruleVM.Model;
                 int index = rule.TargetSources.IndexOf(SelectedSource);
                 if (index < rule.TargetSources.Count - 1)
                     rule.TargetSources.Move(index, index + 1);
@@ -1314,6 +1448,26 @@ namespace SNIBypassGUI.ViewModels
         private bool CanExecuteAddNewSource() => !_isBusy && IsRuleSelected;
 
         private bool CanExecuteOnSelectedSource() => SelectedSource != null && !_isBusy;
+
+        private bool CanExecuteMoveSelectedSourceUp()
+        {
+            if (!CanExecuteOnSelectedSource() || SelectedTreeItem is not DnsMappingRuleViewModel ruleVM)
+                return false;
+
+            var sources = ruleVM.Model.TargetSources;
+            int index = sources.IndexOf(SelectedSource);
+            return index > 0;
+        }
+
+        private bool CanExecuteMoveSelectedSourceDown()
+        {
+            if (!CanExecuteOnSelectedSource() || SelectedTreeItem is not DnsMappingRuleViewModel ruleVM)
+                return false;
+
+            var sources = ruleVM.Model.TargetSources;
+            int index = sources.IndexOf(SelectedSource);
+            return index < sources.Count - 1;
+        }
         #endregion
 
         #region Resolver Link Management
@@ -1467,9 +1621,9 @@ namespace SNIBypassGUI.ViewModels
         #endregion
 
         #region Group Icon Management
-        private async Task ExecuteAddGroupIconAsync(DnsMappingGroup group)
+        private async Task ExecuteAddGroupIconAsync(DnsMappingGroupViewModel groupVM)
         {
-            if (group == null) return;
+            if (groupVM == null) return;
 
             _isBusy = true;
             UpdateCommandStates();
@@ -1490,7 +1644,7 @@ namespace SNIBypassGUI.ViewModels
                     {
                         byte[] imageBytes = await FileUtils.ReadAllBytesAsync(openFileDialog.FileName);
                         string base64String = Base64Utils.EncodeBytes(imageBytes);
-                        group.GroupIconBase64 = base64String;
+                        groupVM.Model.GroupIconBase64 = base64String;
                     }
                     catch (Exception ex)
                     {
@@ -1505,19 +1659,73 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private bool CanExecuteAddGroupIcon(DnsMappingGroup group) => !group.HasGroupIcon && !_isBusy;
+        private bool CanExecuteAddGroupIcon(DnsMappingGroupViewModel groupVM) => !groupVM.HasGroupIcon && !_isBusy;
 
-        private void ExecuteRemoveGroupIcon(DnsMappingGroup group)
+        private void ExecuteRemoveGroupIcon(DnsMappingGroupViewModel groupVM)
         {
-            if (group != null) group.GroupIconBase64 = string.Empty;
+            if (groupVM != null) groupVM.Model.GroupIconBase64 = string.Empty;
             UpdateCommandStates();
         }
 
-        private bool CanExecuteRemoveGroupIcon(DnsMappingGroup group) => group.HasGroupIcon && !_isBusy;
+        private bool CanExecuteRemoveGroupIcon(DnsMappingGroupViewModel groupVM) => groupVM.HasGroupIcon && !_isBusy;
         #endregion
         #endregion
 
         #region External Event Handlers
+        private void OnAllTablesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    int insertIndex = Math.Min(e.NewStartingIndex, _allTableVMs.Count);
+                    foreach (DnsMappingTable model in e.NewItems)
+                    {
+                        _allTableVMs.Insert(insertIndex, new DnsMappingTableViewModel(model, GetResolverById));
+                        insertIndex++;
+                    }
+                    break;
+
+                case NotifyCollectionChangedAction.Remove:
+                    foreach (DnsMappingTable model in e.OldItems)
+                    {
+                        var vmToRemove = _allTableVMs.FirstOrDefault(vm => vm.Model == model);
+                        if (vmToRemove != null)
+                        {
+                            vmToRemove.Dispose();
+                            _allTableVMs.Remove(vmToRemove);
+                        }
+                    }
+                    break;
+
+                case NotifyCollectionChangedAction.Replace:
+                    for (int i = 0; i < e.OldItems.Count; i++)
+                    {
+                        var oldModel = (DnsMappingTable)e.OldItems[i];
+                        var newModel = (DnsMappingTable)e.NewItems[i];
+                        var vmIndex = _allTableVMs.ToList().FindIndex(vm => vm.Model == oldModel);
+                        if (vmIndex >= 0)
+                        {
+                            _allTableVMs[vmIndex].Dispose();
+                            _allTableVMs[vmIndex] = new DnsMappingTableViewModel(newModel, GetResolverById);
+                        }
+                    }
+                    break;
+
+                case NotifyCollectionChangedAction.Move:
+                    if (e.OldStartingIndex < _allTableVMs.Count && e.NewStartingIndex < _allTableVMs.Count)
+                        _allTableVMs.Move(e.OldStartingIndex, e.NewStartingIndex);
+                    break;
+
+                case NotifyCollectionChangedAction.Reset:
+                    foreach (var vm in _allTableVMs) vm.Dispose();
+                    _allTableVMs.Clear();
+
+                    foreach (var model in _tableService.AllConfigs)
+                        _allTableVMs.Add(new DnsMappingTableViewModel(model, GetResolverById));
+                    break;
+            }
+        }
+
         private async void HandleResolverRemoved(Guid removedResolverId)
         {
             List<Task> tasks = [];
@@ -1571,6 +1779,11 @@ namespace SNIBypassGUI.ViewModels
 
             if (tasks.Any())
                 await Task.WhenAll(tasks);
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                EditingTableVM?.RefreshAllRuleIPv6Status();
+            });
         }
 
         private void HandleResolverRenamed(Guid resolverId, string newName)
@@ -1578,19 +1791,38 @@ namespace SNIBypassGUI.ViewModels
             if (SelectedSource != null && SelectedSource.ResolverId == resolverId)
                 UpdateAssociatedResolverName();
         }
+
+        private void HandleResolverUpdated(Guid updatedResolverId)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (EditingTableVM == null) return;
+                foreach (var groupVM in EditingTableVM.MappingGroups)
+                {
+                    foreach (var ruleVM in groupVM.MappingRules)
+                    {
+                        bool isAffected = ruleVM.Model.TargetSources
+                            .Any(s => s.ResolverId == updatedResolverId);
+
+                        if (isAffected) ruleVM.RefreshIPv6Status();
+                    }
+                }
+            });
+        }
         #endregion
 
         #region Other Commands & Helpers
         #region Copy Link Code
-        private async Task ExecuteCopyLinkCode(DnsMappingTable table)
+        private async Task ExecuteCopyLinkCode(DnsMappingTableViewModel tableVM)
         {
-            if (table is null || !_canExecuteCopy) return;
+            if (tableVM is null || !_canExecuteCopy) return;
 
             try
             {
                 _canExecuteCopy = false;
-                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as RelayCommand<DnsMappingTableViewModel>)?.RaiseCanExecuteChanged();
 
+                var table = tableVM.Model;
                 var linkCode = Base64Utils.EncodeString(table.Id.ToString());
                 for (int i = 0; i < 5; i++)
                 {
@@ -1610,11 +1842,11 @@ namespace SNIBypassGUI.ViewModels
             finally
             {
                 _canExecuteCopy = true;
-                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as RelayCommand<DnsMappingTableViewModel>)?.RaiseCanExecuteChanged();
             }
         }
 
-        private bool CanExecuteCopyLinkCode(DnsMappingTable table) => table != null && !_isBusy && _canExecuteCopy;
+        private bool CanExecuteCopyLinkCode(DnsMappingTableViewModel tableVM) => tableVM != null && !_isBusy && _canExecuteCopy;
         #endregion
 
         #region General CanExecute Predicates & Helpers
@@ -1622,27 +1854,31 @@ namespace SNIBypassGUI.ViewModels
 
         private bool CanExecuteOnEditableTable() => TableSelector.SelectedItem != null && !TableSelector.SelectedItem.IsBuiltIn && !_isBusy;
 
-        private DnsMappingGroup FindParentGroup(object item)
+        private DnsMappingGroupViewModel FindParentGroupViewModel(object item)
         {
-            if (item is DnsMappingGroup group) return group;
-            if (item is DnsMappingRule rule)
-            {
-                if (rule.Parent != null) return rule.Parent;
-                return EditingTableCopy?.MappingGroups?
-                    .FirstOrDefault(g => g.MappingRules?.Contains(rule) == true);
-            }
+            // 如果是组，直接返回自己
+            if (item is DnsMappingGroupViewModel groupVM) return groupVM;
+
+            // 如果是规则，直接问它的 Parent 属性是谁
+            if (item is DnsMappingRuleViewModel ruleVM) return ruleVM.Parent;
+
             return null;
         }
 
-
+        private ResolverConfig GetResolverById(Guid? id)
+        {
+            if (!id.HasValue) return null;
+            return _resolverService.AllConfigs.FirstOrDefault(r => r.Id == id.Value);
+        }
         #endregion
         #endregion
 
-        #region Disposal
+        #region IDisposable Implementation
         public void Dispose()
         {
             _resolverService.ConfigRemoved -= HandleResolverRemoved;
             _resolverService.ConfigRenamed -= HandleResolverRenamed;
+            _resolverService.ConfigUpdated -= HandleResolverUpdated;
             if (EditingTableCopy != null)
                 StopListeningToChanges(EditingTableCopy);
             GC.SuppressFinalize(this);

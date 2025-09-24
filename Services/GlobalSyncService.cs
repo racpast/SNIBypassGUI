@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using SNIBypassGUI.Behaviors;
-using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Common.LogManager;
 
 namespace SNIBypassGUI.Services
 {

@@ -4,9 +4,10 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json.Linq;
+using SNIBypassGUI.Common;
+using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Common.Results;
 using SNIBypassGUI.Interfaces;
-using SNIBypassGUI.Utils.Extensions;
-using SNIBypassGUI.Utils.Results;
 
 namespace SNIBypassGUI.Models
 {

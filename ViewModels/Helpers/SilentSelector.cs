@@ -6,10 +6,10 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using System.Windows.Input;
-using SNIBypassGUI.Commands;
-using static SNIBypassGUI.Utils.LogManager;
+using SNIBypassGUI.Common.Commands;
+using static SNIBypassGUI.Common.LogManager;
 
-namespace SNIBypassGUI.Behaviors
+namespace SNIBypassGUI.ViewModels.Helpers
 {
     /// <summary>
     /// Provides a selection helper that prevents event loops when synchronizing selection between view and view model.

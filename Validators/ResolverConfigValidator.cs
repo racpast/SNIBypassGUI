@@ -11,7 +11,7 @@ using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Utils.Network;
+using SNIBypassGUI.Common.Network;
 
 namespace SNIBypassGUI.Validators
 {

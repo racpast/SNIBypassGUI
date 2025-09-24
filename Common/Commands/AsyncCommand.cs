@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace SNIBypassGUI.Commands
+namespace SNIBypassGUI.Common.Commands
 {
     public class AsyncCommand : ICommand, INotifyPropertyChanged
     {

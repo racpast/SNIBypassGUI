@@ -9,14 +9,14 @@ using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Interfaces;
-using SNIBypassGUI.Utils.Cryptography;
-using SNIBypassGUI.Utils.Extensions;
-using SNIBypassGUI.Utils.IO;
-using SNIBypassGUI.Utils.Results;
+using SNIBypassGUI.Common.Cryptography;
+using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Common.IO;
+using SNIBypassGUI.Common.Results;
 using static SNIBypassGUI.Consts.AppConsts;
-using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Common.LogManager;
 
-namespace SNIBypassGUI.Utils.Storage
+namespace SNIBypassGUI.Common.Storage
 {
     internal static class ConfigStorage
     {

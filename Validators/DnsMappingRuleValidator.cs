@@ -12,44 +12,51 @@ namespace SNIBypassGUI.Validators
     {
         public DnsMappingRuleValidator()
         {
-            RuleFor(rule => rule.DomainPattern)
-                .Must(x => !string.IsNullOrWhiteSpace(x))
-                .WithMessage("域名匹配模式不能为空。");
-            RuleFor(rule => rule.DomainPattern)
-                .Custom((pattern, context) =>
+            RuleFor(rule => rule.DomainPatterns)
+                .Must(x => x.Any())
+                .WithMessage("至少要有一个域名匹配模式。");
+            RuleFor(rule => rule.DomainPatterns)
+                .Custom((patterns, context) =>
                 {
-                    var regexContent = pattern.Substring(1).Trim();
-                    if (string.IsNullOrEmpty(regexContent))
+                    for (int i = 0; i < patterns.Count; i++)
                     {
-                        context.AddFailure("正则表达式不能为空。");
-                        return;
-                    }
-                    int pcreOptions = PcreOptions.PCRE_UTF8 | PcreOptions.PCRE_CASELESS;
-                    if (!PcreRegex.TryValidatePattern(regexContent, pcreOptions, out string errorMessage, out int errorOffset))
-                        context.AddFailure($"“{regexContent}” 不是一个有效的 PCRE 表达式：在位置 {errorOffset} 存在错误 “{errorMessage}”。");
-                })
-                .When(rule => !string.IsNullOrWhiteSpace(rule.DomainPattern) &&
-                              rule.DomainPattern.Trim().StartsWith("/"));
-            RuleFor(rule => rule.DomainPattern)
-                .Custom((pattern, context) =>
-                {
-                    var trimmed = pattern.Trim();
-                    if (trimmed.StartsWith(">"))
-                    {
-                        if (trimmed.IndexOf('>', 1) >= 0)
+                        var pattern = patterns[i];
+                        if (string.IsNullOrWhiteSpace(pattern))
                         {
-                            context.AddFailure("子域匹配符号 “>” 只能出现在模式开头。");
-                            return;
+                            context.AddFailure($"第 {i + 1} 个域名匹配模式：不能为空。");
+                            continue;
                         }
-                        if (trimmed.Length == 1)
+                        if (pattern.Trim().StartsWith("/"))
                         {
-                            context.AddFailure("子域匹配符号 “>” 后必须提供域名模式。");
-                            return;
+                            var regexContent = pattern.Substring(1).Trim();
+                            if (string.IsNullOrEmpty(regexContent))
+                            {
+                                context.AddFailure($"第 {i + 1} 个域名匹配模式：正则表达式不能为空。");
+                                continue;
+                            }
+                            int pcreOptions = PcreOptions.PCRE_UTF8 | PcreOptions.PCRE_CASELESS;
+                            if (!PcreRegex.TryValidatePattern(regexContent, pcreOptions, out string errorMessage, out int errorOffset))
+                                context.AddFailure($"第 {i + 1} 个域名匹配模式：“{regexContent}” 不是有效的正则表达式，在位置 {errorOffset} 存在错误 “{errorMessage}”。");
+                        }
+                        else
+                        {
+                            var trimmed = pattern.Trim();
+                            if (trimmed.StartsWith(">"))
+                            {
+                                if (trimmed.IndexOf('>', 1) >= 0)
+                                {
+                                    context.AddFailure($"第 {i + 1} 个域名匹配模式：子域匹配符号 “>” 只能出现在模式开头。");
+                                    continue;
+                                }
+                                if (trimmed.Length == 1)
+                                {
+                                    context.AddFailure($"第 {i + 1} 个域名匹配模式：子域匹配符号 “>” 后必须提供域名模式。");
+                                    continue;
+                                }
+                            }
                         }
                     }
-                })
-                .When(rule => !string.IsNullOrWhiteSpace(rule.DomainPattern) &&
-                              !rule.DomainPattern.Trim().StartsWith("/"));
+                });
 
             When(rule => rule.RuleAction == DnsMappingRuleAction.IP, () =>
             {
@@ -58,7 +65,7 @@ namespace SNIBypassGUI.Validators
                     {
                         if (sources.Count == 0)
                         {
-                            context.AddFailure(new ValidationFailure(context.PropertyPath, "此规则未配置任何目标 IP 来源，将不会生效。") { Severity = Severity.Warning });
+                            context.AddFailure(new ValidationFailure(context.PropertyPath, "此规则未配置任何目标来源，将不会生效。") { Severity = Severity.Warning });
                             return;
                         }
 

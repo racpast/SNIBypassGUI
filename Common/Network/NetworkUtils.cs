@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using SNIBypassGUI.Enums;
 
-namespace SNIBypassGUI.Utils.Network
+namespace SNIBypassGUI.Common.Network
 {
     public static class NetworkUtils
     {

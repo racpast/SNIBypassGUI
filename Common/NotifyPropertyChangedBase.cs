@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace SNIBypassGUI.Models
+namespace SNIBypassGUI.Common
 {
     public abstract class NotifyPropertyChangedBase : INotifyPropertyChanged
     {

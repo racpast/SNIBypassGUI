@@ -1,4 +1,4 @@
-﻿namespace SNIBypassGUI.Utils.Results
+﻿namespace SNIBypassGUI.Common.Results
 {
     /// <summary>
     /// Represents the result of an operation, which can either be a success or a failure.
