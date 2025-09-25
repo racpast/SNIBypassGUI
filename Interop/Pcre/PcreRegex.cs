@@ -19,7 +19,14 @@ namespace SNIBypassGUI.Interop.Pcre
 
         public PcreRegex(string pattern, int options = 0)
         {
+#if NET5_0_OR_GREATER
             IntPtr errMsgPtr = PcreNative.PcreCompile(pattern, options, out _code, out int errOffset);
+#else
+            byte[] patternBytes = Utf8NoBom.GetBytes(pattern);
+            byte[] nullTerminatedPattern = new byte[patternBytes.Length + 1];
+            Array.Copy(patternBytes, nullTerminatedPattern, patternBytes.Length);
+            IntPtr errMsgPtr = PcreNative.PcreCompile(nullTerminatedPattern, options, out _code, out int errOffset);
+#endif
             if (errMsgPtr != IntPtr.Zero || _code == IntPtr.Zero)
             {
                 string errorMessage = Marshal.PtrToStringAnsi(errMsgPtr);
@@ -33,7 +40,14 @@ namespace SNIBypassGUI.Interop.Pcre
 
         public static bool TryValidatePattern(string pattern, int options, out string errorMessage, out int errorOffset)
         {
-            IntPtr errMsgPtr = PcreNative.PcreCompile(pattern, options, out IntPtr tempCode, out errorOffset);
+#if NET5_0_OR_GREATER
+            IntPtr errMsgPtr = PcreNative.PcreCompile(pattern, options, out _code, out int errOffset);
+#else
+            byte[] patternBytes = Utf8NoBom.GetBytes(pattern);
+            byte[] nullTerminatedPattern = new byte[patternBytes.Length + 1];
+            Array.Copy(patternBytes, nullTerminatedPattern, patternBytes.Length);
+            IntPtr errMsgPtr = PcreNative.PcreCompile(nullTerminatedPattern, options, out IntPtr tempCode, out errorOffset);
+#endif
             if (errMsgPtr == IntPtr.Zero && tempCode != IntPtr.Zero)
             {
                 PcreNative.PcreFree(tempCode);

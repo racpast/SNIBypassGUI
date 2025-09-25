@@ -93,7 +93,7 @@ namespace SNIBypassGUI.Services
             return buttonResult is ExportChoice choice ? choice : ExportChoice.Cancel;
         }
 
-        private async Task<(object buttonResult, Dictionary<string, object> fieldResults)> ShowDialogAsync(DialogViewModel viewModel)
+        public async Task<(object buttonResult, Dictionary<string, object> fieldResults)> ShowDialogAsync(DialogViewModel viewModel)
         {
             var view = new DynamicDialog { DataContext = viewModel };
             object buttonResult = await DialogHost.Show(view, dialogHostName);
@@ -101,12 +101,6 @@ namespace SNIBypassGUI.Services
                                         .OfType<IResultField>()
                                         .ToDictionary(f => f.GetResult().Key, f => f.GetResult().Value);
             return (buttonResult, fieldResults);
-        }
-
-        public async Task<object> ShowCustomDialogAsync(DialogViewModel viewModel)
-        {
-            var (buttonResult, _) = await ShowDialogAsync(viewModel);
-            return buttonResult;
         }
     }
 }

@@ -7,16 +7,8 @@ namespace SNIBypassGUI.Common.Extensions
     public static class StreamExtensions
     {
 #if !NET6_0_OR_GREATER
+#warning 在 .NET 6 及更高版本中应使用 System.IO.Stream.ReadExactly 方法。
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("升级到 .NET 6 或更高版本时，可以使用 System.IO.Stream.ReadExactly 方法。")]
-        public static void ReadExactly(this Stream stream, byte[] buffer)
-        {
-            if (buffer == null) throw new ArgumentNullException(nameof(buffer));
-            ReadExactly(stream, buffer, 0, buffer.Length);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("升级到 .NET 6 或更高版本时，可以使用 System.IO.Stream.ReadExactly 方法。")]
         public static void ReadExactly(this Stream stream, byte[] buffer, int offset, int count)
         {
             if (stream == null) throw new ArgumentNullException(nameof(stream));

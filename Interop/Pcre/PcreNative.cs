@@ -12,8 +12,14 @@ namespace SNIBypassGUI.Interop.Pcre
         private const string DllName = "PcreWrapper";
         private const CallingConvention Convent = CallingConvention.Cdecl;
 
-        [DllImport(DllName, CallingConvention = Convent, CharSet = CharSet.Ansi, EntryPoint = "pcrew_compile")]
+#if NET5_0_OR_GREATER
+        [DllImport(DllName, CallingConvention = Convent, CharSet = CharSet.Utf8, EntryPoint = "pcrew_compile")]
         internal static extern IntPtr PcreCompile(string pattern, int options, out IntPtr outCode, out int outErrOffset);
+#else
+#warning 在 .NET 5 及更高版本中应使用 CharSet.Utf8 作为字符集。
+        [DllImport(DllName, CallingConvention = Convent, CharSet = CharSet.Ansi, EntryPoint = "pcrew_compile")]
+        internal static extern IntPtr PcreCompile(byte[] pattern, int options, out IntPtr outCode, out int outErrOffset);
+#endif
 
         [DllImport(DllName, CallingConvention = Convent, EntryPoint = "pcrew_free")]
         internal static extern void PcreFree(IntPtr code);

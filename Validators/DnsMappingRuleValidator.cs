@@ -36,7 +36,7 @@ namespace SNIBypassGUI.Validators
                             }
                             int pcreOptions = PcreOptions.PCRE_UTF8 | PcreOptions.PCRE_CASELESS;
                             if (!PcreRegex.TryValidatePattern(regexContent, pcreOptions, out string errorMessage, out int errorOffset))
-                                context.AddFailure($"第 {i + 1} 个域名匹配模式：“{regexContent}” 不是有效的正则表达式，在位置 {errorOffset} 存在错误 “{errorMessage}”。");
+                                context.AddFailure($"第 {i + 1} 个域名匹配模式：“{regexContent}” 不是有效的正则表达式，在位置 {errorOffset} 存在错误：{errorMessage}。");
                         }
                         else
                         {

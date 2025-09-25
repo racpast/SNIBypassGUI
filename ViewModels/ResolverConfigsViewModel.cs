@@ -712,6 +712,55 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
+        /*
+         * 两个字段在一个对话框中输入的版本，用户使用体验有待评估
+        private async Task ExecuteAddHeaderAsync()
+        {
+            (object buttonResult, Dictionary<string, object> fieldResults) = await _dialogService.ShowDialogAsync(new DialogViewModel(
+                "添加条目",
+                [
+                    new InputField("name") { Label = "请输入新条目的名称：" },
+                    new InputField("value") { Label = "请输入新条目的值：" }
+                ],
+                [
+                    new DialogButtonViewModel { Content = "确定", Result = "OK", IsDefault = true },
+                    new DialogButtonViewModel { Content = "取消", Result = "CANCEL", IsCancel = true }
+                ]
+            ));
+            if (buttonResult as string == "OK")
+            {
+                string newName = fieldResults["name"] as string;
+                string newValue = fieldResults["value"] as string;
+                if (!string.IsNullOrWhiteSpace(newName))
+                {
+                    string trimmedName = newName.Trim();
+                    if (!NetworkUtils.IsValidHttpHeaderName(trimmedName))
+                    {
+                        await _dialogService.ShowInfoAsync("添加失败", $"“{trimmedName}” 不是合法的条目名称！");
+                        return;
+                    }
+                    if (EditingConfigCopy.HttpHeaders.Select(v => v.Name).Contains(trimmedName))
+                    {
+                        await _dialogService.ShowInfoAsync("添加失败", $"条目名称 “{trimmedName}” 已存在！");
+                        return;
+                    }
+                    if (!NetworkUtils.IsValidHttpHeaderValue(newValue is null ? string.Empty : newValue))
+                    {
+                        await _dialogService.ShowInfoAsync("添加失败", $"“{newValue}” 不是合法的条目值！");
+                        return;
+                    }
+                    var newItem = new HttpHeaderItem
+                    {
+                        Name = newName,
+                        Value = newValue.OrDefault()
+                    };
+                    EditingConfigCopy.HttpHeaders.Add(newItem);
+                }
+                else await _dialogService.ShowInfoAsync("添加失败", "条目名称不能为空！");
+            }
+        }
+        */
+
         private void ExecuteDeleteHeader(HttpHeaderItem item)
         {
             if (item is null) return;

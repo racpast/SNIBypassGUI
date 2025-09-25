@@ -24,7 +24,8 @@ namespace SNIBypassGUI.Common.Extensions
         public static string OrDefault(this string value, string defaultValue = "") =>
             string.IsNullOrWhiteSpace(value) ? defaultValue : value;
 
-        [Obsolete("升级到 .NET 6 或更高版本时，可以使用 System.Convert.FromHexString 方法。")]
+#if !NET6_0_OR_GREATER
+#warning 在 .NET 6 及更高版本中应使用 System.Convert.FromHexString 方法。
         public static byte[] FromHexString(this string s)
         {
             if (s == null)
@@ -46,7 +47,7 @@ namespace SNIBypassGUI.Common.Extensions
             return result;
         }
 
-        [Obsolete("升级到 .NET 6 或更高版本时，可以使用 System.Convert.ToHexString 方法。")]
+#warning 在 .NET 6 及更高版本中应使用 System.Convert.ToHexString 方法。
         public static string ToHexString(this byte[] bytes)
         {
             if (bytes == null || bytes.Length == 0)
@@ -58,6 +59,7 @@ namespace SNIBypassGUI.Common.Extensions
 
             return hex.ToString();
         }
+#endif
 
         private static int ParseHexChar(char c)
         {

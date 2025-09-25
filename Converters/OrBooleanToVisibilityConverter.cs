@@ -10,9 +10,7 @@ namespace SNIBypassGUI.Converters
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            Console.WriteLine($"转换器接收到的值: {string.Join(", ", values)}");
             bool result = values.OfType<bool>().Any(b => b);
-            Console.WriteLine($"转换结果: {result}");
             return result ? Visibility.Visible : Visibility.Collapsed;
         }
 

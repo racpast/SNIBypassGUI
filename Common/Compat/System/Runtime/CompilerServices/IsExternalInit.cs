@@ -1,9 +1,7 @@
 ﻿#if !NET5_0_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
 namespace System.Runtime.CompilerServices
 {
-    /// <summary>
-    /// 升级至 .NET 5 或更高版本后，可以使用系统自带的 System.Runtime.CompilerServices.IsExternalInit 类。
-    /// </summary>
+#warning 在 .NET 5 及更高版本中，System.Runtime.CompilerServices.IsExternalInit 已由系统提供，无需手动定义。
     internal sealed class IsExternalInit { }
 }
 #endif

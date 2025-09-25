@@ -1,7 +1,7 @@
 ﻿#if !NET5_0_OR_GREATER
 namespace System.Numerics
 {
-    [Obsolete("升级到 .NET 5 或更高版本时，可以使用 System.Numerics.BitOperations 类。")]
+#warning 在 .NET 5 及更高版本中应使用 System.Numerics.BitOperations 类。
     public static class BitOperations
     {
         public static int PopCount(ulong value)

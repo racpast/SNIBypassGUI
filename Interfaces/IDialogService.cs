@@ -68,10 +68,20 @@ namespace SNIBypassGUI.Interfaces
         Task<ExportChoice> ShowExportConfirmationAsync(string configName);
 
         /// <summary>
-        /// 显示一个完全自定义的对话框。
+        /// 显示一个自定义对话框。
         /// </summary>
-        /// <param name="viewModel">手动配置好的对话框 ViewModel。</param>
-        /// <returns>一个任务，其结果为用户点击的按钮所绑定的 Result 对象。</returns>
-        Task<object> ShowCustomDialogAsync(DialogViewModel viewModel);
+        /// <param name="viewModel">手动配置好的对话框 ViewModel，包括显示的字段和按钮。</param>
+        /// <returns>
+        /// 一个任务，其结果为一个元组：
+        /// <list type="bullet">
+        /// <item>
+        /// <description><c>buttonResult</c>：用户点击的按钮所绑定的结果对象。</description>
+        /// </item>
+        /// <item>
+        /// <description><c>fieldResults</c>：对话框中各输入字段的结果字典。</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        Task<(object buttonResult, Dictionary<string, object> fieldResults)> ShowDialogAsync(DialogViewModel viewModel);
     }
 }
