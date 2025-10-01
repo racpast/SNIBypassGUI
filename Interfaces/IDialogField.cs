@@ -2,8 +2,9 @@
 {
     /// <summary>
     /// Marker interface for dialog fields — no methods, no drama.
-    /// <br/>
-    /// <i>My bad, I’m just a tag, not a task.</i>
     /// </summary>
+    /// <remarks>
+    /// <i>My bad, I’m just a tag, not a task.</i>
+    /// </remarks>
     public interface IDialogField { }
 }

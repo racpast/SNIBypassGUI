@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using SNIBypassGUI.Utils.Numerics;
+using SNIBypassGUI.Common.Numerics;
 
 namespace SNIBypassGUI.Controls
 {
@@ -78,7 +78,7 @@ namespace SNIBypassGUI.Controls
 
         public static readonly DependencyProperty IsInertiaEnabledProperty =
             DependencyProperty.Register(nameof(IsInertiaEnabled), typeof(bool), typeof(InertialScrollViewer),
-                new PropertyMetadata(true));
+                new PropertyMetadata(true, OnInertiaEnabledChanged));
 
         public bool IsInertiaEnabled
         {
@@ -124,12 +124,20 @@ namespace SNIBypassGUI.Controls
         #endregion
 
         #region Initialization
+        static InertialScrollViewer()
+        {
+            // 重写 CanContentScroll 的元数据，以便在 IsInertiaEnabled 变化时强制其值
+            CanContentScrollProperty.OverrideMetadata(typeof(InertialScrollViewer),
+                new FrameworkPropertyMetadata(false, null, CoerceCanContentScroll));
+        }
+
         public InertialScrollViewer()
         {
             Loaded += (s, e) =>
             {
                 _targetVerticalOffset = VerticalOffset;
                 _targetHorizontalOffset = HorizontalOffset;
+                CoerceValue(CanContentScrollProperty);
             };
         }
         #endregion
@@ -223,22 +231,32 @@ namespace SNIBypassGUI.Controls
         #region Animation Logic
         private void StartInertialAnimation(ScrollOrientationMode direction, double toOffset, double duration)
         {
-            StopAnimation();
-
+            // 更新动画的目标方向和最终位置
             _animatingDirection = direction;
-            _fromOffset = direction == ScrollOrientationMode.Vertical ? VerticalOffset : HorizontalOffset;
             _toOffset = toOffset;
+
+            if (_isAnimating)
+            {
+                _fromOffset = direction == ScrollOrientationMode.Vertical ? VerticalOffset : HorizontalOffset;
+                _animationStartTime = DateTime.Now;
+                _animationDuration = duration;
+                return;
+            }
+
+            // 设置新动画的起点
+            _fromOffset = direction == ScrollOrientationMode.Vertical ? VerticalOffset : HorizontalOffset;
             _animationDuration = duration;
             _animationStartTime = DateTime.Now;
 
+            // 如果滚动的距离非常小，就直接跳到目标位置，这样更精确
             if (Math.Abs(_fromOffset - _toOffset) < 0.5)
             {
-                // 起始点和终点距离很近的话直接滚动到精确位置以便触发边界滚动传递
                 if (direction == ScrollOrientationMode.Vertical) ScrollToVerticalOffset(toOffset);
                 else ScrollToHorizontalOffset(toOffset);
                 return;
             }
 
+            // 挂载渲染事件
             _renderHandler ??= new EventHandler(OnFrame);
             _isAnimating = true;
             CompositionTarget.Rendering += _renderHandler;
@@ -264,6 +282,18 @@ namespace SNIBypassGUI.Controls
 
             if (t >= 1.0)
                 StopAnimation();
+        }
+        #endregion
+
+        #region Property System Callbacks
+        private static void OnInertiaEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
+            d.CoerceValue(CanContentScrollProperty);
+
+        private static object CoerceCanContentScroll(DependencyObject d, object baseValue)
+        {
+            var scrollViewer = (InertialScrollViewer)d;
+            if (scrollViewer.IsInertiaEnabled) return false;
+            return baseValue;
         }
         #endregion
 

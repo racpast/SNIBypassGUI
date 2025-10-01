@@ -1,0 +1,111 @@
+﻿<UserControl x:Class="SNIBypassGUI.Views.Dialogs.DynamicDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:controls="clr-namespace:SNIBypassGUI.Controls"
+             xmlns:converters="clr-namespace:SNIBypassGUI.Converters"
+             xmlns:dialogs="clr-namespace:SNIBypassGUI.ViewModels.Dialogs"
+             xmlns:fields="clr-namespace:SNIBypassGUI.ViewModels.Dialogs.Fields"
+             xmlns:items="clr-namespace:SNIBypassGUI.ViewModels.Dialogs.Items"
+             mc:Ignorable="d" 
+             MinWidth="350" MaxWidth="600" FontSize="14"
+             Foreground="{DynamicResource ForegroundBrush}">
+    <UserControl.Resources>
+        <DataTemplate DataType="{x:Type fields:MessageField}">
+            <TextBlock Text="{Binding Text}" Opacity="{Binding Opacity}" TextWrapping="Wrap" Margin="0,8"/>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type fields:InputField}">
+            <StackPanel Margin="0,8">
+                <TextBlock Text="{Binding Label}" FontWeight="Bold" Margin="0,0,0,4"/>
+                <TextBox md:HintAssist.Hint="{Binding HintText}"
+                         Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type fields:ItemsListField}">
+            <ItemsControl ItemsSource="{Binding ItemsSource}" Margin="0,8"/>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type items:BulletedListItem}">
+            <StackPanel>
+                <Grid Margin="0,2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0" 
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Top">
+
+                        <md:PackIcon Kind="{Binding IconKind}" 
+                                     VerticalAlignment="Center" HorizontalAlignment="Center" 
+                                     Width="18" Height="18"
+                                     Visibility="{Binding Display, Converter={StaticResource DisplayTypeToVisibilityConverter}, ConverterParameter=Icon}">
+                            <md:PackIcon.Style>
+                                <Style TargetType="md:PackIcon" BasedOn="{StaticResource {x:Type md:PackIcon}}">
+                                    <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IconBrush, Converter={StaticResource NotNullToBooleanConverter}}" Value="True">
+                                            <Setter Property="Foreground" Value="{Binding IconBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </md:PackIcon.Style>
+                        </md:PackIcon>
+
+                        <TextBlock Text="•"
+                                   Foreground="{DynamicResource PrimaryBrush}"
+                                   Width="16" Height="16"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   Visibility="{Binding Display, Converter={StaticResource DisplayTypeToVisibilityConverter}, ConverterParameter=Bullet}"/>
+                    </Grid>
+
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding Text}"
+                               Margin="8 0 0 0"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Top"/>
+                </Grid>
+
+                <ItemsControl 
+                    ItemsSource="{Binding Children}"
+                    ItemTemplate="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=ItemTemplate}"
+                    Margin="24,0,0,0"
+                    Visibility="{Binding HasChildren, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <StackPanel Margin="20">
+        <TextBlock Text="{Binding Title}" Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                   Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+        <controls:InertialScrollViewer MaxHeight="500" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Fields}"/>
+        </controls:InertialScrollViewer>
+
+        <ItemsControl ItemsSource="{Binding Buttons}" Margin="0,15,0,0">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type dialogs:DialogButtonViewModel}">
+                    <Button Style="{StaticResource MaterialDesignFlatButton}"
+                            Content="{Binding Content}"
+                            IsDefault="{Binding IsDefault}"
+                            IsCancel="{Binding IsCancel}"
+                            Command="{x:Static md:DialogHost.CloseDialogCommand}"
+                            CommandParameter="{Binding Result}"
+                            Margin="8,0,0,0"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>
