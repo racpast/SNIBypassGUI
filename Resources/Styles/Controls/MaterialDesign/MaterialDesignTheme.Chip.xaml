@@ -54,15 +54,21 @@
                                 </ControlTemplate>
                             </ContentControl.Template>
                         </ContentControl>
-                        <ContentControl x:Name="TextBlock"
-										Grid.Column="1"
-										Margin="{TemplateBinding Padding}"
-										VerticalAlignment="Center"
-										Content="{TemplateBinding Content}"
-										ContentStringFormat="{TemplateBinding ContentStringFormat}"
-										ContentTemplate="{TemplateBinding ContentTemplate}"
-										ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
-										IsTabStop="False" />
+                        <ContentPresenter x:Name="TextBlock"
+                                          Grid.Column="1"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                          ContentStringFormat="{TemplateBinding ContentStringFormat}">
+                            <ContentPresenter.Resources>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="{Binding Path=(assist:ChipAssist.TextTrimming), RelativeSource={RelativeSource AncestorType={x:Type md:Chip}}}" />
+                                    <Setter Property="TextWrapping" Value="NoWrap" />
+                                </Style>
+                            </ContentPresenter.Resources>
+                        </ContentPresenter>
                         <Button x:Name="PART_DeleteButton"
 								Grid.Column="2"
 								Width="16"

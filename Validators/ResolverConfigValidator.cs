@@ -9,12 +9,30 @@ using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
+using SNIBypassGUI.Common.Network;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Common.Network;
 
 namespace SNIBypassGUI.Validators
 {
+    /// <remarks>
+    /// <i>
+    /// <para>This validator? Oh, it's not just some uptight nerd checking boxes –
+    /// it's more like your favorite, slightly sarcastic bar buddy who's seen it all.
+    /// Got an IPv4 or a domain chilling inside some fancy brackets? It'll raise an eyebrow
+    /// and be like, "Whoa there, hotshot, those designer brackets are totally overkill for
+    /// plain old IPs and domains. Save 'em for your high-fashion IPv6 addresses, eh?"</para>
+    ///
+    /// <para>Then there's the IPv6 that tried to sneak in a port without its proper square-bracket tuxedo.
+    /// Our validator here will gently (but firmly) tap its foot and whisper,
+    /// "Honey, an IPv6 without its brackets before a port is like showing up to the Oscars
+    /// in sweatpants. Not cool. Get those brackets on, pronto!"</para>
+    ///
+    /// <para>In short: part stand-up comedian, part network-address-etiquette coach.
+    /// It's here to keep your server addresses in line and save you from those forehead-slapping
+    /// "D'oh!" moments. You're welcome!</para>
+    /// </i>
+    /// </remarks>
     public class ResolverConfigValidator : AbstractValidator<ResolverConfig>
     {
         public ResolverConfigValidator()
@@ -25,20 +43,7 @@ namespace SNIBypassGUI.Validators
             RuleFor(config => config.ServerAddress)
                 .NotEmpty().WithMessage("服务器地址不能为空。");
 
-            // This validator? Oh, it's not just some uptight nerd checking boxes –
-            // it's more like your favorite, slightly sarcastic bar buddy who's seen it all.
-            // Got an IPv4 or a domain chilling inside some fancy brackets? It'll raise an eyebrow
-            // and be like, "Whoa there, hotshot, those designer brackets are totally overkill for
-            // plain old IPs and domains. Save 'em for your high-fashion IPv6 addresses, eh?"
-            //
-            // Then there's the IPv6 that tried to sneak in a port without its proper square-bracket tuxedo.
-            // Our validator here will gently (but firmly) tap its foot and whisper,
-            // "Honey, an IPv6 without its brackets before a port is like showing up to the Oscars
-            // in sweatpants. Not cool. Get those brackets on, pronto!"
-            //
-            // In short: part stand-up comedian, part network-address-etiquette coach.
-            // It's here to keep your server addresses in line and save you from those forehead-slapping
-            // "D'oh!" moments. You're welcome!
+
             RuleFor(config => config.ServerAddress)
                 .Custom((value, context) =>
                 {

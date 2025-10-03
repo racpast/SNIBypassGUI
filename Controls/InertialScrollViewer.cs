@@ -8,35 +8,64 @@ using SNIBypassGUI.Common.Numerics;
 namespace SNIBypassGUI.Controls
 {
     /// <summary>
-    /// A custom <see cref="ScrollViewer"/> that provides an inertial scrolling experience 
-    /// with easing effects, suitable for modern WPF applications.
+    /// A custom <see cref="ScrollViewer"/> that enhances the user experience with smooth, inertial scrolling,
+    /// easing animations, and extensive customization options for modern WPF applications.
     /// </summary>
     /// <remarks>
-    /// <para><b>Features:</b></para>
+    /// <para>
+    /// The <c>InertialScrollViewer</c> replaces the default abrupt scrolling with a fluid,
+    /// physics-based animation, providing a more polished and responsive feel to content navigation.
+    /// It is designed to be a drop-in replacement for the standard <see cref="ScrollViewer"/>.
+    /// </para>
+    /// <para><b>Key Features:</b></para>
     /// <list type="bullet">
-    /// <item>
-    /// <description>Smooth, inertial scrolling with an easing animation.</description>
-    /// </item>
-    /// <item>
-    /// <description>Supports both vertical and horizontal orientations via the <see cref="ScrollOrientation"/> property.</description>
-    /// </item>
-    /// <item>
-    /// <description>Adjustable scroll speed using the <see cref="ScrollFactor"/> property.</description>
-    /// </item>
-    /// <item>
-    /// <description>Customizable animation length through the <see cref="AnimationDuration"/> property.</description>
-    /// </item>
-    /// <item>
-    /// <description>The inertia effect can be toggled with <see cref="IsInertiaEnabled"/>, falling back to the default system scrolling behavior.</description>
-    /// </item>
-    /// <item>
-    /// <description>Supports forwarding scroll events to parent controls at boundaries (<see cref="ForwardScrollAtBoundaries"/>), ideal for nested scrolling scenarios.</description>
-    /// </item>
-    /// <item>
-    /// <description>Provides helper methods like <see cref="ScrollToTopWithAnimation"/> for common scrolling tasks.</description>
-    /// </item>
+    ///   <item>
+    ///     <term>Smooth Inertial Scrolling</term>
+    ///     <description>
+    ///       Provides a fluid scrolling experience with a customizable easing out animation.
+    ///       This core feature can be toggled using the <see cref="IsInertiaEnabled"/> property.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Configurable Orientation and Speed</term>
+    ///     <description>
+    ///       Supports both vertical and horizontal scrolling via the <see cref="ScrollOrientation"/> property.
+    ///       The scroll distance per mouse wheel tick can be adjusted with <see cref="ScrollFactor"/>.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Customizable Animation</term>
+    ///     <description>
+    ///       Allows full control over the animation's length with the <see cref="AnimationDuration"/> property.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Advanced Nested Scrolling</term>
+    ///     <description>
+    ///       Intelligently forwards mouse wheel events to parent scrollable controls when a boundary is reached.
+    ///       This behavior is enabled with <see cref="ForwardScrollAtBoundaries"/> and can be fine-tuned 
+    ///       using the <see cref="BoundaryToleranceRatio"/> property to define the edge sensitivity.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Mouse Wheel Control</term>
+    ///     <description>
+    ///       Mouse wheel scrolling can be explicitly enabled or disabled at any time using the
+    ///       <see cref="CanScrollWithMouseWheel"/> property.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Programmatic Scrolling API</term>
+    ///     <description>
+    ///       Includes helper methods like <see cref="ScrollToTopWithAnimation"/> for common animated scrolling tasks.
+    ///     </description>
+    ///   </item>
     /// </list>
-    /// <para><b>Usage:</b> Recommended for WPF user interfaces requiring a more fluid and modern scrolling interaction, such as lists, articles, or image galleries.</para>
+    /// <para><b>Implementation Note:</b></para>
+    /// <para>
+    /// To achieve per-pixel smooth scrolling, this control automatically sets the base <c>CanContentScroll</c> property to <c>false</c>
+    /// via metadata coercion whenever <see cref="IsInertiaEnabled"/> is <c>true</c>. When inertia is disabled, it respects the original value.
+    /// </para>
     /// <para>Copyright (c) 2025 Racpast. All rights reserved.</para>
     /// </remarks>
     public class InertialScrollViewer : ScrollViewer
@@ -116,10 +145,26 @@ namespace SNIBypassGUI.Controls
             set => SetValue(ForwardScrollAtBoundariesProperty, value);
         }
 
+        public static readonly DependencyProperty BoundaryToleranceRatioProperty =
+            DependencyProperty.Register(nameof(BoundaryToleranceRatio), typeof(double), typeof(InertialScrollViewer),
+                new PropertyMetadata(0.03, null, CoerceRatio));
+
+        public double BoundaryToleranceRatio
+        {
+            get => (double)GetValue(BoundaryToleranceRatioProperty);
+            set => SetValue(BoundaryToleranceRatioProperty, value);
+        }
+
         private static object CoercePositive(DependencyObject d, object baseValue)
         {
             double v = (double)baseValue;
             return Math.Max(0, v);
+        }
+
+        private static object CoerceRatio(DependencyObject d, object baseValue)
+        {
+            double v = (double)baseValue;
+            return Math.Max(0, Math.Min(1, v));
         }
         #endregion
 
@@ -156,22 +201,39 @@ namespace SNIBypassGUI.Controls
             if (!CanScrollWithMouseWheel || e.Delta == 0)
                 return;
 
+            bool useVertical = (ScrollOrientation == ScrollOrientationMode.Vertical && ScrollableHeight > 0);
+            bool useHorizontal = (ScrollOrientation == ScrollOrientationMode.Horizontal && ScrollableWidth > 0);
+
             if (ForwardScrollAtBoundaries)
             {
-                bool shouldForward = false;
+                double tolV = ScrollableHeight * BoundaryToleranceRatio;
+                double tolH = ScrollableWidth * BoundaryToleranceRatio;
 
-                if (e.Delta > 0 && DoubleUtil.IsZero(VerticalOffset))
-                    shouldForward = true;
-                else if (e.Delta < 0 && DoubleUtil.GreaterThanOrClose(VerticalOffset, ScrollableHeight))
-                    shouldForward = true;
+                bool nearTop = DoubleUtil.LessThanOrClose(VerticalOffset, tolV);
+                bool nearBottom = DoubleUtil.GreaterThanOrClose(VerticalOffset, ScrollableHeight - tolV);
+                bool nearLeft = DoubleUtil.LessThanOrClose(HorizontalOffset, tolH);
+                bool nearRight = DoubleUtil.GreaterThanOrClose(HorizontalOffset, ScrollableWidth - tolH);
+
+                bool shouldForward =
+                    (e.Delta > 0 && (useVertical ? nearTop : nearLeft)) ||
+                    (e.Delta < 0 && (useVertical ? nearBottom : nearRight));
+
                 if (shouldForward)
                 {
                     var parent = FindVisualParent<UIElement>(this);
                     if (parent != null)
                     {
+                        if (IsInertiaEnabled && _isAnimating)
+                        {
+                            double boundaryTarget = e.Delta > 0 ? 0
+                                : (ScrollOrientation == ScrollOrientationMode.Vertical ? ScrollableHeight : ScrollableWidth);
+
+                            StartInertialAnimation(_animatingDirection, boundaryTarget, AnimationDuration.TotalMilliseconds * 0.6);
+                        }
+
                         var newEventArgs = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
                         {
-                            RoutedEvent = UIElement.MouseWheelEvent,
+                            RoutedEvent = MouseWheelEvent,
                             Source = e.Source
                         };
                         parent.RaiseEvent(newEventArgs);
@@ -179,6 +241,7 @@ namespace SNIBypassGUI.Controls
                         return;
                     }
                 }
+
             }
 
             if (!IsInertiaEnabled)
@@ -191,16 +254,6 @@ namespace SNIBypassGUI.Controls
 
             double factor = ScrollFactor;
             double duration = AnimationDuration.TotalMilliseconds;
-
-            bool canScrollVertically = ScrollableHeight > 0;
-            bool canScrollHorizontally = ScrollableWidth > 0;
-
-            bool useVertical = (ScrollOrientation == ScrollOrientationMode.Vertical && canScrollVertically) ||
-                               (canScrollVertically && !canScrollHorizontally);
-
-            bool useHorizontal = (ScrollOrientation == ScrollOrientationMode.Horizontal && canScrollHorizontally) ||
-                                 (canScrollHorizontally && !canScrollVertically);
-
             double pixelDelta = -e.Delta * factor;
 
             if (useVertical)

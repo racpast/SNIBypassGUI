@@ -30,5 +30,21 @@ namespace SNIBypassGUI.Controls.Assist
 
         public static Brush GetDeleteButtonMouseOverBorderBrush(DependencyObject element) =>
             (Brush)element.GetValue(DeleteButtonMouseOverBorderBrushProperty);
+
+        // Because WPF refuses to wrap Chip content automatically,
+        // we gotta pull some tricks to get TextTrimming working.
+        // Thankfully, an attached property saves the day.
+        public static readonly DependencyProperty TextTrimmingProperty =
+        DependencyProperty.RegisterAttached(
+            "TextTrimming",
+            typeof(TextTrimming),
+            typeof(ChipAssist),
+            new PropertyMetadata(TextTrimming.CharacterEllipsis));
+
+        public static TextTrimming GetTextTrimming(DependencyObject obj) =>
+            (TextTrimming)obj.GetValue(TextTrimmingProperty);
+
+        public static void SetTextTrimming(DependencyObject obj, TextTrimming value) =>
+            obj.SetValue(TextTrimmingProperty, value);
     }
 }

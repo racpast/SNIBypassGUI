@@ -14,7 +14,7 @@ namespace SNIBypassGUI.Validators
         {
             RuleFor(rule => rule.DomainPatterns)
                 .Must(x => x.Any())
-                .WithMessage("至少要有一个域名匹配模式。");
+                .WithMessage("至少需要一个域名匹配模式。");
             RuleFor(rule => rule.DomainPatterns)
                 .Custom((patterns, context) =>
                 {

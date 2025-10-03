@@ -6,8 +6,8 @@ using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Common;
-using SNIBypassGUI.Common.Network;
 using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Common.Network;
 using SNIBypassGUI.Common.Results;
 
 namespace SNIBypassGUI.Models
@@ -186,14 +186,20 @@ namespace SNIBypassGUI.Models
             get => _limitQueryTypes;
             set
             {
-                if (_limitQueryTypes != null)
-                    _limitQueryTypes.CollectionChanged -= OnLimitQueryTypesChanged;
-
-                if (SetProperty(ref _limitQueryTypes, value))
+                if (_limitQueryTypes != value)
                 {
-                    if (_limitQueryTypes != null)
-                        _limitQueryTypes.CollectionChanged += OnLimitQueryTypesChanged;
-                    OnLimitQueryTypesChanged(this, null);
+                    var oldCollection = _limitQueryTypes;
+
+                    if (SetProperty(ref _limitQueryTypes, value))
+                    {
+                        if (oldCollection != null)
+                            oldCollection.CollectionChanged -= LimitQueryTypes_CollectionChanged;
+
+                        if (_limitQueryTypes != null)
+                            _limitQueryTypes.CollectionChanged += LimitQueryTypes_CollectionChanged;
+
+                        LimitQueryTypes_CollectionChanged(this, new(NotifyCollectionChangedAction.Reset));
+                    }
                 }
             }
         }
@@ -280,11 +286,7 @@ namespace SNIBypassGUI.Models
         #endregion
 
         #region Methods
-        /// <summary>
-        /// 当 <see cref="LimitQueryTypes"/> 集合发生更改时调用，
-        /// 用于通知 UI 更新显示的查询类型限制相关属性。
-        /// </summary>
-        private void OnLimitQueryTypesChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void LimitQueryTypes_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(LimitQueryTypesDisplayText));
             OnPropertyChanged(nameof(HasQueryTypeRestrictions));
@@ -315,6 +317,28 @@ namespace SNIBypassGUI.Models
             };
 
             return clone;
+        }
+
+        /// <summary>
+        /// 使用指定的 <see cref="DnsServer"/> 实例的属性值更新当前实例的内容。
+        /// </summary>
+        public void UpdateFrom(DnsServer server)
+        {
+            if (server == null) return;
+            ServerAddress = server.ServerAddress;
+            ServerPort = server.ServerPort;
+            ProtocolType = server.ProtocolType;
+            DohHostname = server.DohHostname;
+            DohQueryPath = server.DohQueryPath;
+            DohConnectionType = server.DohConnectionType;
+            DohReuseConnection = server.DohReuseConnection;
+            DohUseWinHttp = server.DohUseWinHttp;
+            Socks5ProxyAddress = server.Socks5ProxyAddress;
+            Socks5ProxyPort = server.Socks5ProxyPort;
+            DomainMatchingRule = server.DomainMatchingRule;
+            IgnoreFailureResponses = server.IgnoreFailureResponses;
+            IgnoreNegativeResponses = server.IgnoreNegativeResponses;
+            LimitQueryTypes = [.. server.LimitQueryTypes.OrEmpty()];
         }
 
         /// <summary>

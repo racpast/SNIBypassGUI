@@ -15,11 +15,9 @@ using SNIBypassGUI.Common.Commands;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Interfaces;
 using SNIBypassGUI.Models;
-using SNIBypassGUI.Services;
 using SNIBypassGUI.Validators;
 using SNIBypassGUI.ViewModels.Validation;
 using SNIBypassGUI.ViewModels.Helpers;
-
 
 namespace SNIBypassGUI.ViewModels
 {
@@ -62,19 +60,22 @@ namespace SNIBypassGUI.ViewModels
             AllConfigs = new ReadOnlyObservableCollection<DnsConfig>(_configService.AllConfigs);
             ConfigSelector = new SilentSelector<DnsConfig>(HandleUserSelectionChangedAsync);
 
+            CopyLinkCodeCommand = new AsyncCommand<DnsConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+
             AddNewConfigCommand = new AsyncCommand(ExecuteAddNewConfigAsync, CanExecuteWhenNotBusy);
             DuplicateConfigCommand = new AsyncCommand(ExecuteDuplicateConfigAsync, CanExecuteDuplicateConfig);
             DeleteConfigCommand = new AsyncCommand(ExecuteDeleteConfigAsync, CanExecuteOnEditableConfig);
             RenameConfigCommand = new AsyncCommand(ExecuteRenameConfigAsync, CanExecuteOnEditableConfig);
             ImportConfigCommand = new AsyncCommand(ExecuteImportConfigAsync, CanExecuteWhenNotBusy);
             ExportConfigCommand = new AsyncCommand(ExecuteExportConfigAsync, CanExecuteExport);
-            SaveChangesCommand = new AsyncCommand(ExecuteSaveChangesAsync, CanExecuteSave);
-            DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, CanExecuteWhenDirty);
+
             AddNewServerCommand = new RelayCommand(ExecuteAddNewServer, CanExecuteAddNewServer);
             RemoveSelectedServerCommand = new RelayCommand(ExecuteRemoveSelectedServer, CanExecuteOnSelectedServer);
             MoveSelectedServerUpCommand = new RelayCommand(ExecuteMoveSelectedServerUp, CanExecuteMoveUp);
             MoveSelectedServerDownCommand = new RelayCommand(ExecuteMoveSelectedServerDown, CanExecuteMoveDown);
-            CopyLinkCodeCommand = new AsyncCommand<DnsConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+
+            SaveChangesCommand = new AsyncCommand(ExecuteSaveChangesAsync, CanExecuteSave);
+            DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, CanExecuteWhenDirty);
 
             _configService.LoadData();
             if (AllConfigs.Any()) SwitchToConfig(AllConfigs.First());
@@ -242,19 +243,22 @@ namespace SNIBypassGUI.ViewModels
 
         private void UpdateCommandStates()
         {
+            (CopyLinkCodeCommand as AsyncCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+
             (AddNewConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DuplicateConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (RenameConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (ImportConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (ExportConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (SaveChangesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (DiscardChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+
             (AddNewServerCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (RemoveSelectedServerCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedServerUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedServerDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (CopyLinkCodeCommand as AsyncCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+
+            (SaveChangesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DiscardChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
         #endregion
 
@@ -285,7 +289,6 @@ namespace SNIBypassGUI.ViewModels
             _isBusy = false;
             UpdateCommandStates();
         }
-
         #endregion
 
         #region Duplicate Config
@@ -738,22 +741,14 @@ namespace SNIBypassGUI.ViewModels
         }
         #endregion
 
-        #region DNS Server List Management
+        #region DNS Server Management
         private void ExecuteAddNewServer()
         {
-            // 使用注入的工厂创建一个新的默认 DnsServer 实例
             var newServer = _serverFactory.CreateDefault();
             EditingConfigCopy.DnsServers.Add(newServer);
 
             // 自动选中新添加的项，方便用户立即编辑
             SelectedDnsServer = newServer;
-
-            GlobalPropertyService.Instance.SetValue("DnsConfigsEPVM", newServer, "SelectedDnsServer");
-
-            // 任何修改都应该进入编辑状态
-            if (_currentState == EditingState.None)
-                TransitionToState(EditingState.Editing);
-            ValidateEditingCopy();
         }
 
         private bool CanExecuteAddNewServer() =>
@@ -776,10 +771,6 @@ namespace SNIBypassGUI.ViewModels
                 SelectedDnsServer = serversList[newIndex];
             }
             else SelectedDnsServer = null;
-
-            if (_currentState == EditingState.None)
-                TransitionToState(EditingState.Editing);
-            ValidateEditingCopy();
         }
 
         private void ExecuteMoveSelectedServerUp()
@@ -842,7 +833,7 @@ namespace SNIBypassGUI.ViewModels
             try
             {
                 _canExecuteCopy = false;
-                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<DnsConfig>)?.RaiseCanExecuteChanged();
 
                 var linkCode = Base64Utils.EncodeString(config.Id.ToString());
                 for (int i = 0; i < 5; i++)
@@ -863,7 +854,7 @@ namespace SNIBypassGUI.ViewModels
             finally
             {
                 _canExecuteCopy = true;
-                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<DnsConfig>)?.RaiseCanExecuteChanged();
             }
         }
 

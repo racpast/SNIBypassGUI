@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -82,27 +83,39 @@ namespace SNIBypassGUI.ViewModels
             AllConfigs = new ReadOnlyObservableCollection<ResolverConfig>(_configService.AllConfigs);
             ConfigSelector = new SilentSelector<ResolverConfig>(HandleUserSelectionChangedAsync);
 
+            CopyLinkCodeCommand = new AsyncCommand<ResolverConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+            ImportFromDnsStampCommand = new AsyncCommand(ExecuteImportFromDnsStampAsync, CanExecuteWhenNotBusy);
+
             AddNewConfigCommand = new AsyncCommand(ExecuteAddNewConfigAsync, CanExecuteWhenNotBusy);
             DuplicateConfigCommand = new AsyncCommand(ExecuteDuplicateConfigAsync, CanExecuteDuplicateConfig);
             DeleteConfigCommand = new AsyncCommand(ExecuteDeleteConfigAsync, CanExecuteOnEditableConfig);
             RenameConfigCommand = new AsyncCommand(ExecuteRenameConfigAsync, CanExecuteOnEditableConfig);
             ImportConfigCommand = new AsyncCommand(ExecuteImportConfigAsync, CanExecuteWhenNotBusy);
             ExportConfigCommand = new AsyncCommand(ExecuteExportConfigAsync, CanExecuteExport);
+
             SaveChangesCommand = new AsyncCommand(ExecuteSaveChangesAsync, CanExecuteSave);
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, CanExecuteWhenDirty);
-            CopyLinkCodeCommand = new AsyncCommand<ResolverConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+
+            EditHeaderNameCommand = new AsyncCommand<HttpHeaderItem>(ExecuteEditHeaderNameAsync, CanExecuteWhenNotBusy);
+            EditHeaderValueCommand = new AsyncCommand<HttpHeaderItem>(ExecuteEditHeaderValueAsync, CanExecuteWhenNotBusy);
+            MoveHeaderUpCommand = new RelayCommand<HttpHeaderItem>(ExecuteMoveHeaderUp, CanExecuteMoveHeaderUp);
+            MoveHeaderDownCommand = new RelayCommand<HttpHeaderItem>(ExecuteMoveHeaderDown, CanExecuteMoveHeaderDown);
             DeleteHeaderCommand = new RelayCommand<HttpHeaderItem>(ExecuteDeleteHeader, CanExecuteWhenNotBusy);
-            DeleteAllHeadersCommand = new AsyncCommand(ExecuteDeleteAllHeadersAsync, CanExecuteDeleteAllHeaders);
             AddHeaderCommand = new AsyncCommand(ExecuteAddHeaderAsync, CanExecuteWhenNotBusy);
-            DeleteAlpnProtocolCommand = new RelayCommand<string>(ExecuteDeleteAlpnProtocol, CanExecuteWhenNotBusy);
+            DeleteAllHeadersCommand = new AsyncCommand(ExecuteDeleteAllHeadersAsync, CanExecuteDeleteAllHeaders);
+
+            EditAlpnProtocolCommand = new AsyncCommand<string>(ExecuteEditAlpnProtocolAsync, CanExecuteEditAlpnProtocol);
             AddAlpnProtocolCommand = new AsyncCommand(ExecuteAddAlpnProtocolAsync, CanExecuteWhenNotBusy);
+            DeleteAlpnProtocolCommand = new RelayCommand<string>(ExecuteDeleteAlpnProtocol, CanExecuteWhenNotBusy);
+
+            EditQuicAlpnTokenCommand = new AsyncCommand<string>(ExecuteEditQuicAlpnTokenAsync, CanExecuteEditQuicAlpnToken);
             AddQuicAlpnTokenCommand = new AsyncCommand(ExecuteAddQuicAlpnTokenAsync, CanExecuteWhenNotBusy);
             DeleteQuicAlpnTokenCommand = new RelayCommand<string>(ExecuteDeleteQuicAlpnToken, CanExecuteWhenNotBusy);
+
             SelectClientCertCommand = new RelayCommand(ExecuteSelectClientCert, CanExecuteSelectClientCert);
             ClearClientCertCommand = new RelayCommand(ExecuteClearClientCert, CanExecuteClearClientCert);
             SelectClientKeyCommand = new RelayCommand(ExecuteSelectClientKey, CanExecuteSelectClientKey);
             ClearClientKeyCommand = new RelayCommand(ExecuteClearClientKey, CanExecuteClearClientKey);
-            ImportFromDnsStampCommand = new AsyncCommand(ExecuteImportFromDnsStampAsync, CanExecuteWhenNotBusy);
 
             _configService.LoadData();
             if (AllConfigs.Any()) SwitchToConfig(AllConfigs.First());
@@ -166,10 +179,16 @@ namespace SNIBypassGUI.ViewModels
         public ICommand SaveChangesCommand { get; }
         public ICommand CopyLinkCodeCommand { get; }
         public ICommand DeleteHeaderCommand { get; }
+        public ICommand EditHeaderNameCommand { get; }
+        public ICommand EditHeaderValueCommand { get; }
+        public ICommand MoveHeaderUpCommand { get; }
+        public ICommand MoveHeaderDownCommand { get; }
         public ICommand AddHeaderCommand { get; }
         public ICommand DeleteAllHeadersCommand { get; }
+        public ICommand EditAlpnProtocolCommand { get; }
         public ICommand AddAlpnProtocolCommand { get; }
         public ICommand DeleteAlpnProtocolCommand { get; }
+        public ICommand EditQuicAlpnTokenCommand { get; }
         public ICommand AddQuicAlpnTokenCommand { get; }
         public ICommand DeleteQuicAlpnTokenCommand { get; }
         public ICommand SelectClientCertCommand { get; }
@@ -251,27 +270,40 @@ namespace SNIBypassGUI.ViewModels
 
         private void UpdateCommandStates()
         {
+            (CopyLinkCodeCommand as AsyncCommand<ResolverConfig>)?.RaiseCanExecuteChanged();
+
             (AddNewConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DuplicateConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (RenameConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (ImportConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (ExportConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (SaveChangesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (DiscardChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (CopyLinkCodeCommand as AsyncCommand<ResolverConfig>)?.RaiseCanExecuteChanged();
-            (DeleteAlpnProtocolCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+
+            (ImportFromDnsStampCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+
+            (EditHeaderNameCommand as AsyncCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
+            (EditHeaderValueCommand as AsyncCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
+            (MoveHeaderUpCommand as RelayCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
+            (MoveHeaderDownCommand as RelayCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
             (DeleteHeaderCommand as RelayCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
             (AddHeaderCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteAllHeadersCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+
+            (EditAlpnProtocolCommand as AsyncCommand<string>)?.RaiseCanExecuteChanged();
             (AddAlpnProtocolCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DeleteAlpnProtocolCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+
+            (EditQuicAlpnTokenCommand as AsyncCommand<string>)?.RaiseCanExecuteChanged();
             (AddQuicAlpnTokenCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteQuicAlpnTokenCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+
             (SelectClientCertCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ClearClientCertCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (SelectClientKeyCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ClearClientKeyCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (ImportFromDnsStampCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+
+            (SaveChangesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DiscardChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
         #endregion
 
@@ -522,7 +554,11 @@ namespace SNIBypassGUI.ViewModels
         {
             config.PropertyChanged += OnEditingCopyPropertyChanged;
             if (config.HttpHeaders != null)
+            {
                 config.HttpHeaders.CollectionChanged += OnChildCollectionChanged;
+                foreach (var header in config.HttpHeaders)
+                    header.PropertyChanged += OnHttpHeaderItemPropertyChanged;
+            }
             if (config.TlsCipherSuites != null)
                 config.TlsCipherSuites.CollectionChanged += OnChildCollectionChanged;
             if (config.TlsCurvePreferences != null)
@@ -537,7 +573,11 @@ namespace SNIBypassGUI.ViewModels
         {
             config.PropertyChanged -= OnEditingCopyPropertyChanged;
             if (config.HttpHeaders != null)
+            {
                 config.HttpHeaders.CollectionChanged -= OnChildCollectionChanged;
+                foreach (var header in config.HttpHeaders)
+                    header.PropertyChanged -= OnHttpHeaderItemPropertyChanged;
+            }
             if (config.TlsCipherSuites != null)
                 config.TlsCipherSuites.CollectionChanged -= OnChildCollectionChanged;
             if (config.TlsCurvePreferences != null)
@@ -566,8 +606,21 @@ namespace SNIBypassGUI.ViewModels
 
         private void OnChildCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            if (e.OldItems != null)
+                foreach (var item in e.OldItems.OfType<HttpHeaderItem>())
+                    (item as INotifyPropertyChanged).PropertyChanged -= OnHttpHeaderItemPropertyChanged;
+            if (e.NewItems != null)
+                foreach (var item in e.NewItems.OfType<HttpHeaderItem>())
+                    item.PropertyChanged += OnHttpHeaderItemPropertyChanged;
+
             if (_currentState == EditingState.None)
                 TransitionToState(EditingState.Editing);
+            ValidateEditingCopy();
+        }
+
+        private void OnHttpHeaderItemPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (_currentState == EditingState.None) TransitionToState(EditingState.Editing);
             ValidateEditingCopy();
         }
 
@@ -674,41 +727,134 @@ namespace SNIBypassGUI.ViewModels
         #endregion
 
         #region HTTP Header Management
-        private async Task ExecuteAddHeaderAsync()
+        private async Task ExecuteEditHeaderNameAsync(HttpHeaderItem item)
         {
-            var newName = await _dialogService.ShowTextInputAsync("添加条目", "请输入新条目的名称：");
-            if (newName != null)
+            if (item is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
             {
-                string trimmedName = newName.Trim();
-                if (!string.IsNullOrWhiteSpace(trimmedName))
+                var newName = await _dialogService.ShowTextInputAsync($"编辑 “{item.Name}”", $"请输入新的字段名：", item.Name);
+                if (newName != null && newName != item.Name)
                 {
-                    if (!NetworkUtils.IsValidHttpHeaderName(trimmedName))
+                    string trimmedName = newName.Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmedName))
                     {
-                        await _dialogService.ShowInfoAsync("添加失败", $"“{trimmedName}” 不是合法的条目名称！");
-                        return;
-                    }
-                    if (EditingConfigCopy.HttpHeaders.Select(v => v.Name).Contains(trimmedName))
-                    {
-                        await _dialogService.ShowInfoAsync("添加失败", $"条目名称 “{trimmedName}” 已存在！");
-                        return;
-                    }
-                    var newValue = await _dialogService.ShowTextInputAsync("添加条目", $"请为条目 “{trimmedName}” 输入值：");
-                    if (newValue != null)
-                    {
-                        if (!NetworkUtils.IsValidHttpHeaderValue(newValue))
+                        if (!NetworkUtils.IsValidHttpHeaderName(trimmedName))
+                            await _dialogService.ShowInfoAsync("编辑失败", $"“{trimmedName}” 不是合法的字段名！");
+                        else if (EditingConfigCopy.HttpHeaders.Select(v => v.Name).Contains(trimmedName))
+                            await _dialogService.ShowInfoAsync("编辑失败", $"字段名 “{trimmedName}” 已存在！");
+                        else
                         {
-                            await _dialogService.ShowInfoAsync("添加失败", $"“{newValue}” 不是合法的条目值！");
-                            return;
+                            int index = EditingConfigCopy.HttpHeaders.IndexOf(item);
+                            if (index >= 0) EditingConfigCopy.HttpHeaders[index].Name = trimmedName;
                         }
-                        var newItem = new HttpHeaderItem
-                        {
-                            Name = newName,
-                            Value = newValue.OrDefault()
-                        };
-                        EditingConfigCopy.HttpHeaders.Add(newItem);
+                    }
+                    else await _dialogService.ShowInfoAsync("编辑失败", "字段名不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private async Task ExecuteEditHeaderValueAsync(HttpHeaderItem item)
+        {
+            if (item is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newValue = await _dialogService.ShowTextInputAsync($"编辑 “{item.Value}”", $"请为字段 “{item.Name}” 输入新的值：", item.Value);
+                if (newValue != null && newValue != item.Value)
+                {
+                    if (!NetworkUtils.IsValidHttpHeaderValue(newValue))
+                        await _dialogService.ShowInfoAsync("编辑失败", $"“{newValue}” 不是合法的字段值！");
+                    else
+                    {
+                        int index = EditingConfigCopy.HttpHeaders.IndexOf(item);
+                        if (index >= 0) EditingConfigCopy.HttpHeaders[index].Value = newValue;
                     }
                 }
-                else await _dialogService.ShowInfoAsync("添加失败", "条目名称不能为空！");
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private void ExecuteMoveHeaderUp(HttpHeaderItem item)
+        {
+            if (EditingConfigCopy == null || item == null) return;
+
+            int index = EditingConfigCopy.HttpHeaders.IndexOf(item);
+            if (index > 0) EditingConfigCopy.HttpHeaders.Move(index, index - 1);
+        }
+
+        private void ExecuteMoveHeaderDown(HttpHeaderItem item)
+        {
+            if (EditingConfigCopy == null || item == null) return;
+
+            int index = EditingConfigCopy.HttpHeaders.IndexOf(item);
+            if (index < EditingConfigCopy.HttpHeaders.Count - 1)
+                EditingConfigCopy.HttpHeaders.Move(index, index + 1);
+        }
+
+        private async Task ExecuteAddHeaderAsync()
+        {
+            if (EditingConfigCopy is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newName = await _dialogService.ShowTextInputAsync("添加字段", "请输入新字段的名称：");
+                if (newName != null)
+                {
+                    string trimmedName = newName.Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmedName))
+                    {
+                        if (!NetworkUtils.IsValidHttpHeaderName(trimmedName))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"“{trimmedName}” 不是合法的字段名！");
+                            return;
+                        }
+                        if (EditingConfigCopy.HttpHeaders.Select(v => v.Name).Contains(trimmedName))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"字段名 “{trimmedName}” 已存在！");
+                            return;
+                        }
+                        var newValue = await _dialogService.ShowTextInputAsync("添加字段", $"请为字段 “{trimmedName}” 输入值：");
+                        if (newValue != null)
+                        {
+                            if (!NetworkUtils.IsValidHttpHeaderValue(newValue))
+                            {
+                                await _dialogService.ShowInfoAsync("添加失败", $"“{newValue}” 不是合法的字段值！");
+                                return;
+                            }
+                            var newItem = new HttpHeaderItem
+                            {
+                                Name = newName,
+                                Value = newValue.OrDefault()
+                            };
+                            EditingConfigCopy.HttpHeaders.Add(newItem);
+                        }
+                    }
+                    else await _dialogService.ShowInfoAsync("添加失败", "字段名不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
             }
         }
 
@@ -763,19 +909,52 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteDeleteHeader(HttpHeaderItem item)
         {
-            if (item is null) return;
+            if (EditingConfigCopy != null && item is null) return;
             if (EditingConfigCopy.HttpHeaders.Contains(item))
                 EditingConfigCopy.HttpHeaders.Remove(item);
         }
 
         private async Task ExecuteDeleteAllHeadersAsync()
         {
-            if (EditingConfigCopy.HttpHeaders.Count > 0)
+            if (EditingConfigCopy is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
             {
-                var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除 HTTP 头部中的所有条目吗？", "删除");
-                if (!confirmResult) return;
-                EditingConfigCopy.HttpHeaders.Clear();
+                if (EditingConfigCopy.HttpHeaders.Count > 0)
+                {
+                    var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除 HTTP 头部中的所有条目吗？", "删除");
+                    if (!confirmResult) return;
+                    EditingConfigCopy.HttpHeaders.Clear();
+                }
             }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private bool CanExecuteMoveHeaderUp(HttpHeaderItem item)
+        {
+            if (EditingConfigCopy != null && item is null)
+                return false;
+
+            var items = EditingConfigCopy.HttpHeaders;
+            int index = items.IndexOf(item);
+            return index > 0;
+        }
+
+        private bool CanExecuteMoveHeaderDown(HttpHeaderItem item)
+        {
+            if (EditingConfigCopy != null && item is null)
+                return false;
+
+            var items = EditingConfigCopy.HttpHeaders;
+            int index = items.IndexOf(item);
+            return index < items.Count - 1;
         }
 
         private bool CanExecuteDeleteAllHeaders() => EditingConfigCopy?.HttpHeaders.Any() == true && !_isBusy;
@@ -784,24 +963,65 @@ namespace SNIBypassGUI.ViewModels
         #region TLS ALPN Protocol Management
         private async Task ExecuteAddAlpnProtocolAsync()
         {
-            var newName = await _dialogService.ShowTextInputAsync("添加协议", "请输入新 ALPN 协议的名称：");
-            if (newName != null)
-            {
-                if (!string.IsNullOrEmpty(newName))
+            if (EditingConfigCopy == null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try {
+                var newName = await _dialogService.ShowTextInputAsync("添加协议", "请输入新的 ALPN 名称：");
+                if (newName != null)
                 {
-                    if (!NetworkUtils.IsValidAlpnName(newName))
+                    if (!string.IsNullOrEmpty(newName))
                     {
-                        await _dialogService.ShowInfoAsync("添加失败", $"“{newName}” 不是合法的协议名称！");
-                        return;
+                        if (!NetworkUtils.IsValidAlpnName(newName))
+                            await _dialogService.ShowInfoAsync("添加失败", $"“{newName}” 不是合法的协议名称！");
+                        else if (EditingConfigCopy.TlsNextProtos.Contains(newName))
+                            await _dialogService.ShowInfoAsync("添加失败", $"协议名称 “{newName}” 已存在！");
+                        else EditingConfigCopy.TlsNextProtos.Add(newName);
                     }
-                    if (EditingConfigCopy.TlsNextProtos.Contains(newName))
-                    {
-                        await _dialogService.ShowInfoAsync("添加失败", $"协议名称 “{newName}” 已存在！");
-                        return;
-                    }
-                    EditingConfigCopy.TlsNextProtos.Add(newName);
+                    else await _dialogService.ShowInfoAsync("添加失败", "协议名称不能为空！");
                 }
-                else await _dialogService.ShowInfoAsync("添加失败", "协议名称不能为空！");
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private async Task ExecuteEditAlpnProtocolAsync(string protocol)
+        {
+            if (protocol == null || EditingConfigCopy == null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newProtocol = await _dialogService.ShowTextInputAsync($"编辑 “{protocol}”", $"请输入新的 ALPN 名称：", protocol);
+                if (newProtocol != null && newProtocol != protocol)
+                {
+                    if (!string.IsNullOrEmpty(newProtocol))
+                    {
+                        if (!NetworkUtils.IsValidAlpnName(newProtocol))
+                            await _dialogService.ShowInfoAsync("编辑失败", $"“{newProtocol}” 不是合法的协议名称！");
+                        else if (EditingConfigCopy.TlsNextProtos.Contains(newProtocol))
+                            await _dialogService.ShowInfoAsync("编辑失败", $"协议名称 “{newProtocol}” 已存在！");
+                        else
+                        {
+                            int index = EditingConfigCopy.TlsNextProtos.IndexOf(protocol);
+                            if (index >= 0) EditingConfigCopy.TlsNextProtos[index] = newProtocol;
+                        }
+                    }
+                    else await _dialogService.ShowInfoAsync("编辑失败", "协议名称不能为空！");
+                }
+
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
             }
         }
 
@@ -812,29 +1032,78 @@ namespace SNIBypassGUI.ViewModels
                 EditingConfigCopy.TlsNextProtos.Remove(protocol);
         }
 
+        private bool CanExecuteEditAlpnProtocol(string protocol) =>
+            protocol != null && !_isBusy;
         #endregion
 
         #region QUIC ALPN Token Management
         private async Task ExecuteAddQuicAlpnTokenAsync()
         {
-            var newName = await _dialogService.ShowTextInputAsync("添加协议", "请输入新 QUIC ALPN 令牌：");
-            if (newName != null)
+            if (EditingConfigCopy == null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
             {
-                if (!string.IsNullOrEmpty(newName))
+                var newName = await _dialogService.ShowTextInputAsync("添加协议", "请输入新的 QUIC ALPN 令牌：");
+                if (newName != null)
                 {
-                    if (!NetworkUtils.IsValidAlpnName(newName))
+                    if (!string.IsNullOrEmpty(newName))
                     {
-                        await _dialogService.ShowInfoAsync("添加失败", $"“{newName}” 不是合法的 QUIC ALPN 令牌！");
-                        return;
+                        if (!NetworkUtils.IsValidAlpnName(newName))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"“{newName}” 不是合法的 QUIC ALPN 令牌！");
+                            return;
+                        }
+                        if (EditingConfigCopy.QuicAlpnTokens.Contains(newName))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"QUIC ALPN 令牌 “{newName}” 已存在！");
+                            return;
+                        }
+                        EditingConfigCopy.QuicAlpnTokens.Add(newName);
                     }
-                    if (EditingConfigCopy.QuicAlpnTokens.Contains(newName))
-                    {
-                        await _dialogService.ShowInfoAsync("添加失败", $"QUIC ALPN 令牌 “{newName}” 已存在！");
-                        return;
-                    }
-                    EditingConfigCopy.QuicAlpnTokens.Add(newName);
+                    else await _dialogService.ShowInfoAsync("添加失败", "QUIC ALPN 令牌不能为空！");
                 }
-                else await _dialogService.ShowInfoAsync("添加失败", "QUIC ALPN 令牌不能为空！");
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private async Task ExecuteEditQuicAlpnTokenAsync(string token)
+        {
+            if (token == null || EditingConfigCopy == null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newToken = await _dialogService.ShowTextInputAsync($"编辑 “{token}”", $"请输入新的 QUIC ALPN 令牌：", token);
+                if (newToken != null && newToken != token)
+                {
+                    if (!string.IsNullOrEmpty(newToken))
+                    {
+                        if (!NetworkUtils.IsValidAlpnName(newToken))
+                            await _dialogService.ShowInfoAsync("编辑失败", $"“{newToken}” 不是合法的 QUIC ALPN 令牌！");
+                        else if (EditingConfigCopy.QuicAlpnTokens.Contains(newToken))
+                            await _dialogService.ShowInfoAsync("编辑失败", $"QUIC ALPN 令牌 “{newToken}” 已存在！");
+                        else
+                        {
+                            int index = EditingConfigCopy.QuicAlpnTokens.IndexOf(token);
+                            if (index >= 0) EditingConfigCopy.QuicAlpnTokens[index] = newToken;
+                        }
+                    }
+                    else await _dialogService.ShowInfoAsync("编辑失败", "QUIC ALPN 令牌不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
             }
         }
 
@@ -844,12 +1113,16 @@ namespace SNIBypassGUI.ViewModels
             if (EditingConfigCopy.QuicAlpnTokens.Contains(token))
                 EditingConfigCopy.QuicAlpnTokens.Remove(token);
         }
+
+        private bool CanExecuteEditQuicAlpnToken(string token) =>
+            token != null && !_isBusy;
         #endregion
 
         #region TLS Client Certificate Management
         private void ExecuteSelectClientCert()
         {
             if (EditingConfigCopy == null) return;
+
             _isBusy = true;
             UpdateCommandStates();
 
@@ -875,16 +1148,16 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteClearClientCert()
         {
-            if (EditingConfigCopy != null)
-            {
-                EditingConfigCopy.TlsClientCertPath = null;
-                EditingConfigCopy.TlsClientKeyPath = null;
-            }
+            if (EditingConfigCopy == null) return;
+
+            EditingConfigCopy.TlsClientCertPath = null;
+            EditingConfigCopy.TlsClientKeyPath = null;
         }
 
         private void ExecuteSelectClientKey()
         {
             if (EditingConfigCopy == null) return;
+
             _isBusy = true;
             UpdateCommandStates();
 
@@ -910,8 +1183,9 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteClearClientKey()
         {
-            if (EditingConfigCopy != null)
-                EditingConfigCopy.TlsClientKeyPath = null;
+            if (EditingConfigCopy == null) return;
+
+            EditingConfigCopy.TlsClientKeyPath = null;
         }
 
         private bool CanExecuteSelectClientCert() => string.IsNullOrWhiteSpace(EditingConfigCopy?.TlsClientCertPath) && !_isBusy;
@@ -963,13 +1237,18 @@ namespace SNIBypassGUI.ViewModels
         private async Task ExecuteImportFromDnsStampAsync()
         {
             if (EditingConfigCopy == null) return;
+
             _isBusy = true;
             UpdateCommandStates();
 
             try
             {
-                var stampStr = await _dialogService.ShowTextInputAsync("从 DNS Stamp 导入", "请在此处粘贴 DNS Stamp 字符串：");
-                if (string.IsNullOrWhiteSpace(stampStr)) return;
+                var stampStr = await _dialogService.ShowTextInputAsync("导入信息", "请在此处粘贴 DNS Stamp 字符串：");
+                if (string.IsNullOrWhiteSpace(stampStr))
+                {
+                    await _dialogService.ShowInfoAsync("导入失败", "DNS Stamp 不能为空。");
+                    return;
+                }
 
                 if (DnsStampParser.TryParse(stampStr, out var serverStamp))
                 {
@@ -1039,7 +1318,7 @@ namespace SNIBypassGUI.ViewModels
             try
             {
                 _canExecuteCopy = false;
-                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<ResolverConfig>)?.RaiseCanExecuteChanged();
 
                 var linkCode = Base64Utils.EncodeString(config.Id.ToString());
                 for (int i = 0; i < 5; i++)
@@ -1060,7 +1339,7 @@ namespace SNIBypassGUI.ViewModels
             finally
             {
                 _canExecuteCopy = true;
-                (CopyLinkCodeCommand as RelayCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<ResolverConfig>)?.RaiseCanExecuteChanged();
             }
         }
 

@@ -10,6 +10,6 @@ namespace SNIBypassGUI.Converters
             value != null;
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
-            new NotSupportedException();
+            throw new NotSupportedException();
     }
 }

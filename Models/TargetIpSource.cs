@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Linq;
@@ -14,14 +15,14 @@ using SNIBypassGUI.Common.Results;
 namespace SNIBypassGUI.Models
 {
     /// <summary>
-    /// 表示一个供映射规则使用的目标地址来源。
+    /// 表示一个供映射规则使用的目标来源。
     /// </summary>
     public class TargetIpSource : NotifyPropertyChangedBase
     {
         #region Fields
         private IpAddressSourceType _sourceType;
-        private string _address;
-        private string _queryDomain;
+        private ObservableCollection<string> _addresses;
+        private ObservableCollection<string> _queryDomains;
         private Guid? _resolverId;
         private IpAddressType _ipAddressType;
         private bool _enableFallbackAutoUpdate;
@@ -30,7 +31,7 @@ namespace SNIBypassGUI.Models
 
         #region Properties
         /// <summary>
-        /// 此地址来源的类型。
+        /// 此来源的类型。
         /// </summary>
         public IpAddressSourceType SourceType
         {
@@ -46,29 +47,56 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此地址来源的地址。
+        /// 此来源直接指定的地址列表。
         /// </summary>
-        public string Address
+        public ObservableCollection<string> Addresses
         {
-            get => _address;
+            get => _addresses;
             set
             {
-                if (SetProperty(ref _address, value))
-                    OnPropertyChanged(nameof(DisplayText));
+                if (_addresses != value)
+                {
+                    var oldCollection = _addresses;
+
+                    if (SetProperty(ref _addresses, value))
+                    {
+                        if (oldCollection != null)
+                            oldCollection.CollectionChanged -= Addresses_CollectionChanged;
+
+                        if (_addresses != null)
+                            _addresses.CollectionChanged += Addresses_CollectionChanged;
+
+                        Addresses_CollectionChanged(this, new(NotifyCollectionChangedAction.Reset));
+                    }
+                }
             }
         }
 
         /// <summary>
-        /// 使用解析器解析的域名。
+        /// 使用解析器解析的域名列表。
         /// </summary>
-        public string QueryDomain
+        public ObservableCollection<string> QueryDomains
         {
-            get => _queryDomain;
+            get => _queryDomains;
             set
             {
-                if (SetProperty(ref _queryDomain, value))
-                    OnPropertyChanged(nameof(DisplayText));
+                if (_queryDomains != value)
+                {
+                    var oldCollection = _queryDomains;
+
+                    if (SetProperty(ref _queryDomains, value))
+                    {
+                        if (oldCollection != null)
+                            oldCollection.CollectionChanged -= QueryDomains_CollectionChanged;
+
+                        if (_queryDomains != null)
+                            _queryDomains.CollectionChanged += QueryDomains_CollectionChanged;
+
+                        QueryDomains_CollectionChanged(this, new(NotifyCollectionChangedAction.Reset));
+                    }
+                }
             }
+
         }
 
         /// <summary>
@@ -97,22 +125,31 @@ namespace SNIBypassGUI.Models
             get => _fallbackIpAddresses;
             set
             {
-                if (SetProperty(ref _fallbackIpAddresses, value))
+                if (_fallbackIpAddresses != value)
                 {
-                    // 先解绑旧的事件
-                    if (_fallbackIpAddresses != null)
-                    {
-                        foreach (var old in _fallbackIpAddresses)
-                            old.PropertyChanged -= FallbackAddress_PropertyChanged;
+                    // 缓存旧值
+                    var oldCollection = _fallbackIpAddresses;
 
-                        _fallbackIpAddresses.CollectionChanged -= FallbackAddresses_CollectionChanged;
-                    }
-
-                    if (_fallbackIpAddresses != null)
+                    if (SetProperty(ref _fallbackIpAddresses, value))
                     {
-                        _fallbackIpAddresses.CollectionChanged += FallbackAddresses_CollectionChanged;
-                        foreach (var f in _fallbackIpAddresses)
-                            f.PropertyChanged += FallbackAddress_PropertyChanged;
+                        // 解绑旧事件
+                        if (oldCollection != null)
+                        {
+                            foreach (var old in oldCollection)
+                                old.PropertyChanged -= FallbackAddress_PropertyChanged;
+
+                            oldCollection.CollectionChanged -= FallbackAddresses_CollectionChanged;
+                        }
+
+                        // 绑定新事件
+                        if (_fallbackIpAddresses != null)
+                        {
+                            _fallbackIpAddresses.CollectionChanged += FallbackAddresses_CollectionChanged;
+                            foreach (var f in _fallbackIpAddresses)
+                                f.PropertyChanged += FallbackAddress_PropertyChanged;
+                        }
+
+                        FallbackAddresses_CollectionChanged(this, new(NotifyCollectionChangedAction.Reset));
                     }
                 }
             }
@@ -139,8 +176,8 @@ namespace SNIBypassGUI.Models
             get =>
                 SourceType switch
                 {
-                    IpAddressSourceType.Static => $"{Address.OrDefault("未指定")}",
-                    IpAddressSourceType.Dynamic => $"{QueryDomain.OrDefault("未指定")}",
+                    IpAddressSourceType.Static => $"{(Addresses?.Any() == true ? string.Join("、", Addresses) : "未指定")}",
+                    IpAddressSourceType.Dynamic => $"{(QueryDomains?.Any() == true ? string.Join("、", QueryDomains) : "未指定")}",
                     _ => null
                 };
         }
@@ -156,7 +193,19 @@ namespace SNIBypassGUI.Models
         #endregion
 
         #region Methods
-        private void FallbackAddresses_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void Addresses_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e) 
+        {
+            OnPropertyChanged(nameof(Addresses));
+            OnPropertyChanged(nameof(DisplayText));
+        }
+
+        private void QueryDomains_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(QueryDomains));
+            OnPropertyChanged(nameof(DisplayText));
+        }
+
+        private void FallbackAddresses_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.OldItems != null)
             {
@@ -183,8 +232,8 @@ namespace SNIBypassGUI.Models
             var clone = new TargetIpSource
             {
                 SourceType = SourceType,
-                Address = Address,
-                QueryDomain = QueryDomain,
+                Addresses = [.. Addresses.OrEmpty()],
+                QueryDomains = [.. QueryDomains.OrEmpty()],
                 ResolverId = ResolverId,
                 IpAddressType = IpAddressType,
                 EnableFallbackAutoUpdate = EnableFallbackAutoUpdate,
@@ -201,8 +250,8 @@ namespace SNIBypassGUI.Models
         {
             if (source == null) return;
             SourceType = source.SourceType;
-            Address = source.Address;
-            QueryDomain = source.QueryDomain;
+            Addresses = [.. source.Addresses.OrEmpty()];
+            QueryDomains = [.. source.QueryDomains.OrEmpty()];
             ResolverId = source.ResolverId;
             IpAddressType = source.IpAddressType;
             EnableFallbackAutoUpdate = source.EnableFallbackAutoUpdate;
@@ -217,10 +266,10 @@ namespace SNIBypassGUI.Models
             var jObject = new JObject { ["sourceType"] = SourceType.ToString() };
 
             if (SourceType == IpAddressSourceType.Static)
-                jObject["address"] = Address.OrDefault();
+                jObject["addresses"] = new JArray(Addresses.OrEmpty());
             else
             {
-                jObject["queryDomain"] = QueryDomain.OrDefault();
+                jObject["queryDomains"] = new JArray(QueryDomains.OrEmpty());
                 jObject["resolverId"] = ResolverId.ToString();
                 jObject["ipAddressType"] = IpAddressType.ToString();
                 jObject["enableFallbackAutoUpdate"] = EnableFallbackAutoUpdate;
@@ -245,19 +294,19 @@ namespace SNIBypassGUI.Models
 
             if (sourceType == IpAddressSourceType.Static)
             {
-                if (!jObject.TryGetString("address", out string address))
-                    return ParseResult<TargetIpSource>.Failure("静态类型所需的字段缺失或类型错误。");
+                if (!jObject.TryGetArray("addresses", out IReadOnlyList<string> addresses))
+                    return ParseResult<TargetIpSource>.Failure("直接指定模式所需的字段缺失或类型错误。");
 
-                source.Address = address;
+                source.Addresses = [.. addresses];
             }
             else
             {
-                if (!jObject.TryGetString("queryDomain", out string queryDomain) ||
+                if (!jObject.TryGetArray("queryDomains", out IReadOnlyList<string> queryDomains) ||
                     !jObject.TryGetNullableGuid("resolverId", out Guid? resolverId) ||
                     !jObject.TryGetEnum("ipAddressType", out IpAddressType ipAddressType) ||
                     !jObject.TryGetBool("enableFallbackAutoUpdate", out bool enableFallbackAutoUpdate) ||
                     !jObject.TryGetArray("fallbackIpAddresses", out IReadOnlyList<JObject> fallbackIpAddressObjects))
-                    return ParseResult<TargetIpSource>.Failure("自动解析模式所需的字段缺失或类型错误。");
+                    return ParseResult<TargetIpSource>.Failure("解析获取模式所需的字段缺失或类型错误。");
                 ObservableCollection<FallbackAddress> fallbackIpAddresses = [];
                 foreach (var item in fallbackIpAddressObjects.OfType<JObject>())
                 {
@@ -266,7 +315,7 @@ namespace SNIBypassGUI.Models
                         return ParseResult<TargetIpSource>.Failure($"解析 fallbackIpAddresses 时出错：{parsed.ErrorMessage}");
                     fallbackIpAddresses.Add(parsed.Value);
                 }
-                source.QueryDomain = queryDomain;
+                source.QueryDomains = [.. queryDomains];
                 source.ResolverId = resolverId;
                 source.IpAddressType = ipAddressType;
                 source.FallbackIpAddresses = fallbackIpAddresses;

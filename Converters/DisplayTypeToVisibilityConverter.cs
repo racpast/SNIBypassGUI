@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using SNIBypassGUI.Enums;
-using System.Windows.Data;
 using System.Windows;
+using System.Windows.Data;
+using SNIBypassGUI.Enums;
 
 namespace SNIBypassGUI.Converters
 {
@@ -22,9 +18,7 @@ namespace SNIBypassGUI.Converters
             return Visibility.Collapsed;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();
-        }
     }
 }

@@ -259,7 +259,7 @@ namespace SNIBypassGUI.ViewModels
 
             _tableService.AllConfigs.CollectionChanged += OnAllTablesCollectionChanged;
 
-            CopyLinkCodeCommand = new AsyncCommand<DnsMappingTableViewModel>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+            CopyLinkCodeCommand = new AsyncCommand<DnsMappingTableViewModel>(ExecuteCopyLinkCodeAsync, CanExecuteCopyLinkCode);
 
             AddNewTableCommand = new AsyncCommand(ExecuteAddNewTableAsync, CanExecuteWhenNotBusy);
             DuplicateTableCommand = new AsyncCommand(ExecuteDuplicateTableAsync, CanExecuteDuplicateTable);
@@ -281,6 +281,7 @@ namespace SNIBypassGUI.ViewModels
             MoveSelectedRuleUpCommand = new RelayCommand(ExecuteMoveSelectedRuleUp, CanExecuteMoveSelectedRuleUp);
             MoveSelectedRuleDownCommand = new RelayCommand(ExecuteMoveSelectedRuleDown, CanExecuteMoveSelectedRuleDown);
 
+            EditDomainPatternCommand = new AsyncCommand<string>(ExecuteEditDomainPatternAsync, CanExecuteEditDomainPattern);
             AddDomainPatternCommand = new AsyncCommand(ExecuteAddDomainPatternAsync, CanExecuteOnSelectedRule);
             DeleteDomainPatternCommand = new RelayCommand<string>(ExecuteDeleteDomainPattern, CanExecuteOnSelectedRule);
 
@@ -289,15 +290,27 @@ namespace SNIBypassGUI.ViewModels
             MoveSelectedSourceUpCommand = new RelayCommand(ExecuteMoveSelectedSourceUp, CanExecuteMoveSelectedSourceUp);
             MoveSelectedSourceDownCommand = new RelayCommand(ExecuteMoveSelectedSourceDown, CanExecuteMoveSelectedSourceDown);
 
+            MoveAddressUpCommand = new RelayCommand<string>(ExecuteMoveAddressUp, CanExecuteMoveAddressUp);
+            MoveAddressDownCommand = new RelayCommand<string>(ExecuteMoveAddressDown, CanExecuteMoveAddressDown);
+            EditAddressCommand = new AsyncCommand<string>(ExecuteEditAddressAsync, CanExecuteOnSelectedSource);
+            DeleteAddressCommand = new RelayCommand<string>(ExecuteDeleteAddress, CanExecuteOnSelectedSource);
+            AddAddressCommand = new AsyncCommand(ExecuteAddAddressAsync, CanExecuteOnSelectedSource);
+            DeleteAllAddressesCommand = new AsyncCommand(ExecuteDeleteAllAddressesAsync, CanExecuteDeleteAllAddresses);
+
             PasteResolverLinkCodeCommand = new AsyncCommand(ExecutePasteResolverLinkCodeAsync, CanExecuteOnSelectedRule);
             UnlinkResolverCommand = new RelayCommand(ExecuteUnlinkResolver, CanExecuteOnSelectedRule);
 
+            AddQueryDomainCommand = new AsyncCommand(ExecuteAddQueryDomainAsync, CanExecuteOnSelectedSource);
+            DeleteQueryDomainCommand = new RelayCommand<string>(ExecuteDeleteQueryDomain, CanExecuteOnSelectedSource);
+            EditQueryDomainCommand = new AsyncCommand<string>(ExecuteEditQueryDomainAsync, CanExecuteEditQueryDomain);
+
             LockFallbackAddressCommand = new RelayCommand<FallbackAddress>(ExecuteLockFallbackAddress, CanExecuteLockFallbackAddress);
             UnlockFallbackAddressCommand = new RelayCommand<FallbackAddress>(ExecuteUnlockFallbackAddress, CanExecuteUnlockFallbackAddress);
-            MoveFallbackAddressUpCommand = new RelayCommand<FallbackAddress>(ExecuteMoveFallbackAddressUp, CanExecuteOnSelectedRule);
-            MoveFallbackAddressDownCommand = new RelayCommand<FallbackAddress>(ExecuteMoveFallbackAddressDown, CanExecuteOnSelectedRule);
-            DeleteFallbackAddressCommand = new RelayCommand<FallbackAddress>(ExecuteDeleteFallbackAddress, CanExecuteOnSelectedRule);
-            AddFallbackAddressCommand = new AsyncCommand(ExecuteAddFallbackAddressAsync, CanExecuteOnSelectedRule);
+            MoveFallbackAddressUpCommand = new RelayCommand<FallbackAddress>(ExecuteMoveFallbackAddressUp, CanExecuteMoveFallbackAddressUp);
+            MoveFallbackAddressDownCommand = new RelayCommand<FallbackAddress>(ExecuteMoveFallbackAddressDown, CanExecuteMoveFallbackAddressDown);
+            EditFallbackAddressCommand = new AsyncCommand<FallbackAddress>(ExecuteEditFallbackAddressAsync, CanExecuteOnSelectedSource);
+            DeleteFallbackAddressCommand = new RelayCommand<FallbackAddress>(ExecuteDeleteFallbackAddress, CanExecuteOnSelectedSource);
+            AddFallbackAddressCommand = new AsyncCommand(ExecuteAddFallbackAddressAsync, CanExecuteOnSelectedSource);
             DeleteAllFallbackAddressesCommand = new AsyncCommand(ExecuteDeleteAllFallbackAddressesAsync, CanExecuteDeleteAllFallbackAddresses);
 
             SaveChangesCommand = new AsyncCommand(ExecuteSaveChangesAsync, CanExecuteSave);
@@ -445,12 +458,22 @@ namespace SNIBypassGUI.ViewModels
         public ICommand RemoveSelectedRuleCommand { get; }
         public ICommand MoveSelectedRuleUpCommand { get; }
         public ICommand MoveSelectedRuleDownCommand { get; }
+        public ICommand EditDomainPatternCommand { get; }
         public ICommand AddDomainPatternCommand { get; }
         public ICommand DeleteDomainPatternCommand { get; }
         public ICommand AddNewSourceCommand { get; }
         public ICommand RemoveSelectedSourceCommand { get; }
         public ICommand MoveSelectedSourceUpCommand { get; }
         public ICommand MoveSelectedSourceDownCommand { get; }
+        public ICommand MoveAddressUpCommand { get; }
+        public ICommand MoveAddressDownCommand { get; }
+        public ICommand EditAddressCommand { get; }
+        public ICommand DeleteAddressCommand { get; }
+        public ICommand AddAddressCommand { get; }
+        public ICommand DeleteAllAddressesCommand { get; }
+        public ICommand EditQueryDomainCommand { get; }
+        public ICommand AddQueryDomainCommand { get; }
+        public ICommand DeleteQueryDomainCommand { get; }
         public ICommand PasteResolverLinkCodeCommand { get; }
         public ICommand UnlinkResolverCommand { get; }
         public ICommand MoveFallbackAddressUpCommand { get; }
@@ -459,6 +482,7 @@ namespace SNIBypassGUI.ViewModels
         public ICommand UnlockFallbackAddressCommand { get; }
         public ICommand DeleteFallbackAddressCommand { get; }
         public ICommand AddFallbackAddressCommand { get; }
+        public ICommand EditFallbackAddressCommand { get; }
         public ICommand DeleteAllFallbackAddressesCommand { get; }
         public ICommand SaveChangesCommand { get; }
         public ICommand DiscardChangesCommand { get; }
@@ -548,6 +572,7 @@ namespace SNIBypassGUI.ViewModels
             (MoveSelectedRuleUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedRuleDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
+            (EditDomainPatternCommand as AsyncCommand<string>)?.RaiseCanExecuteChanged();
             (AddDomainPatternCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteDomainPatternCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
 
@@ -556,11 +581,24 @@ namespace SNIBypassGUI.ViewModels
             (MoveSelectedSourceUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedSourceDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
+            (MoveAddressUpCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+            (MoveAddressDownCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+            (EditAddressCommand as AsyncCommand<string>)?.RaiseCanExecuteChanged();
+            (DeleteAddressCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+            (AddAddressCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DeleteAllAddressesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+
             (PasteResolverLinkCodeCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (UnlinkResolverCommand as RelayCommand)?.RaiseCanExecuteChanged();
+
+            (AddQueryDomainCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DeleteQueryDomainCommand as RelayCommand<string>)?.RaiseCanExecuteChanged();
+            (EditQueryDomainCommand as AsyncCommand<string>)?.RaiseCanExecuteChanged();
+
             (MoveFallbackAddressUpCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
             (MoveFallbackAddressDownCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
             (DeleteFallbackAddressCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
+            (EditFallbackAddressCommand as AsyncCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
             (LockFallbackAddressCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
             (UnlockFallbackAddressCommand as RelayCommand<FallbackAddress>)?.RaiseCanExecuteChanged();
             (AddFallbackAddressCommand as AsyncCommand)?.RaiseCanExecuteChanged();
@@ -578,25 +616,31 @@ namespace SNIBypassGUI.ViewModels
             _isBusy = true;
             UpdateCommandStates();
 
-            if (_currentState != EditingState.None)
+            try
             {
-                var result = await PromptToSaveChangesAndContinueAsync();
-                if (result == SaveChangesResult.Cancel)
+                if (_currentState != EditingState.None)
                 {
-                    _isBusy = false;
-                    UpdateCommandStates();
-                    return;
+                    var result = await PromptToSaveChangesAndContinueAsync();
+                    if (result == SaveChangesResult.Cancel)
+                    {
+                        _isBusy = false;
+                        UpdateCommandStates();
+                        return;
+                    }
+                }
+
+                var newName = await _dialogService.ShowTextInputAsync("新建映射表", "请输入新映射表的名称：", "新映射表");
+                if (newName != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(newName)) EnterCreationMode(newName);
+                    else await _dialogService.ShowInfoAsync("创建失败", "映射表名称不能为空！");
                 }
             }
-
-            var newName = await _dialogService.ShowTextInputAsync("新建映射表", "请输入新映射表的名称：", "新映射表");
-            if (newName != null)
+            finally
             {
-                if (!string.IsNullOrWhiteSpace(newName)) EnterCreationMode(newName);
-                else await _dialogService.ShowInfoAsync("创建失败", "映射表名称不能为空！");
+                _isBusy = false;
+                UpdateCommandStates();
             }
-            _isBusy = false;
-            UpdateCommandStates();
         }
         #endregion
 
@@ -653,37 +697,42 @@ namespace SNIBypassGUI.ViewModels
             _isBusy = true;
             UpdateCommandStates();
 
-            if (_currentState != EditingState.None)
+            try
             {
-                var result = await PromptToSaveChangesAndContinueAsync();
-                if (result == SaveChangesResult.Cancel)
+                if (_currentState != EditingState.None)
                 {
-                    _isBusy = false;
-                    UpdateCommandStates();
-                    return;
+                    var result = await PromptToSaveChangesAndContinueAsync();
+                    if (result == SaveChangesResult.Cancel)
+                    {
+                        _isBusy = false;
+                        UpdateCommandStates();
+                        return;
+                    }
+                }
+
+                var tableToDeleteVM = TableSelector.SelectedItem;
+                var tableToDelete = tableToDeleteVM.Model;
+                var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", $"您确定要删除 “{tableToDelete.TableName}” 吗？\n此操作不可恢复！", "删除");
+
+                if (confirmResult)
+                {
+                    DnsMappingTableViewModel nextSelectionVM = null;
+                    if (AllTableVMs.Count > 1)
+                    {
+                        int currentIndex = AllTableVMs.IndexOf(tableToDeleteVM);
+                        nextSelectionVM = currentIndex == AllTableVMs.Count - 1
+                            ? AllTableVMs[currentIndex - 1]
+                            : AllTableVMs[currentIndex + 1];
+                    }
+                    _tableService.DeleteConfig(tableToDelete);
+                    SwitchToTable(nextSelectionVM);
                 }
             }
-
-            var tableToDeleteVM = TableSelector.SelectedItem;
-            var tableToDelete = tableToDeleteVM.Model;
-            var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", $"您确定要删除 “{tableToDelete.TableName}” 吗？\n此操作不可恢复！", "删除");
-
-            if (confirmResult)
+            finally
             {
-                DnsMappingTableViewModel nextSelectionVM = null;
-                if (AllTableVMs.Count > 1)
-                {
-                    int currentIndex = AllTableVMs.IndexOf(tableToDeleteVM);
-                    nextSelectionVM = currentIndex == AllTableVMs.Count - 1
-                        ? AllTableVMs[currentIndex - 1]
-                        : AllTableVMs[currentIndex + 1];
-                }
-                _tableService.DeleteConfig(tableToDelete);
-                SwitchToTable(nextSelectionVM);
+                _isBusy = false;
+                UpdateCommandStates();
             }
-
-            _isBusy = false;
-            UpdateCommandStates();
         }
         #endregion
 
@@ -1071,7 +1120,7 @@ namespace SNIBypassGUI.ViewModels
         {
             var message = _currentState == EditingState.Creating
                 ? "您新建的配置尚未保存，要保存吗？"
-                : $"您对配置 “{EditingTableCopy.TableName}” 的修改尚未保存。要保存吗？";
+                : $"您对配置 “{EditingTableCopy.TableName}” 的更改尚未保存。要保存吗？";
 
             var result = await _dialogService.ShowSaveChangesDialogAsync("未保存的更改", message);
             switch (result)
@@ -1142,11 +1191,13 @@ namespace SNIBypassGUI.ViewModels
 
         private async Task ExecuteRenameSelectedGroupAsync()
         {
-            if (SelectedTreeItem is DnsMappingGroupViewModel groupVM)
-            {
-                _isBusy = true;
-                UpdateCommandStates();
+            if (SelectedTreeItem is not DnsMappingGroupViewModel groupVM) return;
 
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
                 var group = groupVM.Model;
 
                 var newName = await _dialogService.ShowTextInputAsync("重命名映射组", $"为 “{group.GroupName}” 输入新名称：", group.GroupName);
@@ -1159,33 +1210,34 @@ namespace SNIBypassGUI.ViewModels
                         await _dialogService.ShowInfoAsync("重命名失败", $"已存在名为 “{newName}” 的映射组！");
                     else group.GroupName = newName;
                 }
-
+            }
+            finally
+            {
                 _isBusy = false;
                 UpdateCommandStates();
             }
+
         }
 
         private void ExecuteMoveSelectedGroupUp()
         {
-            if (SelectedTreeItem is DnsMappingGroupViewModel groupVM)
-            {
-                var group = groupVM.Model;
+            if (SelectedTreeItem is not DnsMappingGroupViewModel groupVM) return;
 
-                int index = EditingTableCopy.MappingGroups.IndexOf(group);
-                if (index > 0) EditingTableCopy.MappingGroups.Move(index, index - 1);
-            }
+            var group = groupVM.Model;
+
+            int index = EditingTableCopy.MappingGroups.IndexOf(group);
+            if (index > 0) EditingTableCopy.MappingGroups.Move(index, index - 1);
         }
 
         private void ExecuteMoveSelectedGroupDown()
         {
-            if (SelectedTreeItem is DnsMappingGroupViewModel groupVM)
-            {
-                var group = groupVM.Model;
+            if (SelectedTreeItem is not DnsMappingGroupViewModel groupVM) return;
 
-                int index = EditingTableCopy.MappingGroups.IndexOf(group);
-                if (index < EditingTableCopy.MappingGroups.Count - 1)
-                    EditingTableCopy.MappingGroups.Move(index, index + 1);
-            }
+            var group = groupVM.Model;
+
+            int index = EditingTableCopy.MappingGroups.IndexOf(group);
+            if (index < EditingTableCopy.MappingGroups.Count - 1)
+                EditingTableCopy.MappingGroups.Move(index, index + 1);
         }
 
         private bool CanExecuteAddNewGroup() => EditingTableCopy != null && !_isBusy;
@@ -1206,90 +1258,85 @@ namespace SNIBypassGUI.ViewModels
         #region Rule Management
         private void ExecuteAddNewRule()
         {
-            if (FindParentGroupViewModel(SelectedTreeItem) is DnsMappingGroupViewModel targetGroupVM)
-            {
-                var newRuleModel = _ruleFactory.CreateDefault();
-                targetGroupVM.Model.MappingRules.Add(newRuleModel);
+            if (FindParentGroupViewModel(SelectedTreeItem) is not DnsMappingGroupViewModel targetGroupVM) return;
 
-                var newRuleVM = targetGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == newRuleModel);
-                SelectedTreeItem = newRuleVM;
-            }
+            var newRuleModel = _ruleFactory.CreateDefault();
+            targetGroupVM.Model.MappingRules.Add(newRuleModel);
+
+            var newRuleVM = targetGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == newRuleModel);
+            SelectedTreeItem = newRuleVM;
         }
 
         private void ExecuteRemoveSelectedRule()
         {
-            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
-            {
-                var parentVM = ruleVM.Parent;
-                if (parentVM != null)
-                {
-                    var parentModel = parentVM.Model;
-                    var ruleModel = ruleVM.Model;
-                    int index = parentModel.MappingRules.IndexOf(ruleModel);
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM) return;
 
-                    parentModel.MappingRules.Remove(ruleModel);
+            var parentVM = ruleVM.Parent;
+            if (parentVM == null) return;
 
-                    SelectedTreeItem = parentVM.MappingRules.Any()
-                        ? parentVM.MappingRules[Math.Max(0, index - 1)]
-                        : parentVM;
-                }
-            }
+            var parentModel = parentVM.Model;
+            var ruleModel = ruleVM.Model;
+            int index = parentModel.MappingRules.IndexOf(ruleModel);
+
+            parentModel.MappingRules.Remove(ruleModel);
+
+            SelectedTreeItem = parentVM.MappingRules.Any()
+                ? parentVM.MappingRules[Math.Max(0, index - 1)]
+                : parentVM;
         }
 
         private void ExecuteMoveSelectedRuleUp()
         {
-            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM) return;
+
+            var currentGroupVM = ruleVM.Parent;
+            if (currentGroupVM == null) return;
+
+            var currentGroupModel = currentGroupVM.Model;
+            var ruleModel = ruleVM.Model;
+            int ruleIndex = currentGroupModel.MappingRules.IndexOf(ruleModel);
+
+            if (ruleIndex > 0) currentGroupModel.MappingRules.Move(ruleIndex, ruleIndex - 1);
+            else if (EditingTableVM.MappingGroups.IndexOf(currentGroupVM) > 0)
             {
-                var currentGroupVM = ruleVM.Parent;
-                if (currentGroupVM == null) return;
+                int currentGroupIndex = EditingTableVM.MappingGroups.IndexOf(currentGroupVM);
 
-                var currentGroupModel = currentGroupVM.Model;
-                var ruleModel = ruleVM.Model;
-                int ruleIndex = currentGroupModel.MappingRules.IndexOf(ruleModel);
+                var previousGroupVM = EditingTableVM.MappingGroups[currentGroupIndex - 1];
+                var previousGroupModel = previousGroupVM.Model;
 
-                if (ruleIndex > 0) currentGroupModel.MappingRules.Move(ruleIndex, ruleIndex - 1);
-                else if (EditingTableVM.MappingGroups.IndexOf(currentGroupVM) > 0)
-                {
-                    int currentGroupIndex = EditingTableVM.MappingGroups.IndexOf(currentGroupVM);
+                currentGroupModel.MappingRules.Remove(ruleModel);
+                previousGroupModel.MappingRules.Add(ruleModel);
 
-                    var previousGroupVM = EditingTableVM.MappingGroups[currentGroupIndex - 1];
-                    var previousGroupModel = previousGroupVM.Model;
-
-                    currentGroupModel.MappingRules.Remove(ruleModel);
-                    previousGroupModel.MappingRules.Add(ruleModel);
-
-                    var newRuleVM = previousGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == ruleModel);
-                    SelectedTreeItem = newRuleVM;
-                }
+                var newRuleVM = previousGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == ruleModel);
+                SelectedTreeItem = newRuleVM;
             }
         }
 
         private void ExecuteMoveSelectedRuleDown()
         {
-            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM) return;
+
+            var currentGroupVM = ruleVM.Parent;
+            if (currentGroupVM == null) return;
+
+            var currentGroupModel = currentGroupVM.Model;
+            var ruleModel = ruleVM.Model;
+            int ruleIndex = currentGroupModel.MappingRules.IndexOf(ruleModel);
+
+            if (ruleIndex < currentGroupModel.MappingRules.Count - 1)
+                currentGroupModel.MappingRules.Move(ruleIndex, ruleIndex + 1);
+            else if (EditingTableVM.MappingGroups.IndexOf(currentGroupVM) < EditingTableVM.MappingGroups.Count - 1)
             {
-                var currentGroupVM = ruleVM.Parent;
-                if (currentGroupVM == null) return;
+                int currentGroupIndex = EditingTableVM.MappingGroups.IndexOf(currentGroupVM);
 
-                var currentGroupModel = currentGroupVM.Model;
-                var ruleModel = ruleVM.Model;
-                int ruleIndex = currentGroupModel.MappingRules.IndexOf(ruleModel);
+                var nextGroupVM = EditingTableVM.MappingGroups[currentGroupIndex + 1];
+                var nextGroupModel = nextGroupVM.Model;
 
-                if (ruleIndex < currentGroupModel.MappingRules.Count - 1)
-                    currentGroupModel.MappingRules.Move(ruleIndex, ruleIndex + 1);
-                else if (EditingTableVM.MappingGroups.IndexOf(currentGroupVM) < EditingTableVM.MappingGroups.Count - 1)
-                {
-                    int currentGroupIndex = EditingTableVM.MappingGroups.IndexOf(currentGroupVM);
+                currentGroupModel.MappingRules.Remove(ruleModel);
+                nextGroupModel.MappingRules.Insert(0, ruleModel);
 
-                    var nextGroupVM = EditingTableVM.MappingGroups[currentGroupIndex + 1];
-                    var nextGroupModel = nextGroupVM.Model;
-
-                    currentGroupModel.MappingRules.Remove(ruleModel);
-                    nextGroupModel.MappingRules.Insert(0, ruleModel);
-
-                    var newRuleVM = nextGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == ruleModel);
-                    SelectedTreeItem = newRuleVM;
-                }
+                var newRuleVM = nextGroupVM.MappingRules.FirstOrDefault(vm => vm.Model == ruleModel);
+                SelectedTreeItem = newRuleVM;
             }
         }
 
@@ -1334,7 +1381,12 @@ namespace SNIBypassGUI.ViewModels
         #region Domain Pattern Management
         private async Task ExecuteAddDomainPatternAsync()
         {
-            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
             {
                 var rule = ruleVM.Model;
 
@@ -1384,6 +1436,78 @@ namespace SNIBypassGUI.ViewModels
                     }
                     else await _dialogService.ShowInfoAsync("添加失败", "域名匹配模式不能为空！");
                 }
+
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private async Task ExecuteEditDomainPatternAsync(string pattern)
+        {
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM || pattern == null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var rule = ruleVM.Model;
+
+                var newPattern = await _dialogService.ShowTextInputAsync($"编辑 “{pattern}”", $"请输入新的域名匹配模式：", pattern);
+                if (newPattern != null && newPattern != pattern)
+                {
+                    if (!string.IsNullOrWhiteSpace(newPattern))
+                    {
+                        if (newPattern.Trim().StartsWith("/"))
+                        {
+                            var regexContent = newPattern.Substring(1).Trim();
+                            if (string.IsNullOrEmpty(regexContent))
+                            {
+                                await _dialogService.ShowInfoAsync("编辑失败", $"“{newPattern}” 不是有效的域名匹配模式，正则表达式不能为空。");
+                                return;
+                            }
+                            int pcreOptions = PcreOptions.PCRE_UTF8 | PcreOptions.PCRE_CASELESS;
+                            if (!PcreRegex.TryValidatePattern(regexContent, pcreOptions, out string errorMessage, out int errorOffset))
+                            {
+                                await _dialogService.ShowInfoAsync("编辑失败", $"“{newPattern}” 不是有效的域名匹配模式，正则表达式在位置 {errorOffset} 存在错误 “{errorMessage}”。");
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            var trimmed = newPattern.Trim();
+                            if (trimmed.StartsWith(">"))
+                            {
+                                if (trimmed.IndexOf('>', 1) >= 0)
+                                {
+                                    await _dialogService.ShowInfoAsync("编辑失败", $"“{newPattern}” 不是有效的域名匹配模式，子域匹配符号 “>” 只能出现在模式开头。");
+                                    return;
+                                }
+                                if (trimmed.Length == 1)
+                                {
+                                    await _dialogService.ShowInfoAsync("编辑失败", $"“{newPattern}” 不是有效的域名匹配模式，子域匹配符号 “>” 后必须提供域名模式。");
+                                    return;
+                                }
+                            }
+                        }
+                        if (rule.DomainPatterns.Contains(newPattern))
+                        {
+                            await _dialogService.ShowInfoAsync("编辑失败", $"域名匹配模式 “{newPattern}” 已存在！");
+                            return;
+                        }
+                        int index = rule.DomainPatterns.IndexOf(pattern);
+                        if (index >= 0) rule.DomainPatterns[index] = newPattern;
+                    }
+                    else await _dialogService.ShowInfoAsync("编辑失败", "域名匹配模式不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
             }
         }
 
@@ -1397,52 +1521,51 @@ namespace SNIBypassGUI.ViewModels
                     rule.DomainPatterns.Remove(pattern);
             }
         }
+
+        private bool CanExecuteEditDomainPattern(string pattern) =>
+            pattern != null && !_isBusy;
         #endregion
 
         #region Source Management
         private void ExecuteAddNewSource()
         {
-            if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
-            {
-                var newSource = _sourceFactory.CreateDefault();
-                ruleVM.Model.TargetSources.Add(newSource);
-                SelectedSource = newSource;
-            }
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM) return;
+
+            var newSource = _sourceFactory.CreateDefault();
+            ruleVM.Model.TargetSources.Add(newSource);
+            SelectedSource = newSource;
         }
 
         private void ExecuteRemoveSelectedSource()
         {
             if (SelectedSource == null) return;
-            else if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
-            {
-                var rule = ruleVM.Model;
-                int index = rule.TargetSources.IndexOf(SelectedSource);
-                rule.TargetSources.Remove(SelectedSource);
-                SelectedSource = rule.TargetSources.Any() ? rule.TargetSources[Math.Max(0, index - 1)] : null;
-            }
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM) return;
+
+            var rule = ruleVM.Model;
+            int index = rule.TargetSources.IndexOf(SelectedSource);
+            rule.TargetSources.Remove(SelectedSource);
+            SelectedSource = rule.TargetSources.Any() ? rule.TargetSources[Math.Max(0, index - 1)] : null;
         }
 
         private void ExecuteMoveSelectedSourceUp()
         {
             if (SelectedSource == null) return;
-            else if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
-            {
-                var rule = ruleVM.Model;
-                int index = rule.TargetSources.IndexOf(SelectedSource);
-                if (index > 0) rule.TargetSources.Move(index, index - 1);
-            }
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM) return;
+
+            var rule = ruleVM.Model;
+            int index = rule.TargetSources.IndexOf(SelectedSource);
+            if (index > 0) rule.TargetSources.Move(index, index - 1);
         }
 
         private void ExecuteMoveSelectedSourceDown()
         {
             if (SelectedSource == null) return;
-            else if (SelectedTreeItem is DnsMappingRuleViewModel ruleVM)
-            {
-                var rule = ruleVM.Model;
-                int index = rule.TargetSources.IndexOf(SelectedSource);
-                if (index < rule.TargetSources.Count - 1)
-                    rule.TargetSources.Move(index, index + 1);
-            }
+            if (SelectedTreeItem is not DnsMappingRuleViewModel ruleVM) return;
+
+            var rule = ruleVM.Model;
+            int index = rule.TargetSources.IndexOf(SelectedSource);
+            if (index < rule.TargetSources.Count - 1) 
+                rule.TargetSources.Move(index, index + 1);
         }
 
         private bool CanExecuteAddNewSource() => !_isBusy && IsRuleSelected;
@@ -1470,35 +1593,166 @@ namespace SNIBypassGUI.ViewModels
         }
         #endregion
 
+        #region Address Management
+        private async Task ExecuteAddAddressAsync()
+        {
+            if (SelectedSource is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newIp = await _dialogService.ShowTextInputAsync("添加目标地址", "请输入 IP 地址：");
+                if (newIp != null)
+                {
+                    string trimmed = newIp.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        await _dialogService.ShowInfoAsync("添加失败", "目标地址不能为空！");
+                    else if (!NetworkUtils.IsValidIP(trimmed))
+                        await _dialogService.ShowInfoAsync("添加失败", $"“{trimmed}” 不是合法的 IP 地址！");
+                    else if (SelectedSource.Addresses.Contains(trimmed))
+                        await _dialogService.ShowInfoAsync("添加失败", $"目标地址 “{trimmed}” 已存在！");
+                    else SelectedSource.Addresses.Add(trimmed);
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private void ExecuteDeleteAddress(string address)
+        {
+            if (SelectedSource == null || address == null) return;
+            if (SelectedSource.Addresses.Contains(address))
+                SelectedSource.Addresses.Remove(address);
+        }
+
+        private async Task ExecuteDeleteAllAddressesAsync()
+        {
+            if (SelectedSource == null || !SelectedSource.Addresses.Any()) return;
+
+            var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除此来源的所有目标地址吗？", "删除");
+            if (!confirmResult) return;
+            SelectedSource.Addresses.Clear();
+        }
+
+        private void ExecuteMoveAddressUp(string address)
+        {
+            if (SelectedSource == null || address == null) return;
+
+            int index = SelectedSource.Addresses.IndexOf(address);
+            if (index > 0) SelectedSource.Addresses.Move(index, index - 1);
+        }
+
+        private void ExecuteMoveAddressDown(string address)
+        {
+            if (SelectedSource == null || address == null) return;
+
+            int index = SelectedSource.Addresses.IndexOf(address);
+            if (index < SelectedSource.Addresses.Count - 1)
+                SelectedSource.Addresses.Move(index, index + 1);
+        }
+
+        private async Task ExecuteEditAddressAsync(string address)
+        {
+            if (SelectedSource == null || address == null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newIp = await _dialogService.ShowTextInputAsync($"编辑 “{address}”", $"请输入新的目标地址：", address);
+                if (newIp != null && newIp != address)
+                {
+                    string trimmed = newIp.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", "目标地址不能为空！");
+                    else if (!NetworkUtils.IsValidIP(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", $"“{trimmed}” 不是合法的 IP 地址！");
+                    else if (SelectedSource.Addresses.Contains(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", $"目标地址 “{trimmed}” 已存在！");
+                    else
+                    {
+                        var addresses = SelectedSource.Addresses;
+                        int index = addresses.IndexOf(address);
+                        if (index >= 0) addresses[index] = trimmed;
+                    }
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private bool CanExecuteMoveAddressUp(string address)
+        {
+            if (!CanExecuteOnSelectedSource() || SelectedTreeItem is not DnsMappingRuleViewModel)
+                return false;
+
+            var addresses = SelectedSource.Addresses;
+            int index = addresses.IndexOf(address);
+            return index > 0;
+        }
+
+        private bool CanExecuteMoveAddressDown(string address)
+        {
+            if (!CanExecuteOnSelectedSource() || SelectedTreeItem is not DnsMappingRuleViewModel)
+                return false;
+
+            var addresses = SelectedSource.Addresses;
+            int index = addresses.IndexOf(address);
+            return index < addresses.Count - 1;
+        }
+
+        private bool CanExecuteDeleteAllAddresses() =>
+            CanExecuteOnSelectedSource() && SelectedSource.Addresses.Any();
+        #endregion
+
         #region Resolver Link Management
         private async Task ExecutePasteResolverLinkCodeAsync()
         {
             if (SelectedSource is null) return;
 
-            var linkCode = Clipboard.GetText();
-            if (string.IsNullOrWhiteSpace(linkCode)) return;
+            _isBusy = true;
+            UpdateCommandStates();
 
-            var idString = Base64Utils.DecodeString(linkCode);
-            if (idString == null) return;
-            else if (Guid.TryParse(idString, out Guid resolverId))
+            try
             {
-                var resolver = _resolverService.AllConfigs.FirstOrDefault(r => r.Id == resolverId);
-                if (resolver != null)
+                var linkCode = Clipboard.GetText();
+                if (string.IsNullOrWhiteSpace(linkCode)) return;
+
+                var idString = Base64Utils.DecodeString(linkCode);
+                if (idString == null) return;
+                else if (Guid.TryParse(idString, out Guid resolverId))
                 {
-                    SelectedSource.ResolverId = resolver.Id;
-                    UpdateAssociatedResolverName();
+                    var resolver = _resolverService.AllConfigs.FirstOrDefault(r => r.Id == resolverId);
+                    if (resolver != null)
+                    {
+                        SelectedSource.ResolverId = resolver.Id;
+                        UpdateAssociatedResolverName();
+                    }
+                    else await _dialogService.ShowInfoAsync("关联失败", "未找到对应关联码的解析器配置。");
                 }
-                else await _dialogService.ShowInfoAsync("关联失败", "未找到对应关联码的解析器配置。");
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
             }
         }
 
         private void ExecuteUnlinkResolver()
         {
-            if (SelectedSource != null)
-            {
-                SelectedSource.ResolverId = null;
-                UpdateAssociatedResolverName();
-            }
+            if (SelectedSource == null) return;
+
+            SelectedSource.ResolverId = null;
+            UpdateAssociatedResolverName();
         }
 
         private void UpdateAssociatedResolverName()
@@ -1512,6 +1766,84 @@ namespace SNIBypassGUI.ViewModels
         }
         #endregion
 
+        #region Query Domain Management
+        private async Task ExecuteAddQueryDomainAsync()
+        {
+            if (SelectedSource is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newDomain = await _dialogService.ShowTextInputAsync("添加域名", "请输入新的查询域名：");
+                if (newDomain != null)
+                {
+                    var trimmed = newDomain.Trim();
+
+                    if (!string.IsNullOrWhiteSpace(trimmed))
+                    {
+                        if (!NetworkUtils.IsValidDomain(trimmed))
+                            await _dialogService.ShowInfoAsync("添加失败", $"“{trimmed}” 不是有效的查询域名，应符合 RFC 1035、RFC 1123 及国际化域名规范。");
+                        else if (SelectedSource.QueryDomains.Contains(trimmed))
+                            await _dialogService.ShowInfoAsync("添加失败", $"查询域名 “{trimmed}” 已存在！");
+                        else SelectedSource.QueryDomains.Add(trimmed);
+                    }
+                    else await _dialogService.ShowInfoAsync("添加失败", "查询域名不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private async Task ExecuteEditQueryDomainAsync(string domain)
+        {
+            if (SelectedSource is null || domain is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newDomain = await _dialogService.ShowTextInputAsync($"编辑 “{domain}”", $"请输入新的查询域名：", domain);
+                if (newDomain != null && newDomain != domain)
+                {
+                    string trimmed = newDomain.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", "查询域名不能为空！");
+                    else if (!NetworkUtils.IsValidDomain(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", $"“{trimmed}” 不是合法的查询域名，应符合 RFC 1035、RFC 1123 及国际化域名规范。");
+                    else if (SelectedSource.QueryDomains.Contains(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", $"查询域名 “{trimmed}” 已存在！");
+                    else
+                    {
+                        var domains = SelectedSource.QueryDomains;
+                        int index = domains.IndexOf(domain);
+                        if (index >= 0) domains[index] = trimmed;
+                    }
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private void ExecuteDeleteQueryDomain(string domain)
+        {
+            if (SelectedSource is null || domain is null) return;
+            if (SelectedSource.QueryDomains.Contains(domain))
+                SelectedSource.QueryDomains.Remove(domain);
+        }
+
+        private bool CanExecuteEditQueryDomain(string domain) =>
+            domain != null && !_isBusy;
+        #endregion
+
         #region Fallback Address Management
         private async Task ExecuteAddFallbackAddressAsync()
         {
@@ -1520,94 +1852,135 @@ namespace SNIBypassGUI.ViewModels
             _isBusy = true;
             UpdateCommandStates();
 
-            var newIp = await _dialogService.ShowTextInputAsync("添加回落地址", "请输入 IP 地址：");
-            if (newIp != null)
+            try
             {
-                string trimmed = newIp.Trim();
-                if (string.IsNullOrWhiteSpace(trimmed))
-                    await _dialogService.ShowInfoAsync("添加失败", "回落地址不能为空！");
-                else if (!NetworkUtils.IsValidIP(trimmed))
-                    await _dialogService.ShowInfoAsync("添加失败", $"“{trimmed}” 不是合法的 IP 地址！");
-                else if (SelectedSource.FallbackIpAddresses.Select(f => f.Address).Contains(trimmed))
-                    await _dialogService.ShowInfoAsync("添加失败", $"回落地址 “{trimmed}” 已存在！");
-                else
+                var newIp = await _dialogService.ShowTextInputAsync("添加回落地址", "请输入 IP 地址：");
+                if (newIp != null)
                 {
-                    var newAddress = _addressFactory.CreateDefault();
-                    newAddress.Address = trimmed;
-                    SelectedSource.FallbackIpAddresses.Add(newAddress);
+                    string trimmed = newIp.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        await _dialogService.ShowInfoAsync("添加失败", "回落地址不能为空！");
+                    else if (!NetworkUtils.IsValidIP(trimmed))
+                        await _dialogService.ShowInfoAsync("添加失败", $"“{trimmed}” 不是合法的 IP 地址！");
+                    else if (SelectedSource.FallbackIpAddresses.Select(f => f.Address).Contains(trimmed))
+                        await _dialogService.ShowInfoAsync("添加失败", $"回落地址 “{trimmed}” 已存在！");
+                    else
+                    {
+                        var newAddress = _addressFactory.CreateDefault();
+                        newAddress.Address = trimmed;
+                        SelectedSource.FallbackIpAddresses.Add(newAddress);
+                    }
                 }
             }
-
-            _isBusy = false;
-            UpdateCommandStates();
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
         }
 
         private void ExecuteDeleteFallbackAddress(FallbackAddress address)
         {
-            if (SelectedSource != null && address != null)
+            if (SelectedSource == null || address == null) return;
+
+            if (SelectedSource.FallbackIpAddresses.Contains(address))
+                SelectedSource.FallbackIpAddresses.Remove(address);
+        }
+
+        private async Task ExecuteEditFallbackAddressAsync(FallbackAddress address)
+        {
+            if (SelectedSource == null || address == null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
             {
-                if (SelectedSource.FallbackIpAddresses.Contains(address))
-                    SelectedSource.FallbackIpAddresses.Remove(address);
+                var newIp = await _dialogService.ShowTextInputAsync($"编辑 “{address.Address}”", $"请输入新的回落地址：", address.Address);
+                if (newIp != null && newIp != address.Address)
+                {
+                    string trimmed = newIp.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", "回落地址不能为空！");
+                    else if (!NetworkUtils.IsValidIP(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", $"“{trimmed}” 不是合法的 IP 地址！");
+                    else if (SelectedSource.FallbackIpAddresses.Select(f => f.Address).Contains(trimmed))
+                        await _dialogService.ShowInfoAsync("编辑失败", $"回落地址 “{trimmed}” 已存在！");
+                    else
+                    {
+                        var addresses = SelectedSource.FallbackIpAddresses;
+                        int index = addresses.IndexOf(address);
+                        if (index >= 0) addresses[index].Address = trimmed;
+                    }
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
             }
         }
 
         private async Task ExecuteDeleteAllFallbackAddressesAsync()
         {
-            if (SelectedSource != null && SelectedSource.FallbackIpAddresses.Any())
-            {
-                var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除所有回落地址吗？", "删除");
-                if (!confirmResult) return;
-                SelectedSource.FallbackIpAddresses.Clear();
-            }
+            if (SelectedSource == null || !SelectedSource.FallbackIpAddresses.Any()) return;
+
+            var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除此来源的所有回落地址吗？", "删除");
+            if (!confirmResult) return;
+            SelectedSource.FallbackIpAddresses.Clear();
         }
 
         private void ExecuteMoveFallbackAddressUp(FallbackAddress address)
         {
-            if (SelectedSource != null && address != null)
-            {
-                if (SelectedSource.FallbackIpAddresses.Contains(address))
-                {
-                    int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
-                    if (index > 0) SelectedSource.FallbackIpAddresses.Move(index, index - 1);
-                }
-            }
+            if (SelectedSource == null || address == null) return;
+
+            int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
+            if (index > 0) SelectedSource.FallbackIpAddresses.Move(index, index - 1);
         }
 
         private void ExecuteMoveFallbackAddressDown(FallbackAddress address)
         {
-            if (SelectedSource != null && address != null)
-            {
-                if (SelectedSource.FallbackIpAddresses.Contains(address))
-                {
-                    int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
-                    if (index < SelectedSource.FallbackIpAddresses.Count - 1)
-                        SelectedSource.FallbackIpAddresses.Move(index, index + 1);
-                }
-            }
+            if (SelectedSource == null || address == null) return;
+
+            int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
+            if (index < SelectedSource.FallbackIpAddresses.Count - 1)
+                SelectedSource.FallbackIpAddresses.Move(index, index + 1);
         }
 
         private void ExecuteLockFallbackAddress(FallbackAddress address)
         {
-            if (SelectedSource != null && address != null)
-            {
-                if (SelectedSource.FallbackIpAddresses.Contains(address))
-                {
-                    int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
-                    if (index >= 0) SelectedSource.FallbackIpAddresses[index].IsLocked = true;
-                }
-            }
+            if (SelectedSource == null || address == null) return;
+
+            int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
+            if (index >= 0) SelectedSource.FallbackIpAddresses[index].IsLocked = true;
         }
 
         private void ExecuteUnlockFallbackAddress(FallbackAddress address)
         {
-            if (SelectedSource != null && address != null)
-            {
-                if (SelectedSource.FallbackIpAddresses.Contains(address))
-                {
-                    int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
-                    if (index >= 0) SelectedSource.FallbackIpAddresses[index].IsLocked = false;
-                }
-            }
+            if (SelectedSource == null || address == null) return;
+
+            int index = SelectedSource.FallbackIpAddresses.IndexOf(address);
+            if (index >= 0) SelectedSource.FallbackIpAddresses[index].IsLocked = false;
+        }
+
+        private bool CanExecuteMoveFallbackAddressUp(FallbackAddress address)
+        {
+            if (!CanExecuteOnSelectedSource() || SelectedTreeItem is not DnsMappingRuleViewModel)
+                return false;
+
+            var addresses = SelectedSource.FallbackIpAddresses;
+            int index = addresses.IndexOf(address);
+            return index > 0;
+        }
+
+        private bool CanExecuteMoveFallbackAddressDown(FallbackAddress address)
+        {
+            if (!CanExecuteOnSelectedSource() || SelectedTreeItem is not DnsMappingRuleViewModel)
+                return false;
+
+            var addresses = SelectedSource.FallbackIpAddresses;
+            int index = addresses.IndexOf(address);
+            return index < addresses.Count - 1;
         }
 
         private bool CanExecuteLockFallbackAddress(FallbackAddress address) =>
@@ -1813,14 +2186,14 @@ namespace SNIBypassGUI.ViewModels
 
         #region Other Commands & Helpers
         #region Copy Link Code
-        private async Task ExecuteCopyLinkCode(DnsMappingTableViewModel tableVM)
+        private async Task ExecuteCopyLinkCodeAsync(DnsMappingTableViewModel tableVM)
         {
             if (tableVM is null || !_canExecuteCopy) return;
 
             try
             {
                 _canExecuteCopy = false;
-                (CopyLinkCodeCommand as RelayCommand<DnsMappingTableViewModel>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<DnsMappingTableViewModel>)?.RaiseCanExecuteChanged();
 
                 var table = tableVM.Model;
                 var linkCode = Base64Utils.EncodeString(table.Id.ToString());
@@ -1842,7 +2215,7 @@ namespace SNIBypassGUI.ViewModels
             finally
             {
                 _canExecuteCopy = true;
-                (CopyLinkCodeCommand as RelayCommand<DnsMappingTableViewModel>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<DnsMappingTableViewModel>)?.RaiseCanExecuteChanged();
             }
         }
 

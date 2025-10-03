@@ -10,27 +10,14 @@ namespace SNIBypassGUI.Converters
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             bool boolValue = false;
-            if (value is bool b)
-            {
-                boolValue = b;
-            }
-
-            // 可以反转逻辑
-            // string stringParameter = parameter as string;
-            // if (!string.IsNullOrEmpty(stringParameter) && stringParameter.ToLowerInvariant() == "inverse")
-            // {
-            //     boolValue = !boolValue;
-            // }
-
+            if (value is bool b) boolValue = b;
             return boolValue ? Visibility.Visible : Visibility.Collapsed;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is Visibility visibility)
-            {
+            if (value is Visibility visibility) 
                 return visibility == Visibility.Visible;
-            }
             return false;
         }
     }

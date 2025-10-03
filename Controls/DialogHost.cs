@@ -16,62 +16,54 @@ using MaterialDialogHost = MaterialDesignThemes.Wpf.DialogHost;
 namespace SNIBypassGUI.Controls
 {
     /// <summary>
-    /// A high-performance custom dialog host that enhances the <see cref="MaterialDesignThemes.Wpf.DialogHost"/>.
-    /// It implements a novel screenshot-based blur technique to efficiently handle complex backgrounds,
-    /// while also providing fully customizable animations and overlay opacity.
+    /// A high-performance and robust custom dialog host that enhances the <see cref="MaterialDesignThemes.Wpf.DialogHost"/>.
+    /// It implements a novel screenshot-based blur technique for efficiency, provides fully customizable animations, and ensures predictable behavior in complex UI scenarios.
     /// </summary>
     /// <remarks>
-    /// <para>This control was created to solve two primary limitations of the standard MaterialDesignInXAML DialogHost:</para>
+    /// <para>This control was created to provide enhanced performance and address certain design limitations of the standard MaterialDesignInXAML DialogHost:</para>
     /// <list type="number">
-    /// <item><description>Performance issues when applying a <c>BlurEffect</c> to a background with many UI elements.</description></item>
-    /// <item><description>The hardcoded semi-transparent overlay, which could not be made fully opaque.</description></item>
+    /// <item><description>Performance degradation when applying a live <c>BlurEffect</c> to a visually complex background.</description></item>
+    /// <item><description>The hardcoded semi-transparent overlay, which limited design choices for opaque backgrounds.</description></item>
+    /// <item><description>Lack of built-in synchronization for rapid, sequential dialog presentations, which could lead to visual inconsistencies.</description></item>
     /// </list>
     /// 
-    /// <para><b>Features:</b></para>
+    /// <para><b>Key Features:</b></para>
     /// <list type="bullet">
     /// <item>
     /// <description>
-    /// <b>High-Performance Blur:</b> Efficiently applies a background blur without performance degradation. 
-    /// It achieves this by taking a static snapshot of the UI element specified via the <see cref="BlurTarget"/> property,
-    /// blurring the resulting image, and then displaying it as the background. This avoids the heavy cost of real-time blurring on a complex visual tree.
+    /// <b>High-Performance Blur:</b> Applies a background blur efficiently by taking a static snapshot of the <see cref="BlurTarget"/> element. This avoids the heavy performance cost of real-time blurring on a complex visual tree.
     /// </description>
     /// </item>
     /// <item>
     /// <description>
-    /// <b>Customizable Animations:</b> Offers full control over the open/close animation speed for the dialog, 
-    /// overlay, and blur effect via the <see cref="AnimationDuration"/> property.
+    /// <b>Customizable Animations:</b> Offers full control over the open/close animation speed for the dialog, overlay, and blur effect via the <see cref="AnimationDuration"/> property.
     /// </description>
     /// </item>
     /// <item>
     /// <description>
-    /// <b>Opaque Overlay Support:</b> Overrides the default Material Design style to allow for fully opaque 
-    /// <see cref="OverlayBackground"/> colors, removing the original hardcoded transparency limit.
+    /// <b>Flexible Overlay:</b> Overrides the default Material Design style to allow for fully opaque or custom-styled <see cref="OverlayBackground"/> colors, removing the original hardcoded transparency.
     /// </description>
     /// </item>
     /// <item>
     /// <description>
-    /// <b>Seamless Integration:</b> Designed as a wrapper that mirrors the essential API of the original component,
-    /// including the static <see cref="Show(object, object)"/> method and properties like <see cref="IsOpen"/>,
-    /// ensuring it can serve as a familiar, drop-in replacement.
+    /// <b>Seamless Integration:</b> Designed as a wrapper that mirrors the essential API of the original component, including the static <see cref="Show(object, object)"/> method. It serves as a familiar, drop-in replacement that provides stable and consistent behavior across various use cases.
     /// </description>
     /// </item>
     /// </list>
     /// 
     /// <para>
-    /// <b>Usage:</b> Especially recommended for applications with complex views where a standard <c>BlurEffect</c> 
-    /// would be too resource-intensive. Ideal for creating modern, focused dialogs over busy user interfaces.
+    /// <b>Usage:</b> Recommended for applications with visually rich interfaces where performance is critical, or in scenarios where dialogs may be triggered in quick succession by user actions or application logic.
     /// </para>
     /// <para>
     /// <b>Pro Tip:</b> For the best visual alignment and to prevent rendering artifacts, it is highly recommended to set <c>UseLayoutRounding="True"</c> on the parent <c>Window</c>. This ensures the captured snapshot perfectly overlaps with the underlying UI.
     /// </para>
     /// <para>Copyright (c) 2025 Racpast. All rights reserved.</para>
-    /// </remarks>    [TemplatePart(Name = "PART_DialogHost", Type = typeof(MaterialDialogHost))]
+    /// </remarks>
+    [TemplatePart(Name = "PART_DialogHost", Type = typeof(MaterialDialogHost))]
     [TemplatePart(Name = "PART_BlurImage", Type = typeof(Image))]
     public class DialogHost : ContentControl
     {
         #region Fields & Constants
-        private static readonly HashSet<WeakReference<DialogHost>> LoadedInstances = [];
-
         /// <summary>
         /// The base duration of the animations defined in the XAML control template.
         /// This value MUST match the KeyTime in the Storyboard.
@@ -82,10 +74,15 @@ namespace SNIBypassGUI.Controls
         /// </remarks>
         private static readonly TimeSpan StoryboardBaseDuration = TimeSpan.FromSeconds(0.3);
 
-        private MaterialDialogHost _internalDialogHost;
+        private static readonly HashSet<WeakReference<DialogHost>> LoadedInstances = [];
+
+        private static readonly Dictionary<object, SemaphoreSlim> DialogLocks = [];
+        private static readonly object LocksDictionarySync = new();
+
         private Image _blurImage;
-        private bool _isAnimating;
-        private CancellationTokenSource _animationCts;
+        private MaterialDialogHost _internalDialogHost;
+
+        private Task _closingAnimationTask = Task.CompletedTask;
         #endregion
 
         #region Dependency Properties
@@ -164,11 +161,36 @@ namespace SNIBypassGUI.Controls
         #endregion
 
         #region Static Helpers
+        private static SemaphoreSlim GetOrCreateLock(object identifier)
+        {
+            lock (LocksDictionarySync)
+            {
+                if (!DialogLocks.TryGetValue(identifier, out var dialogLock))
+                {
+                    dialogLock = new SemaphoreSlim(1, 1);
+                    DialogLocks[identifier] = dialogLock;
+                }
+                return dialogLock;
+            }
+        }
+
         public static async Task<object> Show(object content, object dialogIdentifier)
         {
             if (content == null) throw new ArgumentNullException(nameof(content));
-            var instance = GetInstance(dialogIdentifier);
-            return await instance.ShowDialog(content);
+            if (dialogIdentifier == null) throw new ArgumentNullException(nameof(dialogIdentifier));
+
+            var dialogLock = GetOrCreateLock(dialogIdentifier);
+            await dialogLock.WaitAsync();
+
+            try
+            {
+                var instance = GetInstance(dialogIdentifier);
+                return await instance.ShowDialog(content);
+            }
+            finally
+            {
+                dialogLock.Release();
+            }
         }
 
         private static void AddInstance(DialogHost instance) =>
@@ -229,14 +251,19 @@ namespace SNIBypassGUI.Controls
             if (BlurTarget is not FrameworkElement target || BlurRadius <= 0)
                 return await MaterialDialogHost.Show(content, _internalDialogHost.Identifier);
 
+            void onClosing(object s, DialogClosingEventArgs e) => _closingAnimationTask = AnimateOutAsync(target);
             void onOpened(object s, DialogOpenedEventArgs e) => _ = AnimateInAsync(target);
-            void onClosing(object s, DialogClosingEventArgs e) => _ = AnimateOutAsync(target);
 
             try
             {
                 _internalDialogHost.DialogOpened += onOpened;
                 _internalDialogHost.DialogClosing += onClosing;
-                return await MaterialDialogHost.Show(content, _internalDialogHost.Identifier);
+
+                var result = await MaterialDialogHost.Show(content, _internalDialogHost.Identifier);
+
+                await _closingAnimationTask;
+
+                return result;
             }
             finally
             {
@@ -284,78 +311,50 @@ namespace SNIBypassGUI.Controls
         #region Blur Animation
         private async Task AnimateInAsync(FrameworkElement target)
         {
-            if (_isAnimating) return;
-            _isAnimating = true;
+            await Application.Current.Dispatcher.InvokeAsync(target.UpdateLayout, DispatcherPriority.Render);
 
-            try
-            {
-                _animationCts?.Cancel();
-                _animationCts = new CancellationTokenSource();
-                await Application.Current.Dispatcher.InvokeAsync(target.UpdateLayout, DispatcherPriority.Render);
+            int width = (int)Math.Max(1, Math.Round(target.ActualWidth));
+            int height = (int)Math.Max(1, Math.Round(target.ActualHeight));
 
-                int width = (int)Math.Max(1, Math.Round(target.ActualWidth));
-                int height = (int)Math.Max(1, Math.Round(target.ActualHeight));
+            var bmp = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bmp.Render(target);
+            _blurImage.Source = bmp;
+            _blurImage.Effect = new BlurEffect { Radius = BlurRadius };
+            _blurImage.Opacity = 0;
+            _blurImage.Visibility = Visibility.Visible;
 
-                var bmp = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-                bmp.Render(target);
-                _blurImage.Source = bmp;
-                _blurImage.Effect = new BlurEffect { Radius = BlurRadius };
-                _blurImage.Opacity = 0;
-                _blurImage.Visibility = Visibility.Visible;
+            target.Opacity = 1;
+            target.Visibility = Visibility.Visible;
 
-                target.Opacity = 1;
-                target.Visibility = Visibility.Visible;
+            var animDuration = new Duration(AnimationDuration);
+            var blurAnim = new DoubleAnimation(0, 1, animDuration) { EasingFunction = new QuadraticEase() };
+            var targetAnim = new DoubleAnimation(1, 0, animDuration) { EasingFunction = new QuadraticEase() };
 
-                var animDuration = new Duration(AnimationDuration);
-                var blurAnim = new DoubleAnimation(0, 1, animDuration) { EasingFunction = new QuadraticEase() };
-                var targetAnim = new DoubleAnimation(1, 0, animDuration) { EasingFunction = new QuadraticEase() };
+            _blurImage.BeginAnimation(OpacityProperty, blurAnim);
+            target.BeginAnimation(OpacityProperty, targetAnim);
 
-                _blurImage.BeginAnimation(OpacityProperty, blurAnim);
-                target.BeginAnimation(OpacityProperty, targetAnim);
-
-                await Task.Delay(AnimationDuration, _animationCts.Token);
-                target.Visibility = Visibility.Hidden;
-            }
-            catch (OperationCanceledException)
-            {
-                target.BeginAnimation(OpacityProperty, null);
-                _blurImage.BeginAnimation(OpacityProperty, null);
-                target.Opacity = 1;
-                _blurImage.Opacity = 0;
-            }
-            finally
-            {
-                _isAnimating = false;
-            }
+            await Task.Delay(AnimationDuration);
+            target.Visibility = Visibility.Hidden;
         }
 
         private async Task AnimateOutAsync(FrameworkElement target)
         {
-            _animationCts?.Cancel();
-            _isAnimating = true;
+            target.Visibility = Visibility.Visible;
+            _blurImage.Visibility = Visibility.Visible;
 
-            try
-            {
-                target.Visibility = Visibility.Visible;
-                _blurImage.Visibility = Visibility.Visible;
+            var animDuration = new Duration(AnimationDuration);
+            var blurAnim = new DoubleAnimation(1, 0, animDuration) { EasingFunction = new QuadraticEase() };
+            var targetAnim = new DoubleAnimation(0, 1, animDuration) { EasingFunction = new QuadraticEase() };
 
-                var animDuration = new Duration(AnimationDuration);
-                var blurAnim = new DoubleAnimation(_blurImage.Opacity, 0, animDuration) { EasingFunction = new QuadraticEase() };
-                var targetAnim = new DoubleAnimation(target.Opacity, 1, animDuration) { EasingFunction = new QuadraticEase() };
+            _blurImage.BeginAnimation(OpacityProperty, blurAnim);
+            target.BeginAnimation(OpacityProperty, targetAnim);
 
-                _blurImage.BeginAnimation(OpacityProperty, blurAnim);
-                target.BeginAnimation(OpacityProperty, targetAnim);
+            await Task.Delay(AnimationDuration);
 
-                await Task.Delay(AnimationDuration);
-                _blurImage.Visibility = Visibility.Collapsed;
-                _blurImage.Source = null;
-                target.BeginAnimation(OpacityProperty, null);
-                target.Opacity = 1;
-            }
-            finally
-            {
-                _isAnimating = false;
-            }
+            _blurImage.Visibility = Visibility.Collapsed;
+            _blurImage.Source = null;
+            target.BeginAnimation(OpacityProperty, null);
+            target.Opacity = 1;
         }
         #endregion
     }

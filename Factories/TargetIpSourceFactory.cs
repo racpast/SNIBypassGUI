@@ -13,10 +13,10 @@ namespace SNIBypassGUI.Factories
         {
             return new TargetIpSource
             {
-                Address = string.Empty,
+                Addresses = [],
                 SourceType = IpAddressSourceType.Static,
                 IpAddressType = IpAddressType.IPv4Only,
-                QueryDomain = string.Empty,
+                QueryDomains = [],
                 ResolverId = null,
                 EnableFallbackAutoUpdate = true,
                 FallbackIpAddresses = []

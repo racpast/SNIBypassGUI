@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Threading;
 using SNIBypassGUI.Services;
-using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Common.LogManager;
 
 namespace SNIBypassGUI.Behaviors
 {

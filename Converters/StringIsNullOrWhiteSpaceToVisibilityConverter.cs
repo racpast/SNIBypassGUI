@@ -11,6 +11,6 @@ namespace SNIBypassGUI.Converters
             string.IsNullOrWhiteSpace(value as string) ? Visibility.Visible : Visibility.Collapsed;
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
-            new NotSupportedException();
+            throw new NotSupportedException();
     }
 }
