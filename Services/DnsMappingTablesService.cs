@@ -7,17 +7,17 @@ using System.Threading.Tasks;
 using System.Windows;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using SNIBypassGUI.Interfaces;
-using SNIBypassGUI.Models;
 using SNIBypassGUI.Common.Cryptography;
 using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Interfaces;
+using SNIBypassGUI.Models;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.PathConsts;
 using static SNIBypassGUI.Common.LogManager;
 
 namespace SNIBypassGUI.Services
 {
-    public class DnsMappingTablesService(IConfigsRepository<DnsMappingTable> repository, IFactory<DnsMappingTable> factory, IConfigSetService<ResolverConfig> resolverService) : IConfigSetService<DnsMappingTable>
+    public class DnsMappingTablesService(IConfigsRepository<DnsMappingTable> repository, IFactory<DnsMappingTable> factory, IMapper<DnsMappingTable> tableMapper, IMapper<ResolverConfig> resolverMapper, IConfigSetService<ResolverConfig> resolverService) : IConfigSetService<DnsMappingTable>
     {
         /// <summary>
         /// 所有映射表的集合。
@@ -145,7 +145,7 @@ namespace SNIBypassGUI.Services
                 {
                     foreach (var resolverObj in resolversJArray.OfType<JObject>())
                     {
-                        var resolverResult = ResolverConfig.FromJObject(resolverObj);
+                        var resolverResult = resolverMapper.FromJObject(resolverObj);
                         if (!resolverResult.IsSuccess)
                         {
                             WriteLog($"解析关联解析器时出错：{resolverResult.ErrorMessage}", LogLevel.Warning);
@@ -167,8 +167,8 @@ namespace SNIBypassGUI.Services
                         if (existingResolver != null)
                         {
                             // 使用 JToken.DeepEquals 进行深度比较
-                            var existingJObject = existingResolver.ToJObject();
-                            var importedJObject = importedResolver.ToJObject();
+                            var existingJObject = resolverMapper.ToJObject(existingResolver);
+                            var importedJObject = resolverMapper.ToJObject(importedResolver);
 
                             if (!JToken.DeepEquals(existingJObject, importedJObject))
                             {
@@ -197,7 +197,7 @@ namespace SNIBypassGUI.Services
                 }
 
                 // 然后处理映射表
-                var tableResult = DnsMappingTable.FromJObject(mappingTableJObject);
+                var tableResult = tableMapper.FromJObject(mappingTableJObject);
                 if (!tableResult.IsSuccess)
                 {
                     WriteLog($"导入映射表失败，{tableResult.ErrorMessage}", LogLevel.Warning);
@@ -258,8 +258,8 @@ namespace SNIBypassGUI.Services
 
             var exportData = new
             {
-                MappingTable = table.ToJObject(),
-                Resolvers = associatedResolvers.Select(r => r.ToJObject()).ToArray()
+                MappingTable = tableMapper.ToJObject(table),
+                Resolvers = associatedResolvers.Select(r => resolverMapper.ToJObject(r)).ToArray()
             };
 
             var json = JsonConvert.SerializeObject(exportData, Formatting.None);

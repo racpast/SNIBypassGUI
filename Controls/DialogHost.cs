@@ -83,6 +83,7 @@ namespace SNIBypassGUI.Controls
         private MaterialDialogHost _internalDialogHost;
 
         private Task _closingAnimationTask = Task.CompletedTask;
+        private CancellationTokenSource _animationTokenSource;
         #endregion
 
         #region Dependency Properties
@@ -251,8 +252,13 @@ namespace SNIBypassGUI.Controls
             if (BlurTarget is not FrameworkElement target || BlurRadius <= 0)
                 return await MaterialDialogHost.Show(content, _internalDialogHost.Identifier);
 
+            // 取消任何可能还在运行的旧动画任务
+            _animationTokenSource?.Cancel();
+            _animationTokenSource = new CancellationTokenSource();
+            var token = _animationTokenSource.Token;
+
             void onClosing(object s, DialogClosingEventArgs e) => _closingAnimationTask = AnimateOutAsync(target);
-            void onOpened(object s, DialogOpenedEventArgs e) => _ = AnimateInAsync(target);
+            void onOpened(object s, DialogOpenedEventArgs e) => _ = AnimateInAsync(target, token);
 
             try
             {
@@ -269,6 +275,7 @@ namespace SNIBypassGUI.Controls
             {
                 _internalDialogHost.DialogOpened -= onOpened;
                 _internalDialogHost.DialogClosing -= onClosing;
+                _animationTokenSource?.Cancel(); // 确保最后总是清理干净
             }
         }
         #endregion
@@ -309,7 +316,7 @@ namespace SNIBypassGUI.Controls
         #endregion
 
         #region Blur Animation
-        private async Task AnimateInAsync(FrameworkElement target)
+        private async Task AnimateInAsync(FrameworkElement target, CancellationToken token)
         {
             await Application.Current.Dispatcher.InvokeAsync(target.UpdateLayout, DispatcherPriority.Render);
 
@@ -333,12 +340,25 @@ namespace SNIBypassGUI.Controls
             _blurImage.BeginAnimation(OpacityProperty, blurAnim);
             target.BeginAnimation(OpacityProperty, targetAnim);
 
-            await Task.Delay(AnimationDuration);
+            try
+            {
+                await Task.Delay(AnimationDuration, token);
+            }
+            catch (OperationCanceledException)
+            {
+                // 如果被取消，就说明退出动画接管了，直接返回就好
+                return;
+            }
+
+            // 只有在动画正常完成时，才隐藏目标控件
             target.Visibility = Visibility.Hidden;
         }
 
         private async Task AnimateOutAsync(FrameworkElement target)
         {
+            // 快停下！
+            _animationTokenSource?.Cancel();
+
             target.Visibility = Visibility.Visible;
             _blurImage.Visibility = Visibility.Visible;
 

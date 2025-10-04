@@ -14,7 +14,6 @@ namespace SNIBypassGUI.Factories
             {
                 GroupName = "新映射组",
                 IsEnabled = true,
-                MappingRules = [],
                 GroupIconBase64 = ""
             };
         }

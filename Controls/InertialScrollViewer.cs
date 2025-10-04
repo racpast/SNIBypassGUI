@@ -204,6 +204,8 @@ namespace SNIBypassGUI.Controls
             bool useVertical = (ScrollOrientation == ScrollOrientationMode.Vertical && ScrollableHeight > 0);
             bool useHorizontal = (ScrollOrientation == ScrollOrientationMode.Horizontal && ScrollableWidth > 0);
 
+            bool shouldForward = false;
+
             if (ForwardScrollAtBoundaries)
             {
                 double tolV = ScrollableHeight * BoundaryToleranceRatio;
@@ -214,7 +216,7 @@ namespace SNIBypassGUI.Controls
                 bool nearLeft = DoubleUtil.LessThanOrClose(HorizontalOffset, tolH);
                 bool nearRight = DoubleUtil.GreaterThanOrClose(HorizontalOffset, ScrollableWidth - tolH);
 
-                bool shouldForward =
+                shouldForward =
                     (e.Delta > 0 && (useVertical ? nearTop : nearLeft)) ||
                     (e.Delta < 0 && (useVertical ? nearBottom : nearRight));
 
@@ -223,30 +225,19 @@ namespace SNIBypassGUI.Controls
                     var parent = FindVisualParent<UIElement>(this);
                     if (parent != null)
                     {
-                        if (IsInertiaEnabled && _isAnimating)
-                        {
-                            double boundaryTarget = e.Delta > 0 ? 0
-                                : (ScrollOrientation == ScrollOrientationMode.Vertical ? ScrollableHeight : ScrollableWidth);
-
-                            StartInertialAnimation(_animatingDirection, boundaryTarget, AnimationDuration.TotalMilliseconds * 0.6);
-                        }
-
                         var newEventArgs = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
                         {
                             RoutedEvent = MouseWheelEvent,
                             Source = e.Source
                         };
                         parent.RaiseEvent(newEventArgs);
-                        e.Handled = true;
-                        return;
                     }
                 }
-
             }
 
             if (!IsInertiaEnabled)
             {
-                base.OnMouseWheel(e);
+                if (!e.Handled) base.OnMouseWheel(e);
                 return;
             }
 
@@ -266,7 +257,7 @@ namespace SNIBypassGUI.Controls
                 _targetHorizontalOffset = Clamp(_targetHorizontalOffset + pixelDelta, 0, ScrollableWidth);
                 StartInertialAnimation(ScrollOrientationMode.Horizontal, _targetHorizontalOffset, duration);
             }
-            else base.OnMouseWheel(e);
+            else if (!shouldForward) base.OnMouseWheel(e);
         }
 
         protected override void OnScrollChanged(ScrollChangedEventArgs e)

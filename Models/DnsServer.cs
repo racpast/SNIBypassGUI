@@ -1,14 +1,11 @@
-﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using MaterialDesignThemes.Wpf;
-using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Common;
 using SNIBypassGUI.Common.Extensions;
 using SNIBypassGUI.Common.Network;
-using SNIBypassGUI.Common.Results;
 
 namespace SNIBypassGUI.Models
 {
@@ -29,7 +26,7 @@ namespace SNIBypassGUI.Models
         private string _socks5ProxyAddress;
         private string _socks5ProxyPort;
         private string _domainMatchingRule;
-        private ObservableCollection<string> _limitQueryTypes;
+        private ObservableCollection<string> _limitQueryTypes = [];
         private bool _ignoreFailureResponses;
         private bool _ignoreNegativeResponses;
         #endregion
@@ -339,95 +336,6 @@ namespace SNIBypassGUI.Models
             IgnoreFailureResponses = server.IgnoreFailureResponses;
             IgnoreNegativeResponses = server.IgnoreNegativeResponses;
             LimitQueryTypes = [.. server.LimitQueryTypes.OrEmpty()];
-        }
-
-        /// <summary>
-        /// 将当前 <see cref="DnsServer"/> 实例转换为 JSON 对象。
-        /// </summary>
-        public JObject ToJObject()
-        {
-            var jObject = new JObject
-            {
-                ["serverAddress"] = ServerAddress.OrDefault(),
-                ["serverPort"] = ServerPort.OrDefault(),
-                ["protocolType"] = ProtocolType.ToString(),
-                ["domainMatchingRule"] = DomainMatchingRule.OrDefault(),
-                ["limitQueryTypes"] = new JArray(LimitQueryTypes.OrEmpty()),
-                ["ignoreFailureResponses"] = IgnoreFailureResponses,
-                ["ignoreNegativeResponses"] = IgnoreNegativeResponses
-            };
-
-            switch (ProtocolType)
-            {
-                case DnsServerProtocol.DoH:
-                    jObject["dohHostname"] = DohHostname.OrDefault();
-                    jObject["dohQueryPath"] = DohQueryPath.OrDefault();
-                    jObject["dohConnectionType"] = DohConnectionType.ToString();
-                    jObject["dohReuseConnection"] = DohReuseConnection;
-                    jObject["dohUseWinHttp"] = DohUseWinHttp;
-                    break;
-                case DnsServerProtocol.SOCKS5:
-                    jObject["socks5ProxyAddress"] = Socks5ProxyAddress.OrDefault();
-                    jObject["socks5ProxyPort"] = Socks5ProxyPort.OrDefault();
-                    break;
-            }
-
-            return jObject;
-        }
-
-        /// <summary>
-        /// 从 JSON 对象创建一个新的 <see cref="DnsServer"/> 实例。
-        /// </summary>
-        public static ParseResult<DnsServer> FromJObject(JObject jObject)
-        {
-            if (jObject == null)
-                return ParseResult<DnsServer>.Failure("JSON 对象为空。");
-
-            if (!jObject.TryGetString("serverAddress", out string serverAddress) ||
-                !jObject.TryGetString("serverPort", out string serverPort) ||
-                !jObject.TryGetEnum("protocolType", out DnsServerProtocol protocolType) ||
-                !jObject.TryGetBool("ignoreFailureResponses", out bool ignoreFailureResponses) ||
-                !jObject.TryGetBool("ignoreNegativeResponses", out bool ignoreNegativeResponses) ||
-                !jObject.TryGetString("domainMatchingRule", out string domainMatchingRule) ||
-                !jObject.TryGetArray("limitQueryTypes", out IReadOnlyList<string> limitQueryTypes))
-                return ParseResult<DnsServer>.Failure("一个或多个通用字段缺失或类型错误。");
-
-            var server = new DnsServer
-            {
-                ServerAddress = serverAddress,
-                ServerPort = serverPort,
-                ProtocolType = protocolType,
-                IgnoreFailureResponses = ignoreFailureResponses,
-                IgnoreNegativeResponses = ignoreNegativeResponses,
-                DomainMatchingRule = domainMatchingRule,
-                LimitQueryTypes = [.. limitQueryTypes]
-            };
-
-            switch (protocolType)
-            {
-                case DnsServerProtocol.DoH:
-                    if (!jObject.TryGetString("dohHostname", out string dohHostname) ||
-                        !jObject.TryGetString("dohQueryPath", out string dohQueryPath) ||
-                        !jObject.TryGetEnum("dohConnectionType", out DohConnectionType dohConnectionType) ||
-                        !jObject.TryGetBool("dohReuseConnection", out bool dohReuseConnection) ||
-                        !jObject.TryGetBool("dohUseWinHttp", out bool dohUseWinHttp))
-                        return ParseResult<DnsServer>.Failure("DoH 协议所需的字段缺失或类型错误。");
-                    server.DohHostname = dohHostname;
-                    server.DohQueryPath = dohQueryPath;
-                    server.DohConnectionType = dohConnectionType;
-                    server.DohReuseConnection = dohReuseConnection;
-                    server.DohUseWinHttp = dohUseWinHttp;
-                    break;
-                case DnsServerProtocol.SOCKS5:
-                    if (!jObject.TryGetString("socks5ProxyAddress", out string socks5ProxyAddress) ||
-                        !jObject.TryGetString("socks5ProxyPort", out string socks5ProxyPort))
-                        return ParseResult<DnsServer>.Failure("SOCKS5 协议所需的字段缺失或类型错误。");
-                    server.Socks5ProxyAddress = socks5ProxyAddress;
-                    server.Socks5ProxyPort = socks5ProxyPort;
-                    break;
-            }
-
-            return ParseResult<DnsServer>.Success(server);
         }
         #endregion
     }

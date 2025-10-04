@@ -48,40 +48,6 @@ namespace SNIBypassGUI.Models
                 Value = Value
             };
         }
-
-        /// <summary>
-        /// 将当前 <see cref="HttpHeaderItem"/> 实例转换为 JSON 对象。
-        /// </summary>
-        public JObject ToJObject()
-        {
-            var jObject = new JObject
-            {
-                ["name"] = Name.OrDefault(),
-                ["value"] = Value.OrDefault()
-            };
-            return jObject;
-        }
-
-        /// <summary>
-        /// 从 JSON 对象创建一个新的 <see cref="HttpHeaderItem"/> 实例。
-        /// </summary>
-        public static ParseResult<HttpHeaderItem> FromJObject(JObject jObject)
-        {
-            if (jObject == null)
-                return ParseResult<HttpHeaderItem>.Failure("JSON 对象为空。");
-
-            if (!jObject.TryGetString("name", out var name) ||
-                !jObject.TryGetString("value", out var value))
-                return ParseResult<HttpHeaderItem>.Failure("一个或多个通用字段缺失或类型错误。");
-
-            var item = new HttpHeaderItem
-            {
-                Name = name,
-                Value = value
-            };
-
-            return ParseResult<HttpHeaderItem>.Success(item);
-        }
         #endregion
     }
 }

@@ -16,7 +16,6 @@ namespace SNIBypassGUI.Factories
                 Id = Guid.NewGuid(),
                 IsBuiltIn = false,
                 TableName = "新映射表",
-                MappingGroups = []
             };
         }
     }

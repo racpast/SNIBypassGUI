@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Common;
 using SNIBypassGUI.Common.Extensions;
-using SNIBypassGUI.Common.Results;
 using SNIBypassGUI.Interfaces;
 
 namespace SNIBypassGUI.Models
@@ -19,7 +16,7 @@ namespace SNIBypassGUI.Models
         private Guid _id;
         private string _tableName;
         private bool _isBuiltIn;
-        private ObservableCollection<DnsMappingGroup> _mappingGroups;
+        private ObservableCollection<DnsMappingGroup> _mappingGroups = [];
         #endregion
 
         #region Properties
@@ -87,56 +84,6 @@ namespace SNIBypassGUI.Models
             TableName = source.TableName;
             IsBuiltIn = source.IsBuiltIn;
             MappingGroups = [.. source.MappingGroups?.Select(w => w.Clone()).OrEmpty()];
-        }
-
-        /// <summary>
-        /// 将当前 <see cref="DnsMappingTable"/> 实例转换为 JSON 对象。
-        /// </summary>
-        public JObject ToJObject()
-        {
-            var jObject = new JObject
-            {
-                ["id"] = Id.ToString(),
-                ["tableName"] = TableName.OrDefault(),
-                ["isBuiltIn"] = IsBuiltIn,
-                ["mappingGroups"] = new JArray(MappingGroups?.Select(s => s.ToJObject()).OrEmpty())
-            };
-
-            return jObject;
-        }
-
-        /// <summary>
-        /// 从 JSON 对象创建一个新的 <see cref="DnsMappingTable"/> 实例。
-        /// </summary>
-        public static ParseResult<DnsMappingTable> FromJObject(JObject jObject)
-        {
-            if (jObject == null)
-                return ParseResult<DnsMappingTable>.Failure("JSON 对象为空。");
-
-            if (!jObject.TryGetGuid("id", out Guid id) ||
-                !jObject.TryGetString("tableName", out string tableName) ||
-                !jObject.TryGetBool("isBuiltIn", out bool isBuiltIn) ||
-                !jObject.TryGetArray("mappingGroups", out IReadOnlyList<JObject> mappingGroupObjects))
-                return ParseResult<DnsMappingTable>.Failure("一个或多个通用字段缺失或类型错误。");
-
-            ObservableCollection<DnsMappingGroup> mappingGroups = [];
-            foreach (var item in mappingGroupObjects.OfType<JObject>())
-            {
-                var parsed = DnsMappingGroup.FromJObject(item);
-                if (!parsed.IsSuccess)
-                    return ParseResult<DnsMappingTable>.Failure($"解析 mappingGroups 时出错：{parsed.ErrorMessage}");
-                mappingGroups.Add(parsed.Value);
-            }
-
-            var table = new DnsMappingTable
-            {
-                Id = id,
-                TableName = tableName,
-                IsBuiltIn = isBuiltIn,
-                MappingGroups = mappingGroups
-            };
-
-            return ParseResult<DnsMappingTable>.Success(table);
         }
         #endregion
     }

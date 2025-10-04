@@ -6,17 +6,17 @@ using System.Threading.Tasks;
 using System.Windows;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using SNIBypassGUI.Models;
-using SNIBypassGUI.Interfaces;
 using SNIBypassGUI.Common.Cryptography;
 using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Interfaces;
+using SNIBypassGUI.Models;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.PathConsts;
 using static SNIBypassGUI.Common.LogManager;
 
 namespace SNIBypassGUI.Services
 {
-    public class DnsConfigService(IConfigsRepository<DnsConfig> repository, IFactory<DnsConfig> factory) : IConfigSetService<DnsConfig>
+    public class DnsConfigService(IConfigsRepository<DnsConfig> repository, IFactory<DnsConfig> factory, IMapper<DnsConfig> mapper) : IConfigSetService<DnsConfig>
     {
         /// <summary>
         /// 所有 DNS 配置的集合。
@@ -129,7 +129,7 @@ namespace SNIBypassGUI.Services
                 var json = Encoding.UTF8.GetString(jsonBytes);
 
                 var jObject = JObject.Parse(json);
-                var result = DnsConfig.FromJObject(jObject);
+                var result = mapper.FromJObject(jObject);
 
                 if (result.IsSuccess)
                 {
@@ -160,7 +160,7 @@ namespace SNIBypassGUI.Services
                 string.IsNullOrWhiteSpace(destinationPath))
                 return;
 
-            var json = config.ToJObject().ToString(Formatting.None);
+            var json = mapper.ToJObject(config).ToString(Formatting.None);
             var jsonBytes = Encoding.UTF8.GetBytes(json);
 
             var random = new Random();

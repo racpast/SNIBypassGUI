@@ -32,7 +32,9 @@ namespace SNIBypassGUI.ViewModels.Items
                 return Model.TargetSources.Any(source =>
                 {
                     if (source.SourceType == IpAddressSourceType.Static)
-                        return NetworkUtils.RequiresPublicIPv6(source.Address);
+                        foreach (var ip in source.Addresses)
+                            if (NetworkUtils.RequiresPublicIPv6(ip))
+                                return true;
 
                     if (source.SourceType != IpAddressSourceType.Dynamic) return false;
 

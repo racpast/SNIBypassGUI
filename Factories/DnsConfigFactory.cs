@@ -16,7 +16,6 @@ namespace SNIBypassGUI.Factories
                 Id = Guid.NewGuid(),
                 ConfigName = "新 DNS 配置",
                 IsBuiltIn = false,
-                DnsServers = [],
                 InterceptIpv6Queries = false,
                 ForwardPrivateReverseLookups = false,
                 PositiveResponseCacheTime = "240",

@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using MaterialDesignThemes.Wpf;
-using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Common;
 using SNIBypassGUI.Common.Extensions;
-using SNIBypassGUI.Common.Results;
 using SNIBypassGUI.Interfaces;
 
 namespace SNIBypassGUI.Models
@@ -28,7 +25,7 @@ namespace SNIBypassGUI.Models
         private string _silentCacheUpdateTime;
         private string _cacheAutoCleanupTime;
         private string _cacheDomainMatchingRule;
-        private ObservableCollection<string> _limitQueryTypesCache;
+        private ObservableCollection<string> _limitQueryTypesCache = [];
         private bool _useMemoryCacheOnly;
         private bool _disableAddressCache;
         private string _localIpv4BindingAddress;
@@ -43,10 +40,10 @@ namespace SNIBypassGUI.Models
         private string _socks5ResponseTimeout;
         private string _socks5FirstByteTimeout;
         private string _socks5OtherByteTimeout;
-        private ObservableCollection<string> _logEvents;
+        private ObservableCollection<string> _logEvents = [];
         private bool _enableFullLogDump;
         private string _logMemoryBufferSize;
-        private ObservableCollection<DnsServer> _dnsServers;
+        private ObservableCollection<DnsServer> _dnsServers = [];
         #endregion
 
         #region Properties
@@ -305,134 +302,6 @@ namespace SNIBypassGUI.Models
             EnableFullLogDump = source.EnableFullLogDump;
             LogMemoryBufferSize = source.LogMemoryBufferSize;
             DnsServers = [.. source.DnsServers?.Select(w => w.Clone()).OrEmpty()];
-        }
-
-        /// <summary>
-        /// 将当前 <see cref="DnsConfig"/> 实例转换为 JSON 对象。
-        /// </summary>
-        public JObject ToJObject()
-        {
-            var jObject = new JObject
-            {
-                ["id"] = Id.ToString(),
-                ["configName"] = ConfigName.OrDefault(),
-                ["isBuiltIn"] = IsBuiltIn,
-                ["interceptIpv6Queries"] = InterceptIpv6Queries,
-                ["forwardPrivateReverseLookups"] = ForwardPrivateReverseLookups,
-                ["positiveResponseCacheTime"] = PositiveResponseCacheTime.OrDefault(),
-                ["negativeResponseCacheTime"] = NegativeResponseCacheTime.OrDefault(),
-                ["failedResponseCacheTime"] = FailedResponseCacheTime.OrDefault(),
-                ["silentCacheUpdateTime"] = SilentCacheUpdateTime.OrDefault(),
-                ["cacheAutoCleanupTime"] = CacheAutoCleanupTime.OrDefault(),
-                ["cacheDomainMatchingRule"] = CacheDomainMatchingRule.OrDefault(),
-                ["limitQueryTypesCache"] = new JArray(LimitQueryTypesCache.OrEmpty()),
-                ["useMemoryCacheOnly"] = UseMemoryCacheOnly,
-                ["disableAddressCache"] = DisableAddressCache,
-                ["localIpv4BindingAddress"] = LocalIpv4BindingAddress.OrDefault(),
-                ["localIpv4BindingPort"] = LocalIpv4BindingPort.OrDefault(),
-                ["localIpv6BindingAddress"] = LocalIpv6BindingAddress.OrDefault(),
-                ["localIpv6BindingPort"] = LocalIpv6BindingPort.OrDefault(),
-                ["generatedResponseTtl"] = GeneratedResponseTtl.OrDefault(),
-                ["udpResponseTimeout"] = UdpResponseTimeout.OrDefault(),
-                ["tcpFirstByteTimeout"] = TcpFirstByteTimeout.OrDefault(),
-                ["tcpInternalTimeout"] = TcpInternalTimeout.OrDefault(),
-                ["socks5ConnectTimeout"] = Socks5ConnectTimeout.OrDefault(),
-                ["socks5ResponseTimeout"] = Socks5ResponseTimeout.OrDefault(),
-                ["socks5FirstByteTimeout"] = Socks5FirstByteTimeout.OrDefault(),
-                ["socks5OtherByteTimeout"] = Socks5OtherByteTimeout.OrDefault(),
-                ["logEvents"] = new JArray(LogEvents.OrEmpty()),
-                ["enableFullLogDump"] = EnableFullLogDump,
-                ["logMemoryBufferSize"] = LogMemoryBufferSize.OrDefault(),
-                ["dnsServers"] = new JArray(DnsServers?.Select(s => s.ToJObject()).OrEmpty())
-            };
-
-            return jObject;
-        }
-
-        /// <summary>
-        /// 从 JSON 对象创建一个新的 <see cref="DnsConfig"/> 实例。
-        /// </summary>
-        public static ParseResult<DnsConfig> FromJObject(JObject jObject)
-        {
-            if (jObject == null)
-                return ParseResult<DnsConfig>.Failure("JSON 对象为空。");
-
-            if (!jObject.TryGetGuid("id", out Guid id) ||
-                !jObject.TryGetString("configName", out string configName) ||
-                !jObject.TryGetBool("isBuiltIn", out bool isBuiltIn) ||
-                !jObject.TryGetBool("interceptIpv6Queries", out bool interceptIpv6Queries) ||
-                !jObject.TryGetBool("forwardPrivateReverseLookups", out bool forwardPrivateReverseLookups) ||
-                !jObject.TryGetString("positiveResponseCacheTime", out string positiveResponseCacheTime) ||
-                !jObject.TryGetString("negativeResponseCacheTime", out string negativeResponseCacheTime) ||
-                !jObject.TryGetString("failedResponseCacheTime", out string failedResponseCacheTime) ||
-                !jObject.TryGetString("silentCacheUpdateTime", out string silentCacheUpdateTime) ||
-                !jObject.TryGetString("cacheAutoCleanupTime", out string cacheAutoCleanupTime) ||
-                !jObject.TryGetString("cacheDomainMatchingRule", out string cacheDomainMatchingRule) ||
-                !jObject.TryGetArray("limitQueryTypesCache", out IReadOnlyList<string> limitQueryTypesCache) ||
-                !jObject.TryGetBool("useMemoryCacheOnly", out bool useMemoryCacheOnly) ||
-                !jObject.TryGetBool("disableAddressCache", out bool disableAddressCache) ||
-                !jObject.TryGetString("localIpv4BindingAddress", out string localIpv4BindingAddress) ||
-                !jObject.TryGetString("localIpv4BindingPort", out string localIpv4BindingPort) ||
-                !jObject.TryGetString("localIpv6BindingAddress", out string localIpv6BindingAddress) ||
-                !jObject.TryGetString("localIpv6BindingPort", out string localIpv6BindingPort) ||
-                !jObject.TryGetString("generatedResponseTtl", out string generatedResponseTtl) ||
-                !jObject.TryGetString("udpResponseTimeout", out string udpResponseTimeout) ||
-                !jObject.TryGetString("tcpFirstByteTimeout", out string tcpFirstByteTimeout) ||
-                !jObject.TryGetString("tcpInternalTimeout", out string tcpInternalTimeout) ||
-                !jObject.TryGetString("socks5ConnectTimeout", out string socks5ConnectTimeout) ||
-                !jObject.TryGetString("socks5ResponseTimeout", out string socks5ResponseTimeout) ||
-                !jObject.TryGetString("socks5FirstByteTimeout", out string socks5FirstByteTimeout) ||
-                !jObject.TryGetString("socks5OtherByteTimeout", out string socks5OtherByteTimeout) ||
-                !jObject.TryGetArray("logEvents", out IReadOnlyList<string> logEvents) ||
-                !jObject.TryGetBool("enableFullLogDump", out bool enableFullLogDump) ||
-                !jObject.TryGetString("logMemoryBufferSize", out string logMemoryBufferSize) ||
-                !jObject.TryGetArray("dnsServers", out IReadOnlyList<JObject> dnsServerObjects))
-                return ParseResult<DnsConfig>.Failure("一个或多个通用字段缺失或类型错误。");
-
-            ObservableCollection<DnsServer> dnsServers = [];
-            foreach (var item in dnsServerObjects.OfType<JObject>())
-            {
-                var parsed = DnsServer.FromJObject(item);
-                if (!parsed.IsSuccess)
-                    return ParseResult<DnsConfig>.Failure($"解析 dnsServers 时出错：{parsed.ErrorMessage}");
-                dnsServers.Add(parsed.Value);
-            }
-
-            var config = new DnsConfig
-            {
-                Id = id,
-                ConfigName = configName,
-                IsBuiltIn = isBuiltIn,
-                InterceptIpv6Queries = interceptIpv6Queries,
-                ForwardPrivateReverseLookups = forwardPrivateReverseLookups,
-                PositiveResponseCacheTime = positiveResponseCacheTime,
-                NegativeResponseCacheTime = negativeResponseCacheTime,
-                FailedResponseCacheTime = failedResponseCacheTime,
-                SilentCacheUpdateTime = silentCacheUpdateTime,
-                CacheAutoCleanupTime = cacheAutoCleanupTime,
-                CacheDomainMatchingRule = cacheDomainMatchingRule,
-                LimitQueryTypesCache = [.. limitQueryTypesCache],
-                UseMemoryCacheOnly = useMemoryCacheOnly,
-                DisableAddressCache = disableAddressCache,
-                LocalIpv4BindingAddress = localIpv4BindingAddress,
-                LocalIpv4BindingPort = localIpv4BindingPort,
-                LocalIpv6BindingAddress = localIpv6BindingAddress,
-                LocalIpv6BindingPort = localIpv6BindingPort,
-                GeneratedResponseTtl = generatedResponseTtl,
-                UdpResponseTimeout = udpResponseTimeout,
-                TcpFirstByteTimeout = tcpFirstByteTimeout,
-                TcpInternalTimeout = tcpInternalTimeout,
-                Socks5ConnectTimeout = socks5ConnectTimeout,
-                Socks5ResponseTimeout = socks5ResponseTimeout,
-                Socks5FirstByteTimeout = socks5FirstByteTimeout,
-                Socks5OtherByteTimeout = socks5OtherByteTimeout,
-                LogEvents = [.. logEvents],
-                EnableFullLogDump = enableFullLogDump,
-                LogMemoryBufferSize = logMemoryBufferSize,
-                DnsServers = dnsServers
-            };
-
-            return ParseResult<DnsConfig>.Success(config);
         }
         #endregion
     }

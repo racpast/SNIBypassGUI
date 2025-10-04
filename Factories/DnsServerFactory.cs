@@ -18,7 +18,6 @@ namespace SNIBypassGUI.Factories
                 ServerPort = string.Empty,
                 ProtocolType = DnsServerProtocol.UDP,
                 DomainMatchingRule = string.Empty,
-                LimitQueryTypes = [],
                 IgnoreFailureResponses = false,
                 IgnoreNegativeResponses = false
             };
