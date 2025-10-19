@@ -35,30 +35,37 @@ namespace SNIBypassGUI.Common.Mapper
             if (jObject == null)
                 return ParseResult<DnsMappingGroup>.Failure("JSON 对象为空。");
 
-            if (!jObject.TryGetString("groupName", out string groupName) ||
-                !jObject.TryGetString("groupIcon", out string groupIconBase64) ||
-                !jObject.TryGetBool("isEnabled", out bool isEnabled) ||
-                !jObject.TryGetArray("mappingRules", out IReadOnlyList<JObject> mappingRuleObjects))
-                return ParseResult<DnsMappingGroup>.Failure("一个或多个通用字段缺失或类型错误。");
-
-            ObservableCollection<DnsMappingRule> mappingRules = [];
-            foreach (var item in mappingRuleObjects.OfType<JObject>())
+            try
             {
-                var parsed = dnsMappingRuleMapper.FromJObject(item);
-                if (!parsed.IsSuccess)
-                    return ParseResult<DnsMappingGroup>.Failure($"解析 mappingRules 时出错：{parsed.ErrorMessage}");
-                mappingRules.Add(parsed.Value);
+                if (!jObject.TryGetString("groupName", out string groupName) ||
+                    !jObject.TryGetString("groupIcon", out string groupIconBase64) ||
+                    !jObject.TryGetBool("isEnabled", out bool isEnabled) ||
+                    !jObject.TryGetArray("mappingRules", out IReadOnlyList<JObject> mappingRuleObjects))
+                    return ParseResult<DnsMappingGroup>.Failure("一个或多个通用字段缺失或类型错误。");
+
+                ObservableCollection<DnsMappingRule> mappingRules = [];
+                foreach (var item in mappingRuleObjects.OfType<JObject>())
+                {
+                    var parsed = dnsMappingRuleMapper.FromJObject(item);
+                    if (!parsed.IsSuccess)
+                        return ParseResult<DnsMappingGroup>.Failure($"解析 mappingRules 时遇到异常：{parsed.ErrorMessage}");
+                    mappingRules.Add(parsed.Value);
+                }
+
+                var group = new DnsMappingGroup
+                {
+                    GroupName = groupName,
+                    GroupIconBase64 = groupIconBase64,
+                    IsEnabled = isEnabled,
+                    MappingRules = mappingRules
+                };
+
+                return ParseResult<DnsMappingGroup>.Success(group);
             }
-
-            var group = new DnsMappingGroup
+            catch (System.Exception ex)
             {
-                GroupName = groupName,
-                GroupIconBase64 = groupIconBase64,
-                IsEnabled = isEnabled,
-                MappingRules = mappingRules
-            };
-
-            return ParseResult<DnsMappingGroup>.Success(group);
+                return ParseResult<DnsMappingGroup>.Failure($"解析 DnsMappingGroup 时遇到异常：{ex.Message}");
+            }
         }
     }
 }

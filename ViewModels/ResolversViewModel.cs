@@ -26,13 +26,12 @@ using SNIBypassGUI.ViewModels.Items;
 
 namespace SNIBypassGUI.ViewModels
 {
-    public class ResolverConfigsViewModel : NotifyPropertyChangedBase, IDisposable
+    public class ResolversViewModel : NotifyPropertyChangedBase, IDisposable
     {
-        #region Dependencies & Core State
-        #region TLS Constants
+        #region Constants
         private static readonly IReadOnlyList<string> s_tls12CipherSuites =
-[
-    "TLS_RSA_WITH_RC4_128_SHA",
+        [
+            "TLS_RSA_WITH_RC4_128_SHA",
             "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
             "TLS_RSA_WITH_AES_128_CBC_SHA",
             "TLS_RSA_WITH_AES_256_CBC_SHA",
@@ -65,52 +64,53 @@ namespace SNIBypassGUI.ViewModels
         private static readonly IReadOnlyList<string> s_allTlsCurves = ["P256", "P384", "P521", "X25519"];
         #endregion
 
-        #region Dependencies & Core State
-        private readonly IConfigSetService<ResolverConfig> _configService;
+        #region Dependencies & Instance State
+        private readonly IConfigSetService<Resolver> _resolverService;
         private readonly IDialogService _dialogService;
-        private readonly ResolverConfigValidator _configValidator;
+        private readonly ResolverValidator _resolverValidator;
         private EditingState _currentState;
         private bool _isBusy;
         private bool _canExecuteCopy = true;
-        private ResolverConfig _originalConfig;
-        private ResolverConfig _editingConfigCopy;
-        private ResolverConfigViewModel _editingConfigVM;
+        private Resolver _originalResolver;
+        private Resolver _editingResolverCopy;
+        private ResolverViewModel _editingResolverVM;
         private IReadOnlyList<string> _validationErrors;
         private IReadOnlyList<string> _validationWarnings;
         private IReadOnlyList<string> _allPossibleCipherSuites;
-        private readonly ObservableCollection<ResolverConfigViewModel> _allConfigVMs = [];
-        #endregion
+        private readonly ObservableCollection<ResolverViewModel> _allResolverVMs = [];
         #endregion
 
         #region Constructor
-        public ResolverConfigsViewModel(IConfigSetService<ResolverConfig> configService, IDialogService dialogService)
+        public ResolversViewModel(
+            IConfigSetService<Resolver> resolverService, 
+            IDialogService dialogService)
         {
-            _configService = configService;
+            _resolverService = resolverService;
             _dialogService = dialogService;
-            _configValidator = new();
+            _resolverValidator = new();
 
-            AllConfigs = new ReadOnlyObservableCollection<ResolverConfig>(_configService.AllConfigs);
-            AllConfigVMs = new ReadOnlyObservableCollection<ResolverConfigViewModel>(_allConfigVMs);
-            ConfigSelector = new SilentSelector<ResolverConfigViewModel>(HandleUserSelectionChangedAsync);
+            AllResolvers = new ReadOnlyObservableCollection<Resolver>(_resolverService.AllConfigs);
+            AllResolverVMs = new ReadOnlyObservableCollection<ResolverViewModel>(_allResolverVMs);
+            ResolverSelector = new SilentSelector<ResolverViewModel>(HandleUserSelectionChangedAsync);
 
-            CopyLinkCodeCommand = new AsyncCommand<ResolverConfigViewModel>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+            CopyLinkCodeCommand = new AsyncCommand<ResolverViewModel>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
             ImportFromDnsStampCommand = new AsyncCommand(ExecuteImportFromDnsStampAsync, CanExecuteWhenNotBusy);
 
-            AddNewConfigCommand = new AsyncCommand(ExecuteAddNewConfigAsync, CanExecuteWhenNotBusy);
-            DuplicateConfigCommand = new AsyncCommand(ExecuteDuplicateConfigAsync, CanExecuteDuplicateConfig);
-            DeleteConfigCommand = new AsyncCommand(ExecuteDeleteConfigAsync, CanExecuteOnEditableConfig);
-            RenameConfigCommand = new AsyncCommand(ExecuteRenameConfigAsync, CanExecuteOnEditableConfig);
-            ImportConfigCommand = new AsyncCommand(ExecuteImportConfigAsync, CanExecuteWhenNotBusy);
-            ExportConfigCommand = new AsyncCommand(ExecuteExportConfigAsync, CanExecuteExport);
+            AddNewResolverCommand = new AsyncCommand(ExecuteAddNewResolverAsync, CanExecuteWhenNotBusy);
+            DuplicateResolverCommand = new AsyncCommand(ExecuteDuplicateResolverAsync, CanExecuteDuplicateResolver);
+            DeleteResolverCommand = new AsyncCommand(ExecuteDeleteResolverAsync, CanExecuteOnEditableResolver);
+            RenameResolverCommand = new AsyncCommand(ExecuteRenameResolverAsync, CanExecuteOnEditableResolver);
+            ImportResolverCommand = new AsyncCommand(ExecuteImportResolverAsync, CanExecuteWhenNotBusy);
+            ExportResolverCommand = new AsyncCommand(ExecuteExportResolverAsync, CanExecuteExport);
 
             SaveChangesCommand = new AsyncCommand(ExecuteSaveChangesAsync, CanExecuteSave);
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, CanExecuteWhenDirty);
 
-            EditHeaderNameCommand = new AsyncCommand<HttpHeaderItem>(ExecuteEditHeaderNameAsync, CanExecuteWhenNotBusy);
-            EditHeaderValueCommand = new AsyncCommand<HttpHeaderItem>(ExecuteEditHeaderValueAsync, CanExecuteWhenNotBusy);
-            MoveHeaderUpCommand = new RelayCommand<HttpHeaderItem>(ExecuteMoveHeaderUp, CanExecuteMoveHeaderUp);
-            MoveHeaderDownCommand = new RelayCommand<HttpHeaderItem>(ExecuteMoveHeaderDown, CanExecuteMoveHeaderDown);
-            DeleteHeaderCommand = new RelayCommand<HttpHeaderItem>(ExecuteDeleteHeader, CanExecuteWhenNotBusy);
+            EditHeaderNameCommand = new AsyncCommand<HttpHeader>(ExecuteEditHeaderNameAsync, CanExecuteWhenNotBusy);
+            EditHeaderValueCommand = new AsyncCommand<HttpHeader>(ExecuteEditHeaderValueAsync, CanExecuteWhenNotBusy);
+            MoveHeaderUpCommand = new RelayCommand<HttpHeader>(ExecuteMoveHeaderUp, CanExecuteMoveHeaderUp);
+            MoveHeaderDownCommand = new RelayCommand<HttpHeader>(ExecuteMoveHeaderDown, CanExecuteMoveHeaderDown);
+            DeleteHeaderCommand = new RelayCommand<HttpHeader>(ExecuteDeleteHeader, CanExecuteWhenNotBusy);
             AddHeaderCommand = new AsyncCommand(ExecuteAddHeaderAsync, CanExecuteWhenNotBusy);
             DeleteAllHeadersCommand = new AsyncCommand(ExecuteDeleteAllHeadersAsync, CanExecuteDeleteAllHeaders);
 
@@ -127,43 +127,43 @@ namespace SNIBypassGUI.ViewModels
             SelectClientKeyCommand = new RelayCommand(ExecuteSelectClientKey, CanExecuteSelectClientKey);
             ClearClientKeyCommand = new RelayCommand(ExecuteClearClientKey, CanExecuteClearClientKey);
 
-            _configService.AllConfigs.CollectionChanged += OnAllConfigsCollectionChanged;
+            _resolverService.AllConfigs.CollectionChanged += OnAllResolversCollectionChanged;
 
-            _configService.LoadData();
-            if (AllConfigVMs.Any()) SwitchToConfig(AllConfigVMs.First());
+            _resolverService.LoadData();
+            if (AllResolverVMs.Any()) SwitchToConfig(AllResolverVMs.First());
         }
         #endregion
 
         #region Public Properties
-        public ReadOnlyObservableCollection<ResolverConfig> AllConfigs { get; }
+        public ReadOnlyObservableCollection<Resolver> AllResolvers { get; }
 
-        public ReadOnlyObservableCollection<ResolverConfigViewModel> AllConfigVMs { get; }
+        public ReadOnlyObservableCollection<ResolverViewModel> AllResolverVMs { get; }
 
-        public ResolverConfigViewModel EditingConfigVM
+        public ResolverViewModel EditingResolverVM
         {
-            get => _editingConfigVM;
-            private set => SetProperty(ref _editingConfigVM, value);
+            get => _editingResolverVM;
+            private set => SetProperty(ref _editingResolverVM, value);
         }
 
-        public ResolverConfig EditingConfigCopy
+        public Resolver EditingResolverCopy
         {
-            get => _editingConfigCopy;
+            get => _editingResolverCopy;
             private set
             {
-                if (_editingConfigCopy != null) StopListeningToChanges(_editingConfigCopy);
+                if (_editingResolverCopy != null) StopListeningToChanges(_editingResolverCopy);
 
-                if (SetProperty(ref _editingConfigCopy, value))
+                if (SetProperty(ref _editingResolverCopy, value))
                 {
-                    EditingConfigVM?.Dispose();
+                    EditingResolverVM?.Dispose();
 
-                    if (_editingConfigCopy != null)
+                    if (_editingResolverCopy != null)
                     {
-                        EditingConfigVM = new ResolverConfigViewModel(_editingConfigCopy);
-                        StartListeningToChanges(_editingConfigCopy);
+                        EditingResolverVM = new ResolverViewModel(_editingResolverCopy);
+                        StartListeningToChanges(_editingResolverCopy);
                     }
-                    else EditingConfigVM = null;
+                    else EditingResolverVM = null;
 
-                    OnPropertyChanged(nameof(EditingConfigVM));
+                    OnPropertyChanged(nameof(EditingResolverVM));
                 }
             }
         }
@@ -176,7 +176,7 @@ namespace SNIBypassGUI.ViewModels
 
         public IReadOnlyList<string> AllPossibleTlsCurves => s_allTlsCurves;
 
-        public SilentSelector<ResolverConfigViewModel> ConfigSelector { get; }
+        public SilentSelector<ResolverViewModel> ResolverSelector { get; }
 
         public IReadOnlyList<string> ValidationErrors
         {
@@ -196,12 +196,12 @@ namespace SNIBypassGUI.ViewModels
         #endregion
 
         #region Public Commands
-        public ICommand AddNewConfigCommand { get; }
-        public ICommand DuplicateConfigCommand { get; }
-        public ICommand DeleteConfigCommand { get; }
-        public ICommand RenameConfigCommand { get; }
-        public ICommand ImportConfigCommand { get; }
-        public ICommand ExportConfigCommand { get; }
+        public ICommand AddNewResolverCommand { get; }
+        public ICommand DuplicateResolverCommand { get; }
+        public ICommand DeleteResolverCommand { get; }
+        public ICommand RenameResolverCommand { get; }
+        public ICommand ImportResolverCommand { get; }
+        public ICommand ExportResolverCommand { get; }
         public ICommand DiscardChangesCommand { get; }
         public ICommand SaveChangesCommand { get; }
         public ICommand CopyLinkCodeCommand { get; }
@@ -226,7 +226,7 @@ namespace SNIBypassGUI.ViewModels
         #endregion
 
         #region Lifecycle & State Management
-        private async Task HandleUserSelectionChangedAsync(ResolverConfigViewModel newItem, ResolverConfigViewModel oldItem)
+        private async Task HandleUserSelectionChangedAsync(ResolverViewModel newItem, ResolverViewModel oldItem)
         {
             _isBusy = true;
             UpdateCommandStates();
@@ -244,7 +244,7 @@ namespace SNIBypassGUI.ViewModels
                             SwitchToConfig(newItem);
                             break;
                         case SaveChangesResult.Cancel:
-                            ConfigSelector.SetItemSilently(oldItem);
+                            ResolverSelector.SetItemSilently(oldItem);
                             break;
                     }
                 }
@@ -257,26 +257,26 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private void SwitchToConfig(ResolverConfigViewModel newConfigVM)
+        private void SwitchToConfig(ResolverViewModel newConfigVM)
         {
-            ConfigSelector.SetItemSilently(newConfigVM);
+            ResolverSelector.SetItemSilently(newConfigVM);
             ResetToSelectedConfig();
         }
 
         private void ResetToSelectedConfig()
         {
-            _originalConfig = ConfigSelector.SelectedItem?.Model;
-            EditingConfigCopy = _originalConfig?.Clone();
+            _originalResolver = ResolverSelector.SelectedItem?.Model;
+            EditingResolverCopy = _originalResolver?.Clone();
             UpdateAvailableCipherSuites();
             TransitionToState(EditingState.None);
         }
 
         private void EnterCreationMode(string profileName)
         {
-            ConfigSelector.SetItemSilently(null);
-            _originalConfig = null;
-            EditingConfigCopy = _configService.CreateDefault();
-            EditingConfigCopy.ConfigName = profileName;
+            ResolverSelector.SetItemSilently(null);
+            _originalResolver = null;
+            EditingResolverCopy = _resolverService.CreateDefault();
+            EditingResolverCopy.ResolverName = profileName;
             UpdateAvailableCipherSuites();
             TransitionToState(EditingState.Creating);
         }
@@ -290,22 +290,22 @@ namespace SNIBypassGUI.ViewModels
 
         private void UpdateCommandStates()
         {
-            (CopyLinkCodeCommand as AsyncCommand<ResolverConfigViewModel>)?.RaiseCanExecuteChanged();
+            (CopyLinkCodeCommand as AsyncCommand<ResolverViewModel>)?.RaiseCanExecuteChanged();
 
-            (AddNewConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (DuplicateConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (DeleteConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (RenameConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (ImportConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-            (ExportConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (AddNewResolverCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DuplicateResolverCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DeleteResolverCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (RenameResolverCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (ImportResolverCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (ExportResolverCommand as AsyncCommand)?.RaiseCanExecuteChanged();
 
             (ImportFromDnsStampCommand as AsyncCommand)?.RaiseCanExecuteChanged();
 
-            (EditHeaderNameCommand as AsyncCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
-            (EditHeaderValueCommand as AsyncCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
-            (MoveHeaderUpCommand as RelayCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
-            (MoveHeaderDownCommand as RelayCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
-            (DeleteHeaderCommand as RelayCommand<HttpHeaderItem>)?.RaiseCanExecuteChanged();
+            (EditHeaderNameCommand as AsyncCommand<HttpHeader>)?.RaiseCanExecuteChanged();
+            (EditHeaderValueCommand as AsyncCommand<HttpHeader>)?.RaiseCanExecuteChanged();
+            (MoveHeaderUpCommand as RelayCommand<HttpHeader>)?.RaiseCanExecuteChanged();
+            (MoveHeaderDownCommand as RelayCommand<HttpHeader>)?.RaiseCanExecuteChanged();
+            (DeleteHeaderCommand as RelayCommand<HttpHeader>)?.RaiseCanExecuteChanged();
             (AddHeaderCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DeleteAllHeadersCommand as AsyncCommand)?.RaiseCanExecuteChanged();
 
@@ -327,9 +327,9 @@ namespace SNIBypassGUI.ViewModels
         }
         #endregion
 
-        #region Configuration Management
-        #region Add New Config
-        private async Task ExecuteAddNewConfigAsync()
+        #region Resolver Management
+        #region Add New Resolver
+        private async Task ExecuteAddNewResolverAsync()
         {
             _isBusy = true;
             UpdateCommandStates();
@@ -345,19 +345,19 @@ namespace SNIBypassGUI.ViewModels
                 }
             }
 
-            var newName = await _dialogService.ShowTextInputAsync("新建解析器配置", "请输入新配置的名称：", "新解析器配置");
+            var newName = await _dialogService.ShowTextInputAsync("新建解析器", "请输入新解析器的名称：", "新解析器");
             if (newName != null)
             {
                 if (!string.IsNullOrWhiteSpace(newName)) EnterCreationMode(newName);
-                else await _dialogService.ShowInfoAsync("创建失败", "配置名称不能为空！");
+                else await _dialogService.ShowInfoAsync("创建失败", "解析器名称不能为空！");
             }
             _isBusy = false;
             UpdateCommandStates();
         }
         #endregion
 
-        #region Duplicate Config
-        private async Task ExecuteDuplicateConfigAsync()
+        #region Duplicate Resolver
+        private async Task ExecuteDuplicateResolverAsync()
         {
             _isBusy = true;
             UpdateCommandStates();
@@ -372,39 +372,39 @@ namespace SNIBypassGUI.ViewModels
                     return;
                 }
             }
-            var configToCloneVM = ConfigSelector.SelectedItem;
+            var configToCloneVM = ResolverSelector.SelectedItem;
             if (configToCloneVM == null) return;
 
-            var configToCloneModel = configToCloneVM.Model;
+            var configToClone = configToCloneVM.Model;
 
-            var suggestedName = $"{configToCloneModel.ConfigName} - 副本";
-            var newName = await _dialogService.ShowTextInputAsync("创建副本", "请输入新配置的名称：", suggestedName);
+            var suggestedName = $"{configToClone.ResolverName} - 副本";
+            var newName = await _dialogService.ShowTextInputAsync("创建副本", "请输入新解析器的名称：", suggestedName);
 
             if (newName != null && !string.IsNullOrWhiteSpace(newName))
             {
-                var newConfig = configToCloneModel.Clone();
-                newConfig.ConfigName = newName;
+                var newConfig = configToClone.Clone();
+                newConfig.ResolverName = newName;
                 newConfig.IsBuiltIn = false;
                 newConfig.Id = Guid.NewGuid();
 
-                _configService.AllConfigs.Add(newConfig);
-                await _configService.SaveChangesAsync(newConfig);
+                _resolverService.AllConfigs.Add(newConfig);
+                await _resolverService.SaveChangesAsync(newConfig);
 
-                var newConfigVM = AllConfigVMs.FirstOrDefault(vm => vm.Model == newConfig);
+                var newConfigVM = AllResolverVMs.FirstOrDefault(vm => vm.Model == newConfig);
                 if (newConfigVM != null) SwitchToConfig(newConfigVM);
             }
             else if (newName != null)
-                await _dialogService.ShowInfoAsync("创建失败", "配置名称不能为空！");
+                await _dialogService.ShowInfoAsync("创建失败", "解析器名称不能为空！");
 
             _isBusy = false;
             UpdateCommandStates();
         }
 
-        private bool CanExecuteDuplicateConfig() => ConfigSelector.SelectedItem != null && !_isBusy;
+        private bool CanExecuteDuplicateResolver() => ResolverSelector.SelectedItem != null && !_isBusy;
         #endregion
 
-        #region Delete Config
-        private async Task ExecuteDeleteConfigAsync()
+        #region Delete Resolver
+        private async Task ExecuteDeleteResolverAsync()
         {
             _isBusy = true;
             UpdateCommandStates();
@@ -420,21 +420,21 @@ namespace SNIBypassGUI.ViewModels
                 }
             }
 
-            var configToDeleteVM = ConfigSelector.SelectedItem;
+            var configToDeleteVM = ResolverSelector.SelectedItem;
             var configToDelete = configToDeleteVM.Model;
-            var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", $"您确定要删除 “{configToDelete.ConfigName}” 吗？\n此操作不可恢复！", "删除");
+            var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", $"您确定要删除 “{configToDelete.ResolverName}” 吗？\n此操作不可恢复！", "删除");
 
             if (confirmResult)
             {
-                ResolverConfigViewModel nextSelectionVM = null;
-                if (AllConfigVMs.Count > 1)
+                ResolverViewModel nextSelectionVM = null;
+                if (AllResolverVMs.Count > 1)
                 {
-                    int currentIndex = AllConfigVMs.IndexOf(configToDeleteVM);
-                    nextSelectionVM = currentIndex == AllConfigVMs.Count - 1
-                        ? AllConfigVMs[currentIndex - 1]
-                        : AllConfigVMs[currentIndex + 1];
+                    int currentIndex = AllResolverVMs.IndexOf(configToDeleteVM);
+                    nextSelectionVM = currentIndex == AllResolverVMs.Count - 1
+                        ? AllResolverVMs[currentIndex - 1]
+                        : AllResolverVMs[currentIndex + 1];
                 }
-                _configService.DeleteConfig(configToDelete);
+                _resolverService.DeleteConfig(configToDelete);
                 SwitchToConfig(nextSelectionVM);
             }
 
@@ -443,8 +443,8 @@ namespace SNIBypassGUI.ViewModels
         }
         #endregion
 
-        #region Rename Config
-        private async Task ExecuteRenameConfigAsync()
+        #region Rename Resolver
+        private async Task ExecuteRenameResolverAsync()
         {
             _isBusy = true;
             UpdateCommandStates();
@@ -457,18 +457,18 @@ namespace SNIBypassGUI.ViewModels
                     if (result == SaveChangesResult.Cancel) return;
                 }
                 
-                var newName = await _dialogService.ShowTextInputAsync("重命名配置", $"为 “{EditingConfigCopy.ConfigName}” 输入新名称：", EditingConfigCopy.ConfigName);
+                var newName = await _dialogService.ShowTextInputAsync($"重命名 “{EditingResolverCopy.ResolverName}”", "请输入新的解析器名称：", EditingResolverCopy.ResolverName);
                 if (newName != null && !string.IsNullOrWhiteSpace(newName))
                 {
-                    if (newName != EditingConfigCopy.ConfigName)
+                    if (newName != EditingResolverCopy.ResolverName)
                     {
-                        EditingConfigCopy.ConfigName = newName;
-                        await _configService.SaveChangesAsync(EditingConfigCopy);
+                        EditingResolverCopy.ResolverName = newName;
+                        await _resolverService.SaveChangesAsync(EditingResolverCopy);
                         ResetToSelectedConfig();
                     }
                 }
                 else if (newName != null)
-                    await _dialogService.ShowInfoAsync("重命名失败", "配置名称不能为空！");
+                    await _dialogService.ShowInfoAsync("重命名失败", "解析器名称不能为空！");
             }
             finally
             {
@@ -478,8 +478,8 @@ namespace SNIBypassGUI.ViewModels
         }
         #endregion
 
-        #region Import & Export Config
-        private async Task ExecuteImportConfigAsync()
+        #region Import & Export Resolver
+        private async Task ExecuteImportResolverAsync()
         {
             _isBusy = true;
             UpdateCommandStates();
@@ -494,20 +494,20 @@ namespace SNIBypassGUI.ViewModels
 
                 var openFileDialog = new OpenFileDialog
                 {
-                    Filter = "解析器配置文件 (*.src)|*.src",
-                    Title = "选择要导入的解析器配置文件",
+                    Filter = "解析器文件 (*.srs)|*.srs",
+                    Title = "选择要导入的解析器文件",
                     RestoreDirectory = true
                 };
 
                 if (openFileDialog.ShowDialog() == true)
                 {
-                    var importedConfig = _configService.ImportConfig(openFileDialog.FileName);
+                    var importedConfig = _resolverService.ImportConfig(openFileDialog.FileName);
                     if (importedConfig != null)
                     {
-                        var importedConfigVM = AllConfigVMs.FirstOrDefault(vm => vm.Model == importedConfig);
+                        var importedConfigVM = AllResolverVMs.FirstOrDefault(vm => vm.Model == importedConfig);
                         if (importedConfigVM != null) SwitchToConfig(importedConfigVM);
                     }
-                    else await _dialogService.ShowInfoAsync("错误", "解析器配置导入失败。");
+                    else await _dialogService.ShowInfoAsync("错误", "解析器导入失败。");
                 }
             }
             finally
@@ -517,7 +517,7 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private async Task ExecuteExportConfigAsync()
+        private async Task ExecuteExportResolverAsync()
         {
             if (_currentState == EditingState.Creating)
             {
@@ -530,7 +530,7 @@ namespace SNIBypassGUI.ViewModels
             }
             else if (_currentState == EditingState.Editing)
             {
-                var choice = await _dialogService.ShowExportConfirmationAsync(EditingConfigCopy.ConfigName);
+                var choice = await _dialogService.ShowExportConfirmationAsync(EditingResolverCopy.ResolverName);
                 switch (choice)
                 {
                     case ExportChoice.SaveAndExport:
@@ -544,7 +544,7 @@ namespace SNIBypassGUI.ViewModels
                 }
             }
 
-            var configToExportVM = ConfigSelector.SelectedItem;
+            var configToExportVM = ResolverSelector.SelectedItem;
             if (configToExportVM == null)
             {
                 await _dialogService.ShowInfoAsync("错误", "没有可导出的配置。");
@@ -554,23 +554,23 @@ namespace SNIBypassGUI.ViewModels
             var configToExport = configToExportVM.Model;
             var saveFileDialog = new SaveFileDialog
             {
-                Filter = "解析器配置文件 (*.src)|*.src",
-                Title = "选择配置导出位置",
-                FileName = $"{configToExport.ConfigName}.src",
+                Filter = "解析器文件 (*.src)|*.src",
+                Title = "选择导出位置",
+                FileName = $"{configToExport.ResolverName}.src",
                 RestoreDirectory = true
             };
             if (saveFileDialog.ShowDialog() == true)
-                _configService.ExportConfig(configToExport, saveFileDialog.FileName);
+                _resolverService.ExportConfig(configToExport, saveFileDialog.FileName);
         }
 
         private bool CanExecuteExport()
         {
             if (_isBusy) return false;
 
-            // 当正在创建一个新配置时，允许导出以便触发保存并导出的流程
+            // 当正在创建一个新解析器时，允许导出以便触发保存并导出的流程
             if (_currentState == EditingState.Creating) return true;
 
-            if (ConfigSelector.SelectedItem != null && !ConfigSelector.SelectedItem.IsBuiltIn) return true;
+            if (ResolverSelector.SelectedItem != null && !ResolverSelector.SelectedItem.IsBuiltIn) return true;
 
             // 其他所有情况都禁用
             return false;
@@ -580,14 +580,14 @@ namespace SNIBypassGUI.ViewModels
 
         #region Editing Area Operations
         #region Change Listening & Validation
-        private void StartListeningToChanges(ResolverConfig config)
+        private void StartListeningToChanges(Resolver config)
         {
             config.PropertyChanged += OnEditingCopyPropertyChanged;
             if (config.HttpHeaders != null)
             {
                 config.HttpHeaders.CollectionChanged += OnChildCollectionChanged;
                 foreach (var header in config.HttpHeaders)
-                    header.PropertyChanged += OnHttpHeaderItemPropertyChanged;
+                    header.PropertyChanged += OnHttpHeaderPropertyChanged;
             }
             if (config.TlsCipherSuites != null)
                 config.TlsCipherSuites.CollectionChanged += OnChildCollectionChanged;
@@ -599,14 +599,14 @@ namespace SNIBypassGUI.ViewModels
                 config.QuicAlpnTokens.CollectionChanged += OnChildCollectionChanged;
         }
 
-        private void StopListeningToChanges(ResolverConfig config)
+        private void StopListeningToChanges(Resolver config)
         {
             config.PropertyChanged -= OnEditingCopyPropertyChanged;
             if (config.HttpHeaders != null)
             {
                 config.HttpHeaders.CollectionChanged -= OnChildCollectionChanged;
                 foreach (var header in config.HttpHeaders)
-                    header.PropertyChanged -= OnHttpHeaderItemPropertyChanged;
+                    header.PropertyChanged -= OnHttpHeaderPropertyChanged;
             }
             if (config.TlsCipherSuites != null)
                 config.TlsCipherSuites.CollectionChanged -= OnChildCollectionChanged;
@@ -618,27 +618,27 @@ namespace SNIBypassGUI.ViewModels
                 config.QuicAlpnTokens.CollectionChanged -= OnChildCollectionChanged;
         }
 
-        private void OnAllConfigsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void OnAllResolversCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    int insertIndex = Math.Min(e.NewStartingIndex, _allConfigVMs.Count);
-                    foreach (ResolverConfig model in e.NewItems)
+                    int insertIndex = Math.Min(e.NewStartingIndex, _allResolverVMs.Count);
+                    foreach (Resolver model in e.NewItems)
                     {
-                        _allConfigVMs.Insert(insertIndex, new ResolverConfigViewModel(model));
+                        _allResolverVMs.Insert(insertIndex, new ResolverViewModel(model));
                         insertIndex++;
                     }
                     break;
 
                 case NotifyCollectionChangedAction.Remove:
-                    foreach (ResolverConfig model in e.OldItems)
+                    foreach (Resolver model in e.OldItems)
                     {
-                        var vmToRemove = _allConfigVMs.FirstOrDefault(vm => vm.Model == model);
+                        var vmToRemove = _allResolverVMs.FirstOrDefault(vm => vm.Model == model);
                         if (vmToRemove != null)
                         {
                             vmToRemove.Dispose();
-                            _allConfigVMs.Remove(vmToRemove);
+                            _allResolverVMs.Remove(vmToRemove);
                         }
                     }
                     break;
@@ -646,28 +646,28 @@ namespace SNIBypassGUI.ViewModels
                 case NotifyCollectionChangedAction.Replace:
                     for (int i = 0; i < e.OldItems.Count; i++)
                     {
-                        var oldModel = (ResolverConfig)e.OldItems[i];
-                        var newModel = (ResolverConfig)e.NewItems[i];
-                        var vmIndex = _allConfigVMs.ToList().FindIndex(vm => vm.Model == oldModel);
+                        var oldModel = (Resolver)e.OldItems[i];
+                        var newModel = (Resolver)e.NewItems[i];
+                        var vmIndex = _allResolverVMs.ToList().FindIndex(vm => vm.Model == oldModel);
                         if (vmIndex >= 0)
                         {
-                            _allConfigVMs[vmIndex].Dispose();
-                            _allConfigVMs[vmIndex] = new ResolverConfigViewModel(newModel);
+                            _allResolverVMs[vmIndex].Dispose();
+                            _allResolverVMs[vmIndex] = new ResolverViewModel(newModel);
                         }
                     }
                     break;
 
                 case NotifyCollectionChangedAction.Move:
-                    if (e.OldStartingIndex < _allConfigVMs.Count && e.NewStartingIndex < _allConfigVMs.Count)
-                        _allConfigVMs.Move(e.OldStartingIndex, e.NewStartingIndex);
+                    if (e.OldStartingIndex < _allResolverVMs.Count && e.NewStartingIndex < _allResolverVMs.Count)
+                        _allResolverVMs.Move(e.OldStartingIndex, e.NewStartingIndex);
                     break;
 
                 case NotifyCollectionChangedAction.Reset:
-                    foreach (var vm in _allConfigVMs) vm.Dispose();
-                    _allConfigVMs.Clear();
+                    foreach (var vm in _allResolverVMs) vm.Dispose();
+                    _allResolverVMs.Clear();
 
-                    foreach (var model in _configService.AllConfigs)
-                        _allConfigVMs.Add(new ResolverConfigViewModel(model));
+                    foreach (var model in _resolverService.AllConfigs)
+                        _allResolverVMs.Add(new ResolverViewModel(model));
                     break;
             }
         }
@@ -675,7 +675,7 @@ namespace SNIBypassGUI.ViewModels
         private void OnEditingCopyPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (_currentState == EditingState.None) TransitionToState(EditingState.Editing);
-            if (e.PropertyName is nameof(ResolverConfig.TlsMinVersion) or nameof(ResolverConfig.TlsMaxVersion))
+            if (e.PropertyName is nameof(Resolver.TlsMinVersion) or nameof(Resolver.TlsMaxVersion))
                 UpdateAvailableCipherSuites();
             ValidateEditingCopy();
         }
@@ -683,18 +683,18 @@ namespace SNIBypassGUI.ViewModels
         private void OnChildCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.OldItems != null)
-                foreach (var item in e.OldItems.OfType<HttpHeaderItem>())
-                    (item as INotifyPropertyChanged).PropertyChanged -= OnHttpHeaderItemPropertyChanged;
+                foreach (var item in e.OldItems.OfType<HttpHeader>())
+                    (item as INotifyPropertyChanged).PropertyChanged -= OnHttpHeaderPropertyChanged;
             if (e.NewItems != null)
-                foreach (var item in e.NewItems.OfType<HttpHeaderItem>())
-                    item.PropertyChanged += OnHttpHeaderItemPropertyChanged;
+                foreach (var item in e.NewItems.OfType<HttpHeader>())
+                    item.PropertyChanged += OnHttpHeaderPropertyChanged;
 
             if (_currentState == EditingState.None)
                 TransitionToState(EditingState.Editing);
             ValidateEditingCopy();
         }
 
-        private void OnHttpHeaderItemPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnHttpHeaderPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (_currentState == EditingState.None) TransitionToState(EditingState.Editing);
             ValidateEditingCopy();
@@ -702,10 +702,10 @@ namespace SNIBypassGUI.ViewModels
 
         private void ValidateEditingCopy()
         {
-            if (EditingConfigCopy == null) ValidationErrors = ValidationWarnings = null;
+            if (EditingResolverCopy == null) ValidationErrors = ValidationWarnings = null;
             else
             {
-                var result = _configValidator.Validate(EditingConfigCopy);
+                var result = _resolverValidator.Validate(EditingResolverCopy);
                 if (result.IsValid) ValidationErrors = null;
                 else
                 {
@@ -744,17 +744,17 @@ namespace SNIBypassGUI.ViewModels
             {
                 if (_currentState == EditingState.Creating)
                 {
-                    var newConfig = EditingConfigCopy;
-                    _configService.AllConfigs.Add(newConfig);
-                    await _configService.SaveChangesAsync(newConfig);
-                    var newConfigVM = AllConfigVMs.FirstOrDefault(vm => vm.Model == newConfig);
+                    var newConfig = EditingResolverCopy;
+                    _resolverService.AllConfigs.Add(newConfig);
+                    await _resolverService.SaveChangesAsync(newConfig);
+                    var newConfigVM = AllResolverVMs.FirstOrDefault(vm => vm.Model == newConfig);
                     if (newConfigVM != null)
                         SwitchToConfig(newConfigVM);
                 }
                 else if (_currentState == EditingState.Editing)
                 {
-                    _originalConfig.UpdateFrom(EditingConfigCopy);
-                    await _configService.SaveChangesAsync(_originalConfig);
+                    _originalResolver.UpdateFrom(EditingResolverCopy);
+                    await _resolverService.SaveChangesAsync(_originalResolver);
                     TransitionToState(EditingState.None);
                 }
             }
@@ -767,23 +767,23 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteDiscardChanges()
         {
-            if (_currentState == EditingState.Creating) SwitchToConfig(AllConfigVMs.FirstOrDefault());
+            if (_currentState == EditingState.Creating) SwitchToConfig(AllResolverVMs.FirstOrDefault());
             else
             {
-                EditingConfigCopy = _originalConfig?.Clone();
+                EditingResolverCopy = _originalResolver?.Clone();
                 TransitionToState(EditingState.None);
             }
         }
 
-        private bool CanExecuteSave() => _currentState != EditingState.None && !EditingConfigCopy.IsBuiltIn && !HasValidationErrors && !_isBusy;
+        private bool CanExecuteSave() => _currentState != EditingState.None && !EditingResolverCopy.IsBuiltIn && !HasValidationErrors && !_isBusy;
 
         private bool CanExecuteWhenDirty() => _currentState != EditingState.None && !_isBusy;
 
         private async Task<SaveChangesResult> PromptToSaveChangesAndContinueAsync()
         {
             var message = _currentState == EditingState.Creating
-                ? "您新建的配置尚未保存，要保存吗？"
-                : $"您对配置 “{EditingConfigCopy.ConfigName}” 的修改尚未保存。要保存吗？";
+                ? "您新建的解析器尚未保存，要保存吗？"
+                : $"您对解析器 “{EditingResolverCopy.ResolverName}” 的修改尚未保存。要保存吗？";
 
             var result = await _dialogService.ShowSaveChangesDialogAsync("未保存的更改", message);
             switch (result)
@@ -805,7 +805,7 @@ namespace SNIBypassGUI.ViewModels
         #endregion
 
         #region HTTP Header Management
-        private async Task ExecuteEditHeaderNameAsync(HttpHeaderItem item)
+        private async Task ExecuteEditHeaderNameAsync(HttpHeader item)
         {
             if (item is null) return;
 
@@ -814,7 +814,7 @@ namespace SNIBypassGUI.ViewModels
 
             try
             {
-                var newName = await _dialogService.ShowTextInputAsync($"编辑 “{item.Name}”", $"请输入新的字段名：", item.Name);
+                var newName = await _dialogService.ShowTextInputAsync($"编辑 “{item.Name}”", "请输入新的字段名：", item.Name);
                 if (newName != null && newName != item.Name)
                 {
                     string trimmedName = newName.Trim();
@@ -822,12 +822,10 @@ namespace SNIBypassGUI.ViewModels
                     {
                         if (!NetworkUtils.IsValidHttpHeaderName(trimmedName))
                             await _dialogService.ShowInfoAsync("编辑失败", $"“{trimmedName}” 不是合法的字段名！");
-                        else if (EditingConfigCopy.HttpHeaders.Select(v => v.Name).Contains(trimmedName))
-                            await _dialogService.ShowInfoAsync("编辑失败", $"字段名 “{trimmedName}” 已存在！");
                         else
                         {
-                            int index = EditingConfigCopy.HttpHeaders.IndexOf(item);
-                            if (index >= 0) EditingConfigCopy.HttpHeaders[index].Name = trimmedName;
+                            int index = EditingResolverCopy.HttpHeaders.IndexOf(item);
+                            if (index >= 0) EditingResolverCopy.HttpHeaders[index].Name = trimmedName;
                         }
                     }
                     else await _dialogService.ShowInfoAsync("编辑失败", "字段名不能为空！");
@@ -840,7 +838,7 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private async Task ExecuteEditHeaderValueAsync(HttpHeaderItem item)
+        private async Task ExecuteEditHeaderValueAsync(HttpHeader item)
         {
             if (item is null) return;
 
@@ -856,8 +854,8 @@ namespace SNIBypassGUI.ViewModels
                         await _dialogService.ShowInfoAsync("编辑失败", $"“{newValue}” 不是合法的字段值！");
                     else
                     {
-                        int index = EditingConfigCopy.HttpHeaders.IndexOf(item);
-                        if (index >= 0) EditingConfigCopy.HttpHeaders[index].Value = newValue;
+                        int index = EditingResolverCopy.HttpHeaders.IndexOf(item);
+                        if (index >= 0) EditingResolverCopy.HttpHeaders[index].Value = newValue;
                     }
                 }
             }
@@ -868,26 +866,26 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private void ExecuteMoveHeaderUp(HttpHeaderItem item)
+        private void ExecuteMoveHeaderUp(HttpHeader item)
         {
-            if (EditingConfigCopy == null || item == null) return;
+            if (EditingResolverCopy == null || item == null) return;
 
-            int index = EditingConfigCopy.HttpHeaders.IndexOf(item);
-            if (index > 0) EditingConfigCopy.HttpHeaders.Move(index, index - 1);
+            int index = EditingResolverCopy.HttpHeaders.IndexOf(item);
+            if (index > 0) EditingResolverCopy.HttpHeaders.Move(index, index - 1);
         }
 
-        private void ExecuteMoveHeaderDown(HttpHeaderItem item)
+        private void ExecuteMoveHeaderDown(HttpHeader item)
         {
-            if (EditingConfigCopy == null || item == null) return;
+            if (EditingResolverCopy == null || item == null) return;
 
-            int index = EditingConfigCopy.HttpHeaders.IndexOf(item);
-            if (index < EditingConfigCopy.HttpHeaders.Count - 1)
-                EditingConfigCopy.HttpHeaders.Move(index, index + 1);
+            int index = EditingResolverCopy.HttpHeaders.IndexOf(item);
+            if (index < EditingResolverCopy.HttpHeaders.Count - 1)
+                EditingResolverCopy.HttpHeaders.Move(index, index + 1);
         }
 
         private async Task ExecuteAddHeaderAsync()
         {
-            if (EditingConfigCopy is null) return;
+            if (EditingResolverCopy is null) return;
 
             _isBusy = true;
             UpdateCommandStates();
@@ -905,11 +903,7 @@ namespace SNIBypassGUI.ViewModels
                             await _dialogService.ShowInfoAsync("添加失败", $"“{trimmedName}” 不是合法的字段名！");
                             return;
                         }
-                        if (EditingConfigCopy.HttpHeaders.Select(v => v.Name).Contains(trimmedName))
-                        {
-                            await _dialogService.ShowInfoAsync("添加失败", $"字段名 “{trimmedName}” 已存在！");
-                            return;
-                        }
+
                         var newValue = await _dialogService.ShowTextInputAsync("添加字段", $"请为字段 “{trimmedName}” 输入值：");
                         if (newValue != null)
                         {
@@ -918,12 +912,12 @@ namespace SNIBypassGUI.ViewModels
                                 await _dialogService.ShowInfoAsync("添加失败", $"“{newValue}” 不是合法的字段值！");
                                 return;
                             }
-                            var newItem = new HttpHeaderItem
+                            var newItem = new HttpHeader
                             {
                                 Name = newName,
                                 Value = newValue.OrDefault()
                             };
-                            EditingConfigCopy.HttpHeaders.Add(newItem);
+                            EditingResolverCopy.HttpHeaders.Add(newItem);
                         }
                     }
                     else await _dialogService.ShowInfoAsync("添加失败", "字段名不能为空！");
@@ -941,10 +935,10 @@ namespace SNIBypassGUI.ViewModels
         private async Task ExecuteAddHeaderAsync()
         {
             (object buttonResult, Dictionary<string, object> fieldResults) = await _dialogService.ShowDialogAsync(new DialogViewModel(
-                "添加条目",
+                "添加字段",
                 [
-                    new InputField("name") { Label = "请输入新条目的名称：" },
-                    new InputField("value") { Label = "请输入新条目的值：" }
+                    new InputField("name") { Label = "请输入新字段的名称：" },
+                    new InputField("value") { Label = "请输入新字段的值：" }
                 ],
                 [
                     new DialogButtonViewModel { Content = "确定", Result = "OK", IsDefault = true },
@@ -960,52 +954,52 @@ namespace SNIBypassGUI.ViewModels
                     string trimmedName = newName.Trim();
                     if (!NetworkUtils.IsValidHttpHeaderName(trimmedName))
                     {
-                        await _dialogService.ShowInfoAsync("添加失败", $"“{trimmedName}” 不是合法的条目名称！");
+                        await _dialogService.ShowInfoAsync("添加失败", $"“{trimmedName}” 不是合法的字段名称！");
                         return;
                     }
-                    if (EditingConfigCopy.HttpHeaders.Select(v => v.Name).Contains(trimmedName))
+                    if (EditingResolverCopy.HttpHeaders.Select(v => v.Name).Contains(trimmedName))
                     {
-                        await _dialogService.ShowInfoAsync("添加失败", $"条目名称 “{trimmedName}” 已存在！");
+                        await _dialogService.ShowInfoAsync("添加失败", $"字段名称 “{trimmedName}” 已存在！");
                         return;
                     }
                     if (!NetworkUtils.IsValidHttpHeaderValue(newValue is null ? string.Empty : newValue))
                     {
-                        await _dialogService.ShowInfoAsync("添加失败", $"“{newValue}” 不是合法的条目值！");
+                        await _dialogService.ShowInfoAsync("添加失败", $"“{newValue}” 不是合法的字段值！");
                         return;
                     }
-                    var newItem = new HttpHeaderItem
+                    var newItem = new HttpHeader
                     {
                         Name = newName,
                         Value = newValue.OrDefault()
                     };
-                    EditingConfigCopy.HttpHeaders.Add(newItem);
+                    EditingResolverCopy.HttpHeaders.Add(newItem);
                 }
-                else await _dialogService.ShowInfoAsync("添加失败", "条目名称不能为空！");
+                else await _dialogService.ShowInfoAsync("添加失败", "字段名称不能为空！");
             }
         }
         */
 
-        private void ExecuteDeleteHeader(HttpHeaderItem item)
+        private void ExecuteDeleteHeader(HttpHeader item)
         {
-            if (EditingConfigCopy == null || item is null) return;
-            if (EditingConfigCopy.HttpHeaders.Contains(item))
-                EditingConfigCopy.HttpHeaders.Remove(item);
+            if (EditingResolverCopy == null || item is null) return;
+            if (EditingResolverCopy.HttpHeaders.Contains(item))
+                EditingResolverCopy.HttpHeaders.Remove(item);
         }
 
         private async Task ExecuteDeleteAllHeadersAsync()
         {
-            if (EditingConfigCopy is null) return;
+            if (EditingResolverCopy is null) return;
 
             _isBusy = true;
             UpdateCommandStates();
 
             try
             {
-                if (EditingConfigCopy.HttpHeaders.Count > 0)
+                if (EditingResolverCopy.HttpHeaders.Count > 0)
                 {
-                    var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除 HTTP 头部中的所有条目吗？", "删除");
+                    var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除 HTTP 头部中的所有字段吗？", "删除");
                     if (!confirmResult) return;
-                    EditingConfigCopy.HttpHeaders.Clear();
+                    EditingResolverCopy.HttpHeaders.Clear();
                 }
             }
             finally
@@ -1015,33 +1009,33 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private bool CanExecuteMoveHeaderUp(HttpHeaderItem item)
+        private bool CanExecuteMoveHeaderUp(HttpHeader item)
         {
-            if (EditingConfigCopy == null || item is null)
+            if (EditingResolverCopy == null || item is null)
                 return false;
 
-            var items = EditingConfigCopy.HttpHeaders;
+            var items = EditingResolverCopy.HttpHeaders;
             int index = items.IndexOf(item);
             return index > 0;
         }
 
-        private bool CanExecuteMoveHeaderDown(HttpHeaderItem item)
+        private bool CanExecuteMoveHeaderDown(HttpHeader item)
         {
-            if (EditingConfigCopy == null || item is null)
+            if (EditingResolverCopy == null || item is null)
                 return false;
 
-            var items = EditingConfigCopy.HttpHeaders;
+            var items = EditingResolverCopy.HttpHeaders;
             int index = items.IndexOf(item);
             return index < items.Count - 1;
         }
 
-        private bool CanExecuteDeleteAllHeaders() => EditingConfigCopy?.HttpHeaders.Any() == true && !_isBusy;
+        private bool CanExecuteDeleteAllHeaders() => EditingResolverCopy?.HttpHeaders.Any() == true && !_isBusy;
         #endregion
 
         #region TLS ALPN Protocol Management
         private async Task ExecuteAddAlpnProtocolAsync()
         {
-            if (EditingConfigCopy == null) return;
+            if (EditingResolverCopy == null) return;
 
             _isBusy = true;
             UpdateCommandStates();
@@ -1054,9 +1048,9 @@ namespace SNIBypassGUI.ViewModels
                     {
                         if (!NetworkUtils.IsValidAlpnName(newName))
                             await _dialogService.ShowInfoAsync("添加失败", $"“{newName}” 不是合法的协议名称！");
-                        else if (EditingConfigCopy.TlsNextProtos.Contains(newName))
+                        else if (EditingResolverCopy.TlsNextProtos.Contains(newName))
                             await _dialogService.ShowInfoAsync("添加失败", $"协议名称 “{newName}” 已存在！");
-                        else EditingConfigCopy.TlsNextProtos.Add(newName);
+                        else EditingResolverCopy.TlsNextProtos.Add(newName);
                     }
                     else await _dialogService.ShowInfoAsync("添加失败", "协议名称不能为空！");
                 }
@@ -1070,26 +1064,26 @@ namespace SNIBypassGUI.ViewModels
 
         private async Task ExecuteEditAlpnProtocolAsync(string protocol)
         {
-            if (protocol == null || EditingConfigCopy == null) return;
+            if (protocol == null || EditingResolverCopy == null) return;
 
             _isBusy = true;
             UpdateCommandStates();
 
             try
             {
-                var newProtocol = await _dialogService.ShowTextInputAsync($"编辑 “{protocol}”", $"请输入新的 ALPN 名称：", protocol);
+                var newProtocol = await _dialogService.ShowTextInputAsync($"编辑 “{protocol}”", "请输入新的 ALPN 名称：", protocol);
                 if (newProtocol != null && newProtocol != protocol)
                 {
                     if (!string.IsNullOrEmpty(newProtocol))
                     {
                         if (!NetworkUtils.IsValidAlpnName(newProtocol))
                             await _dialogService.ShowInfoAsync("编辑失败", $"“{newProtocol}” 不是合法的协议名称！");
-                        else if (EditingConfigCopy.TlsNextProtos.Contains(newProtocol))
+                        else if (EditingResolverCopy.TlsNextProtos.Contains(newProtocol))
                             await _dialogService.ShowInfoAsync("编辑失败", $"协议名称 “{newProtocol}” 已存在！");
                         else
                         {
-                            int index = EditingConfigCopy.TlsNextProtos.IndexOf(protocol);
-                            if (index >= 0) EditingConfigCopy.TlsNextProtos[index] = newProtocol;
+                            int index = EditingResolverCopy.TlsNextProtos.IndexOf(protocol);
+                            if (index >= 0) EditingResolverCopy.TlsNextProtos[index] = newProtocol;
                         }
                     }
                     else await _dialogService.ShowInfoAsync("编辑失败", "协议名称不能为空！");
@@ -1106,8 +1100,8 @@ namespace SNIBypassGUI.ViewModels
         private void ExecuteDeleteAlpnProtocol(string protocol)
         {
             if (protocol is null) return;
-            if (EditingConfigCopy.TlsNextProtos.Contains(protocol))
-                EditingConfigCopy.TlsNextProtos.Remove(protocol);
+            if (EditingResolverCopy.TlsNextProtos.Contains(protocol))
+                EditingResolverCopy.TlsNextProtos.Remove(protocol);
         }
 
         private bool CanExecuteEditAlpnProtocol(string protocol) =>
@@ -1117,7 +1111,7 @@ namespace SNIBypassGUI.ViewModels
         #region QUIC ALPN Token Management
         private async Task ExecuteAddQuicAlpnTokenAsync()
         {
-            if (EditingConfigCopy == null) return;
+            if (EditingResolverCopy == null) return;
 
             _isBusy = true;
             UpdateCommandStates();
@@ -1134,12 +1128,12 @@ namespace SNIBypassGUI.ViewModels
                             await _dialogService.ShowInfoAsync("添加失败", $"“{newName}” 不是合法的 QUIC ALPN 令牌！");
                             return;
                         }
-                        if (EditingConfigCopy.QuicAlpnTokens.Contains(newName))
+                        if (EditingResolverCopy.QuicAlpnTokens.Contains(newName))
                         {
                             await _dialogService.ShowInfoAsync("添加失败", $"QUIC ALPN 令牌 “{newName}” 已存在！");
                             return;
                         }
-                        EditingConfigCopy.QuicAlpnTokens.Add(newName);
+                        EditingResolverCopy.QuicAlpnTokens.Add(newName);
                     }
                     else await _dialogService.ShowInfoAsync("添加失败", "QUIC ALPN 令牌不能为空！");
                 }
@@ -1153,26 +1147,26 @@ namespace SNIBypassGUI.ViewModels
 
         private async Task ExecuteEditQuicAlpnTokenAsync(string token)
         {
-            if (token == null || EditingConfigCopy == null) return;
+            if (token == null || EditingResolverCopy == null) return;
 
             _isBusy = true;
             UpdateCommandStates();
 
             try
             {
-                var newToken = await _dialogService.ShowTextInputAsync($"编辑 “{token}”", $"请输入新的 QUIC ALPN 令牌：", token);
+                var newToken = await _dialogService.ShowTextInputAsync($"编辑 “{token}”", "请输入新的 QUIC ALPN 令牌：", token);
                 if (newToken != null && newToken != token)
                 {
                     if (!string.IsNullOrEmpty(newToken))
                     {
                         if (!NetworkUtils.IsValidAlpnName(newToken))
                             await _dialogService.ShowInfoAsync("编辑失败", $"“{newToken}” 不是合法的 QUIC ALPN 令牌！");
-                        else if (EditingConfigCopy.QuicAlpnTokens.Contains(newToken))
+                        else if (EditingResolverCopy.QuicAlpnTokens.Contains(newToken))
                             await _dialogService.ShowInfoAsync("编辑失败", $"QUIC ALPN 令牌 “{newToken}” 已存在！");
                         else
                         {
-                            int index = EditingConfigCopy.QuicAlpnTokens.IndexOf(token);
-                            if (index >= 0) EditingConfigCopy.QuicAlpnTokens[index] = newToken;
+                            int index = EditingResolverCopy.QuicAlpnTokens.IndexOf(token);
+                            if (index >= 0) EditingResolverCopy.QuicAlpnTokens[index] = newToken;
                         }
                     }
                     else await _dialogService.ShowInfoAsync("编辑失败", "QUIC ALPN 令牌不能为空！");
@@ -1188,8 +1182,8 @@ namespace SNIBypassGUI.ViewModels
         private void ExecuteDeleteQuicAlpnToken(string token)
         {
             if (token is null) return;
-            if (EditingConfigCopy.QuicAlpnTokens.Contains(token))
-                EditingConfigCopy.QuicAlpnTokens.Remove(token);
+            if (EditingResolverCopy.QuicAlpnTokens.Contains(token))
+                EditingResolverCopy.QuicAlpnTokens.Remove(token);
         }
 
         private bool CanExecuteEditQuicAlpnToken(string token) =>
@@ -1199,7 +1193,7 @@ namespace SNIBypassGUI.ViewModels
         #region TLS Client Certificate Management
         private void ExecuteSelectClientCert()
         {
-            if (EditingConfigCopy == null) return;
+            if (EditingResolverCopy == null) return;
 
             _isBusy = true;
             UpdateCommandStates();
@@ -1215,7 +1209,7 @@ namespace SNIBypassGUI.ViewModels
                 };
 
                 if (openFileDialog.ShowDialog() == true)
-                    EditingConfigCopy.TlsClientCertPath = openFileDialog.FileName;
+                    EditingResolverCopy.TlsClientCertPath = openFileDialog.FileName;
             }
             finally
             {
@@ -1226,15 +1220,15 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteClearClientCert()
         {
-            if (EditingConfigCopy == null) return;
+            if (EditingResolverCopy == null) return;
 
-            EditingConfigCopy.TlsClientCertPath = null;
-            EditingConfigCopy.TlsClientKeyPath = null;
+            EditingResolverCopy.TlsClientCertPath = null;
+            EditingResolverCopy.TlsClientKeyPath = null;
         }
 
         private void ExecuteSelectClientKey()
         {
-            if (EditingConfigCopy == null) return;
+            if (EditingResolverCopy == null) return;
 
             _isBusy = true;
             UpdateCommandStates();
@@ -1250,7 +1244,7 @@ namespace SNIBypassGUI.ViewModels
                 };
 
                 if (openFileDialog.ShowDialog() == true)
-                    EditingConfigCopy.TlsClientKeyPath = openFileDialog.FileName;
+                    EditingResolverCopy.TlsClientKeyPath = openFileDialog.FileName;
             }
             finally
             {
@@ -1261,24 +1255,24 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteClearClientKey()
         {
-            if (EditingConfigCopy == null) return;
+            if (EditingResolverCopy == null) return;
 
-            EditingConfigCopy.TlsClientKeyPath = null;
+            EditingResolverCopy.TlsClientKeyPath = null;
         }
 
-        private bool CanExecuteSelectClientCert() => string.IsNullOrWhiteSpace(EditingConfigCopy?.TlsClientCertPath) && !_isBusy;
+        private bool CanExecuteSelectClientCert() => string.IsNullOrWhiteSpace(EditingResolverCopy?.TlsClientCertPath) && !_isBusy;
 
-        private bool CanExecuteClearClientCert() => !string.IsNullOrWhiteSpace(EditingConfigCopy?.TlsClientCertPath) && !_isBusy;
+        private bool CanExecuteClearClientCert() => !string.IsNullOrWhiteSpace(EditingResolverCopy?.TlsClientCertPath) && !_isBusy;
 
-        private bool CanExecuteSelectClientKey() => string.IsNullOrWhiteSpace(EditingConfigCopy?.TlsClientKeyPath) && !_isBusy;
+        private bool CanExecuteSelectClientKey() => string.IsNullOrWhiteSpace(EditingResolverCopy?.TlsClientKeyPath) && !_isBusy;
 
-        private bool CanExecuteClearClientKey() => !string.IsNullOrWhiteSpace(EditingConfigCopy?.TlsClientKeyPath) && !_isBusy;
+        private bool CanExecuteClearClientKey() => !string.IsNullOrWhiteSpace(EditingResolverCopy?.TlsClientKeyPath) && !_isBusy;
         #endregion
 
         #region CipherSuites Management
         private void UpdateAvailableCipherSuites()
         {
-            if (EditingConfigCopy is null)
+            if (EditingResolverCopy is null)
             {
                 AllPossibleCipherSuites = [];
                 OnPropertyChanged(nameof(AllPossibleCipherSuites));
@@ -1287,11 +1281,11 @@ namespace SNIBypassGUI.ViewModels
 
             IReadOnlyList<string> newAvailableSuites;
 
-            if (EditingConfigCopy.TlsMinVersion == 1.3m)
+            if (EditingResolverCopy.TlsMinVersion == 1.3m)
                 newAvailableSuites = s_tls13CipherSuites;
             else
             {
-                if (EditingConfigCopy.TlsMaxVersion == 1.3m)
+                if (EditingResolverCopy.TlsMaxVersion == 1.3m)
                     newAvailableSuites = [.. s_allCipherSuites];
                 else newAvailableSuites = s_tls12CipherSuites;
             }
@@ -1299,14 +1293,14 @@ namespace SNIBypassGUI.ViewModels
             AllPossibleCipherSuites = newAvailableSuites;
             OnPropertyChanged(nameof(AllPossibleCipherSuites));
 
-            if (EditingConfigCopy.TlsCipherSuites.Any())
+            if (EditingResolverCopy.TlsCipherSuites.Any())
             {
-                var suitesToUnselect = EditingConfigCopy.TlsCipherSuites
+                var suitesToUnselect = EditingResolverCopy.TlsCipherSuites
                     .Except(newAvailableSuites)
                     .ToList();
 
                 foreach (var suite in suitesToUnselect)
-                    EditingConfigCopy.TlsCipherSuites.Remove(suite);
+                    EditingResolverCopy.TlsCipherSuites.Remove(suite);
             }
         }
         #endregion
@@ -1314,7 +1308,7 @@ namespace SNIBypassGUI.ViewModels
         #region Import from DNS Stamp
         private async Task ExecuteImportFromDnsStampAsync()
         {
-            if (EditingConfigCopy == null) return;
+            if (EditingResolverCopy == null) return;
 
             _isBusy = true;
             UpdateCommandStates();
@@ -1329,7 +1323,7 @@ namespace SNIBypassGUI.ViewModels
                     {
                         if (DnsStampParser.TryParse(stampStr, out var serverStamp))
                         {
-                            ApplyStampToConfig(EditingConfigCopy, serverStamp);
+                            ApplyStampToConfig(EditingResolverCopy, serverStamp);
                             await _dialogService.ShowInfoAsync("导入成功", "服务器信息已成功填充到当前表单。");
                         }
                         else await _dialogService.ShowInfoAsync("导入失败", "无法解析提供的 DNS Stamp，请检查格式是否正确。");
@@ -1344,7 +1338,7 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private void ApplyStampToConfig(ResolverConfig config, ServerStamp stamp)
+        private void ApplyStampToConfig(Resolver config, ServerStamp stamp)
         {
             config.Dnssec = stamp.Props.HasFlag(ServerInformalProperties.Dnssec);
 
@@ -1352,32 +1346,32 @@ namespace SNIBypassGUI.ViewModels
             switch (stamp.Proto)
             {
                 case StampProtoType.DnsCrypt:
-                    config.ProtocolType = ResolverConfigProtocol.DnsCrypt;
+                    config.ProtocolType = ResolverProtocol.DnsCrypt;
                     config.ServerAddress = stamp.ServerAddrStr;
                     config.DnsCryptProvider = stamp.ProviderName;
                     config.DnsCryptPublicKey = stamp.ServerPk?.ToHexString().ToUpper();
                     break;
 
                 case StampProtoType.DoH:
-                    config.ProtocolType = ResolverConfigProtocol.DnsOverHttps;
+                    config.ProtocolType = ResolverProtocol.DnsOverHttps;
                     config.ServerAddress = $"{stamp.ServerAddrStr}{stamp.Path}";
                     config.TlsServerName = stamp.ProviderName;
                     break;
 
                 case StampProtoType.Tls:
-                    config.ProtocolType = ResolverConfigProtocol.DnsOverTls;
+                    config.ProtocolType = ResolverProtocol.DnsOverTls;
                     config.ServerAddress = stamp.ServerAddrStr;
                     config.TlsServerName = stamp.ProviderName;
                     break;
 
                 case StampProtoType.DoQ:
-                    config.ProtocolType = ResolverConfigProtocol.DnsOverQuic;
+                    config.ProtocolType = ResolverProtocol.DnsOverQuic;
                     config.ServerAddress = stamp.ServerAddrStr;
                     config.TlsServerName = stamp.ProviderName;
                     break;
 
                 case StampProtoType.Plain:
-                    config.ProtocolType = ResolverConfigProtocol.Plain;
+                    config.ProtocolType = ResolverProtocol.Plain;
                     config.ServerAddress = stamp.ServerAddrStr;
                     break;
 
@@ -1391,14 +1385,14 @@ namespace SNIBypassGUI.ViewModels
 
         #region Other Commands & Helpers
         #region Copy Link Code
-        private async Task ExecuteCopyLinkCode(ResolverConfigViewModel configVM)
+        private async Task ExecuteCopyLinkCode(ResolverViewModel configVM)
         {
             if (configVM is null || !_canExecuteCopy) return;
 
             try
             {
                 _canExecuteCopy = false;
-                (CopyLinkCodeCommand as AsyncCommand<ResolverConfigViewModel>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<ResolverViewModel>)?.RaiseCanExecuteChanged();
 
                 var config = configVM.Model;
                 var linkCode = Base64Utils.EncodeString(config.Id.ToString());
@@ -1420,26 +1414,26 @@ namespace SNIBypassGUI.ViewModels
             finally
             {
                 _canExecuteCopy = true;
-                (CopyLinkCodeCommand as AsyncCommand<ResolverConfigViewModel>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<ResolverViewModel>)?.RaiseCanExecuteChanged();
             }
         }
 
-        private bool CanExecuteCopyLinkCode(ResolverConfigViewModel configVM) => configVM != null && !_isBusy && _canExecuteCopy;
+        private bool CanExecuteCopyLinkCode(ResolverViewModel configVM) => configVM != null && !_isBusy && _canExecuteCopy;
         #endregion
 
         #region General CanExecute Predicates
         private bool CanExecuteWhenNotBusy() => !_isBusy;
 
-        private bool CanExecuteOnEditableConfig() => ConfigSelector.SelectedItem != null && !ConfigSelector.SelectedItem.IsBuiltIn && !_isBusy;
+        private bool CanExecuteOnEditableResolver() => ResolverSelector.SelectedItem != null && !ResolverSelector.SelectedItem.IsBuiltIn && !_isBusy;
         #endregion
         #endregion
 
         #region IDisposable Implementation
         public void Dispose()
         {
-            _configService.AllConfigs.CollectionChanged -= OnAllConfigsCollectionChanged;
-            if (_editingConfigCopy != null)
-                StopListeningToChanges(_editingConfigCopy);
+            _resolverService.AllConfigs.CollectionChanged -= OnAllResolversCollectionChanged;
+            if (_editingResolverCopy != null)
+                StopListeningToChanges(_editingResolverCopy);
             GC.SuppressFinalize(this);
         }
         #endregion

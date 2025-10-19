@@ -5,15 +5,16 @@ using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using MaterialDesignThemes.Wpf;
-using SNIBypassGUI.Enums;
 using SNIBypassGUI.Common;
 using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Enums;
 
 namespace SNIBypassGUI.Models
 {
     /// <summary>
     /// 表示一个供映射规则使用的目标来源。
     /// </summary>
+#warning 应将 UI 属性移至 ViewModel 层以遵循 MVVM 原则。
     public class TargetIpSource : NotifyPropertyChangedBase
     {
         #region Fields

@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using SNIBypassGUI.Common.Extensions;
 using SNIBypassGUI.Common.Results;
@@ -8,7 +10,7 @@ using SNIBypassGUI.Models;
 
 namespace SNIBypassGUI.Common.Mapper
 {
-    public class DnsServerMapper : IMapper<DnsServer>
+    public class DnsServerMapper(IMapper<AffinityRule> affinityRuleMapper) : IMapper<DnsServer>
     {
         /// <summary>
         /// 将 <see cref="DnsServer"/> 类型的 <paramref name="dnsServer"/> 实例转换为 JSON 对象。
@@ -20,7 +22,7 @@ namespace SNIBypassGUI.Common.Mapper
                 ["serverAddress"] = dnsServer.ServerAddress.OrDefault(),
                 ["serverPort"] = dnsServer.ServerPort.OrDefault(),
                 ["protocolType"] = dnsServer.ProtocolType.ToString(),
-                ["domainMatchingRule"] = dnsServer.DomainMatchingRule.OrDefault(),
+                ["domainMatchingRules"] = new JArray(dnsServer.DomainMatchingRules?.Select(affinityRuleMapper.ToJObject).OrEmpty()),
                 ["limitQueryTypes"] = new JArray(dnsServer.LimitQueryTypes.OrEmpty()),
                 ["ignoreFailureResponses"] = dnsServer.IgnoreFailureResponses,
                 ["ignoreNegativeResponses"] = dnsServer.IgnoreNegativeResponses
@@ -57,9 +59,18 @@ namespace SNIBypassGUI.Common.Mapper
                 !jObject.TryGetEnum("protocolType", out DnsServerProtocol protocolType) ||
                 !jObject.TryGetBool("ignoreFailureResponses", out bool ignoreFailureResponses) ||
                 !jObject.TryGetBool("ignoreNegativeResponses", out bool ignoreNegativeResponses) ||
-                !jObject.TryGetString("domainMatchingRule", out string domainMatchingRule) ||
+                !jObject.TryGetArray("domainMatchingRules", out IReadOnlyList<JObject> domainMatchingRuleObjects) ||
                 !jObject.TryGetArray("limitQueryTypes", out IReadOnlyList<string> limitQueryTypes))
                 return ParseResult<DnsServer>.Failure("一个或多个通用字段缺失或类型错误。");
+
+            ObservableCollection<AffinityRule> domainMatchingRules = [];
+            foreach (var item in domainMatchingRuleObjects.OfType<JObject>())
+            {
+                var parsed = affinityRuleMapper.FromJObject(item);
+                if (!parsed.IsSuccess)
+                    return ParseResult<DnsServer>.Failure($"解析 domainMatchingRules 时遇到异常：{parsed.ErrorMessage}");
+                domainMatchingRules.Add(parsed.Value);
+            }
 
             var server = new DnsServer
             {
@@ -68,7 +79,7 @@ namespace SNIBypassGUI.Common.Mapper
                 ProtocolType = protocolType,
                 IgnoreFailureResponses = ignoreFailureResponses,
                 IgnoreNegativeResponses = ignoreNegativeResponses,
-                DomainMatchingRule = domainMatchingRule,
+                DomainMatchingRules = domainMatchingRules,
                 LimitQueryTypes = [.. limitQueryTypes]
             };
 

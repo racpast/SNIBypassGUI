@@ -23,7 +23,7 @@ namespace SNIBypassGUI.Validators
                         var pattern = patterns[i];
                         if (string.IsNullOrWhiteSpace(pattern))
                         {
-                            context.AddFailure($"第 {i + 1} 个域名匹配模式：不能为空。");
+                            context.AddFailure($"第 {i + 1} 个域名匹配模式：匹配模式不能为空。");
                             continue;
                         }
                         if (pattern.Trim().StartsWith("/"))

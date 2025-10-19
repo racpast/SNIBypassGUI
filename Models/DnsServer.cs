@@ -1,16 +1,14 @@
 ﻿using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.Linq;
-using MaterialDesignThemes.Wpf;
-using SNIBypassGUI.Enums;
 using SNIBypassGUI.Common;
 using SNIBypassGUI.Common.Extensions;
 using SNIBypassGUI.Common.Network;
+using SNIBypassGUI.Enums;
 
 namespace SNIBypassGUI.Models
 {
     /// <summary>
-    /// 表示一个供 DNS 服务配置使用的 DNS 服务器配置。
+    /// 表示一个供 DNS 服务配置使用的 DNS 服务器。
     /// </summary>
     public class DnsServer : NotifyPropertyChangedBase
     {
@@ -25,7 +23,7 @@ namespace SNIBypassGUI.Models
         private bool _dohUseWinHttp;
         private string _socks5ProxyAddress;
         private string _socks5ProxyPort;
-        private string _domainMatchingRule;
+        private ObservableCollection<AffinityRule> _domainMatchingRules = [];
         private ObservableCollection<string> _limitQueryTypes = [];
         private bool _ignoreFailureResponses;
         private bool _ignoreNegativeResponses;
@@ -41,10 +39,7 @@ namespace SNIBypassGUI.Models
             set
             {
                 if (SetProperty(ref _serverAddress, value))
-                {
-                    OnPropertyChanged(nameof(PrimaryDisplayText));
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
-                }
+                    OnPropertyChanged(nameof(RequiresIPv6));
             }
         }
 
@@ -54,14 +49,7 @@ namespace SNIBypassGUI.Models
         public string ServerPort
         {
             get => _serverPort;
-            set
-            {
-                if (SetProperty(ref _serverPort, value))
-                {
-                    OnPropertyChanged(nameof(PrimaryDisplayText));
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
-                }
-            }
+            set => SetProperty(ref _serverPort, value);
         }
 
         /// <summary>
@@ -70,16 +58,7 @@ namespace SNIBypassGUI.Models
         public DnsServerProtocol ProtocolType
         {
             get => _protocolType;
-            set
-            {
-                if (SetProperty(ref _protocolType, value))
-                {
-                    OnPropertyChanged(nameof(ListIconKind));
-                    OnPropertyChanged(nameof(PrimaryDisplayText));
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
-                }
-
-            }
+            set => SetProperty(ref _protocolType, value);
         }
 
         /// <summary>
@@ -88,14 +67,7 @@ namespace SNIBypassGUI.Models
         public string DohHostname
         {
             get => _dohHostname;
-            set
-            {
-                if (SetProperty(ref _dohHostname, value))
-                {
-                    OnPropertyChanged(nameof(PrimaryDisplayText));
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
-                }
-            }
+            set => SetProperty(ref _dohHostname, value);
         }
 
         /// <summary>
@@ -143,10 +115,7 @@ namespace SNIBypassGUI.Models
             set
             {
                 if (SetProperty(ref _socks5ProxyAddress, value))
-                {
-                    OnPropertyChanged(nameof(PrimaryDisplayText));
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
-                }
+                    OnPropertyChanged(nameof(RequiresIPv6));
             }
         }
 
@@ -156,23 +125,16 @@ namespace SNIBypassGUI.Models
         public string Socks5ProxyPort
         {
             get => _socks5ProxyPort;
-            set
-            {
-                if (SetProperty(ref _socks5ProxyPort, value))
-                {
-                    OnPropertyChanged(nameof(PrimaryDisplayText));
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
-                }
-            }
+            set => SetProperty(ref _socks5ProxyPort, value);
         }
 
         /// <summary>
         /// 此服务器的域名匹配规则，用于决定哪些域名可以使用此服务器。
         /// </summary>
-        public string DomainMatchingRule
+        public ObservableCollection<AffinityRule> DomainMatchingRules
         {
-            get => _domainMatchingRule;
-            set => SetProperty(ref _domainMatchingRule, value);
+            get => _domainMatchingRules;
+            set => SetProperty(ref _domainMatchingRules, value);
         }
 
         /// <summary>
@@ -181,24 +143,7 @@ namespace SNIBypassGUI.Models
         public ObservableCollection<string> LimitQueryTypes
         {
             get => _limitQueryTypes;
-            set
-            {
-                if (_limitQueryTypes != value)
-                {
-                    var oldCollection = _limitQueryTypes;
-
-                    if (SetProperty(ref _limitQueryTypes, value))
-                    {
-                        if (oldCollection != null)
-                            oldCollection.CollectionChanged -= LimitQueryTypes_CollectionChanged;
-
-                        if (_limitQueryTypes != null)
-                            _limitQueryTypes.CollectionChanged += LimitQueryTypes_CollectionChanged;
-
-                        LimitQueryTypes_CollectionChanged(this, new(NotifyCollectionChangedAction.Reset));
-                    }
-                }
-            }
+            set => SetProperty(ref _limitQueryTypes, value);
         }
 
         /// <summary>
@@ -220,75 +165,19 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此服务器的图标类型，供 UI 使用。
+        /// 此服务器是否需要 IPv6 支持。
         /// </summary>
-        public PackIconKind ListIconKind
+        public bool RequiresIPv6
         {
             get => ProtocolType switch
             {
-                DnsServerProtocol.UDP => PackIconKind.Server,
-                DnsServerProtocol.TCP => PackIconKind.Server,
-                DnsServerProtocol.SOCKS5 => PackIconKind.ServerNetwork,
-                DnsServerProtocol.DoH => PackIconKind.ServerSecurity,
-                _ => PackIconKind.HelpCircleOutline
+                DnsServerProtocol.SOCKS5 => NetworkUtils.RequiresPublicIPv6(ServerAddress?.Trim()) || NetworkUtils.RequiresPublicIPv6(Socks5ProxyAddress?.Trim()),
+                _ => NetworkUtils.RequiresPublicIPv6(ServerAddress?.Trim())
             };
         }
-
-        /// <summary>
-        /// 此服务器在列表中的主要展示文本，供 UI 使用。
-        /// </summary>
-        public string PrimaryDisplayText
-        {
-            get =>
-                ProtocolType switch
-                {
-                    DnsServerProtocol.DoH => $"{DohHostname.OrDefault("未指定")}",
-                    _ => $"{(NetworkUtils.IsValidIPv6(ServerAddress) ?
-                        $"[{ServerAddress}]" :
-                        ServerAddress.OrDefault("未指定"))}:{ServerPort.OrDefault("未指定")}"
-                };
-        }
-
-        /// <summary>
-        /// 此服务器在列表中的次要展示文本，供 UI 使用。
-        /// </summary>
-        public string SecondaryDisplayText
-        {
-            get =>
-                ProtocolType switch
-                {
-                    DnsServerProtocol.DoH => $"{(NetworkUtils.IsValidIPv6(ServerAddress) ?
-                        $"[{ServerAddress}]" :
-                        ServerAddress.OrDefault("未指定"))}:{ServerPort.OrDefault("未指定")}",
-                    DnsServerProtocol.SOCKS5 => $"{(NetworkUtils.IsValidIPv6(Socks5ProxyAddress) ?
-                        $"[{Socks5ProxyAddress}]" :
-                        Socks5ProxyAddress.OrDefault("未指定"))}:{Socks5ProxyPort.OrDefault("未指定")}",
-                    _ => null
-                };
-        }
-
-        /// <summary>
-        /// 此服务器在列表中的查询类型限制展示文本，供 UI 使用。
-        /// </summary>
-        public string LimitQueryTypesDisplayText =>
-            LimitQueryTypes.Any()
-                ? $"{string.Join(" ", LimitQueryTypes.OrderBy(type => type))}"
-                : string.Empty;
-
-        /// <summary>
-        /// 指示此服务器是否存在查询类型限制。
-        /// </summary>
-        public bool HasQueryTypeRestrictions =>
-            LimitQueryTypes.Any();
         #endregion
 
         #region Methods
-        private void LimitQueryTypes_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            OnPropertyChanged(nameof(LimitQueryTypesDisplayText));
-            OnPropertyChanged(nameof(HasQueryTypeRestrictions));
-        }
-
         /// <summary>
         /// 创建当前 <see cref="DnsServer"/> 实例的完整副本。
         /// </summary>
@@ -307,7 +196,7 @@ namespace SNIBypassGUI.Models
                 DohUseWinHttp = DohUseWinHttp,
                 Socks5ProxyAddress = Socks5ProxyAddress,
                 Socks5ProxyPort = Socks5ProxyPort,
-                DomainMatchingRule = DomainMatchingRule,
+                DomainMatchingRules = [.. DomainMatchingRules.OrEmpty().Select(rule => rule.Clone())],
                 IgnoreFailureResponses = IgnoreFailureResponses,
                 IgnoreNegativeResponses = IgnoreNegativeResponses,
                 LimitQueryTypes = [.. LimitQueryTypes.OrEmpty()]
@@ -332,7 +221,7 @@ namespace SNIBypassGUI.Models
             DohUseWinHttp = server.DohUseWinHttp;
             Socks5ProxyAddress = server.Socks5ProxyAddress;
             Socks5ProxyPort = server.Socks5ProxyPort;
-            DomainMatchingRule = server.DomainMatchingRule;
+            DomainMatchingRules = [.. server.DomainMatchingRules.OrEmpty().Select(h => h.Clone())];
             IgnoreFailureResponses = server.IgnoreFailureResponses;
             IgnoreNegativeResponses = server.IgnoreNegativeResponses;
             LimitQueryTypes = [.. server.LimitQueryTypes.OrEmpty()];

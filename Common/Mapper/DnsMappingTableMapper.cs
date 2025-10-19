@@ -35,31 +35,37 @@ namespace SNIBypassGUI.Common.Mapper
         {
             if (jObject == null)
                 return ParseResult<DnsMappingTable>.Failure("JSON 对象为空。");
-
-            if (!jObject.TryGetGuid("id", out Guid id) ||
-                !jObject.TryGetString("tableName", out string tableName) ||
-                !jObject.TryGetBool("isBuiltIn", out bool isBuiltIn) ||
-                !jObject.TryGetArray("mappingGroups", out IReadOnlyList<JObject> mappingGroupObjects))
-                return ParseResult<DnsMappingTable>.Failure("一个或多个通用字段缺失或类型错误。");
-
-            ObservableCollection<DnsMappingGroup> mappingGroups = [];
-            foreach (var item in mappingGroupObjects.OfType<JObject>())
+            try
             {
-                var parsed = dnsMappingGroupMapper.FromJObject(item);
-                if (!parsed.IsSuccess)
-                    return ParseResult<DnsMappingTable>.Failure($"解析 mappingGroups 时出错：{parsed.ErrorMessage}");
-                mappingGroups.Add(parsed.Value);
+                if (!jObject.TryGetGuid("id", out Guid id) ||
+                    !jObject.TryGetString("tableName", out string tableName) ||
+                    !jObject.TryGetBool("isBuiltIn", out bool isBuiltIn) ||
+                    !jObject.TryGetArray("mappingGroups", out IReadOnlyList<JObject> mappingGroupObjects))
+                    return ParseResult<DnsMappingTable>.Failure("一个或多个通用字段缺失或类型错误。");
+
+                ObservableCollection<DnsMappingGroup> mappingGroups = [];
+                foreach (var item in mappingGroupObjects.OfType<JObject>())
+                {
+                    var parsed = dnsMappingGroupMapper.FromJObject(item);
+                    if (!parsed.IsSuccess)
+                        return ParseResult<DnsMappingTable>.Failure($"解析 mappingGroups 时遇到异常：{parsed.ErrorMessage}");
+                    mappingGroups.Add(parsed.Value);
+                }
+
+                var table = new DnsMappingTable
+                {
+                    Id = id,
+                    TableName = tableName,
+                    IsBuiltIn = isBuiltIn,
+                    MappingGroups = mappingGroups
+                };
+
+                return ParseResult<DnsMappingTable>.Success(table);
             }
-
-            var table = new DnsMappingTable
+            catch (Exception ex)
             {
-                Id = id,
-                TableName = tableName,
-                IsBuiltIn = isBuiltIn,
-                MappingGroups = mappingGroups
-            };
-
-            return ParseResult<DnsMappingTable>.Success(table);
+                return ParseResult<DnsMappingTable>.Failure($"解析 DnsMappingTable 时遇到异常：{ex.Message}");
+            }
         }
     }
 }

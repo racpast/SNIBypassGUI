@@ -10,15 +10,15 @@ using SNIBypassGUI.Interfaces;
 namespace SNIBypassGUI.Models
 {
     /// <summary>
-    /// 表示一个 DNS 解析器配置。
+    /// 表示一个 DNS 解析器。
     /// </summary>
-    public class ResolverConfig : NotifyPropertyChangedBase, IStorable
+    public class Resolver : NotifyPropertyChangedBase, IStorable
     {
         #region Fields
         private Guid _id;
-        private string _configName;
+        private string _resolverName;
         private bool _isBuiltIn;
-        private ResolverConfigProtocol _protocolType;
+        private ResolverProtocol _protocolType;
         private string _serverAddress;
         private string _queryTimeout;
         private bool _dnssec;
@@ -39,7 +39,7 @@ namespace SNIBypassGUI.Models
         private string _tlsClientKeyPath;
         private string _httpUserAgent;
         private HttpMethodType _httpMethod;
-        private ObservableCollection<HttpHeaderItem> _httpHeaders = [];
+        private ObservableCollection<HttpHeader> _httpHeaders = [];
         private HttpVersionMode _httpVersionMode;
         private bool _enablePmtud;
         private ObservableCollection<string> _quicAlpnTokens = [];
@@ -55,7 +55,7 @@ namespace SNIBypassGUI.Models
 
         #region Properties
         /// <summary>
-        /// 此解析器配置的唯一标识符。
+        /// 此解析器的唯一标识符。
         /// </summary>
         public Guid Id
         {
@@ -64,19 +64,19 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此解析器配置的名称。
+        /// 此解析器的名称。
         /// </summary>
-        public string ConfigName { get => _configName; set => SetProperty(ref _configName, value); }
+        public string ResolverName { get => _resolverName; set => SetProperty(ref _resolverName, value); }
 
         /// <summary>
-        /// 此解析器配置是否为内置方案。
+        /// 此解析器是否为内置方案。
         /// </summary>
         public bool IsBuiltIn { get => _isBuiltIn; set => SetProperty(ref _isBuiltIn, value); }
 
         /// <summary>
-        /// 此解析器配置使用的 DNS 协议类型。
+        /// 此解析器使用的 DNS 协议类型。
         /// </summary>
-        public ResolverConfigProtocol ProtocolType
+        public ResolverProtocol ProtocolType
         {
             get => _protocolType;
             set
@@ -85,7 +85,7 @@ namespace SNIBypassGUI.Models
 
                 if (SetProperty(ref _protocolType, value))
                 {
-                    if (value == ResolverConfigProtocol.DnsOverQuic && oldProtocol != ResolverConfigProtocol.DnsOverQuic)
+                    if (value == ResolverProtocol.DnsOverQuic && oldProtocol != ResolverProtocol.DnsOverQuic)
                     {
                         // 拿小本本把当前的 TLS 版本存起来，万一待会要改回去呢
                         _preDoQTlsMinVersion = TlsMinVersion;
@@ -95,7 +95,7 @@ namespace SNIBypassGUI.Models
                         TlsMinVersion = 1.3m;
                         TlsMaxVersion = 1.3m;
                     }
-                    else if (value != ResolverConfigProtocol.DnsOverQuic && oldProtocol == ResolverConfigProtocol.DnsOverQuic)
+                    else if (value != ResolverProtocol.DnsOverQuic && oldProtocol == ResolverProtocol.DnsOverQuic)
                     {
                         // 翻一下小本本
                         if (_preDoQTlsMinVersion.HasValue)
@@ -112,7 +112,7 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 此解析器配置的 DNS 服务器地址。
+        /// 此解析器的 DNS 服务器地址。
         /// </summary>
         public string ServerAddress
         {
@@ -212,7 +212,7 @@ namespace SNIBypassGUI.Models
         /// <summary>
         /// 自定义的 HTTP 头部信息。
         /// </summary>
-        public ObservableCollection<HttpHeaderItem> HttpHeaders { get => _httpHeaders; set => SetProperty(ref _httpHeaders, value); }
+        public ObservableCollection<HttpHeader> HttpHeaders { get => _httpHeaders; set => SetProperty(ref _httpHeaders, value); }
 
         /// <summary>
         /// DoH 查询使用的 HTTP 版本模式。
@@ -270,8 +270,22 @@ namespace SNIBypassGUI.Models
         public string BootstrapTimeout { get => _bootstrapTimeout; set => SetProperty(ref _bootstrapTimeout, value); }
 
         /// <summary>
-        /// 此解析器配置是否需要 IPv6 支持。
+        /// Checks whether this resolver lives in the far-off year 2038 and therefore
+        /// requires the shiny, chrome-plated future of networking known as IPv6.
         /// </summary>
+        /// <remarks>
+        /// <i>
+        /// <para>Normally, you'd think a boolean flag like this belongs in the ViewModel. 
+        /// And you'd be right, a hero among developers. </para>
+        /// 
+        /// <para>But not this time. This flag is less of a display suggestion and more of a 
+        /// "you must be this tall to ride" sign: without IPv6, this configuration simply won't work.</para>
+        /// 
+        /// <para>According to the DDD gods, core, unchangeable rules like this belong in the domain model. 
+        /// Moving it elsewhere would be a crime against the sacred layers of our architecture. 
+        /// And nobody wants to be the villain, right?</para>
+        /// </i>
+        /// </remarks>
         public bool RequiresIPv6
         {
             get
@@ -308,15 +322,15 @@ namespace SNIBypassGUI.Models
 
         #region Methods
         /// <summary>
-        /// 创建当前 <see cref="ResolverConfig"/> 实例的完整副本。
+        /// 创建当前 <see cref="Resolver"/> 实例的完整副本。
         /// </summary>
         /// <returns>当前对象的一个完整副本。</returns>
-        public ResolverConfig Clone()
+        public Resolver Clone()
         {
-            var clone = new ResolverConfig
+            var clone = new Resolver
             {
                 Id = Id,
-                ConfigName = ConfigName,
+                ResolverName = ResolverName,
                 IsBuiltIn = IsBuiltIn,
                 ProtocolType = ProtocolType,
                 ServerAddress = ServerAddress,
@@ -355,12 +369,12 @@ namespace SNIBypassGUI.Models
         }
 
         /// <summary>
-        /// 使用指定的 <see cref="ResolverConfig"/> 实例的属性值更新当前实例的内容。
+        /// 使用指定的 <see cref="Resolver"/> 实例的属性值更新当前实例的内容。
         /// </summary>
-        public void UpdateFrom(ResolverConfig source)
+        public void UpdateFrom(Resolver source)
         {
             if (source == null) return;
-            ConfigName = source.ConfigName;
+            ResolverName = source.ResolverName;
             IsBuiltIn = source.IsBuiltIn;
             ProtocolType = source.ProtocolType;
             ServerAddress = source.ServerAddress;

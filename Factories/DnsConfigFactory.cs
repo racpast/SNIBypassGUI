@@ -1,4 +1,5 @@
 ﻿using System;
+using SNIBypassGUI.Enums;
 using SNIBypassGUI.Interfaces;
 using SNIBypassGUI.Models;
 
@@ -11,37 +12,44 @@ namespace SNIBypassGUI.Factories
         /// </summary>
         public DnsConfig CreateDefault()
         {
+            // Configuration.pas，有修改
             return new DnsConfig
             {
                 Id = Guid.NewGuid(),
                 ConfigName = "新 DNS 配置",
                 IsBuiltIn = false,
-                InterceptIpv6Queries = false,
+                SinkholeIPv6Lookups = false,
                 ForwardPrivateReverseLookups = false,
-                PositiveResponseCacheTime = "240",
-                NegativeResponseCacheTime = "60",
-                FailedResponseCacheTime = "0",
-                SilentCacheUpdateTime = "60",
-                CacheAutoCleanupTime = "720",
-                CacheDomainMatchingRule = "^dns.msftncsi.com;^ipv6.msftconnecttest.com;^ipv6.msftncsi.com;^www.msftconnecttest.com;^www.msftncsi.com;*",
+                AddressCacheScavengingTime = "360",
+                AddressCacheNegativeTime = "60",
+                AddressCacheFailureTime = "0",
+                AddressCacheSilentUpdateTime = "240",
+                AddressCachePeriodicPruningTime = "60",
+                CacheDomainMatchingRules = [new() { Pattern = "dns.msftncsi.com",           Mode = AffinityRuleMatchMode.Exclude },
+                                            new() { Pattern = "ipv6.msftconnecttest.com",   Mode = AffinityRuleMatchMode.Exclude },
+                                            new() { Pattern = "ipv6.msftncsi.com",          Mode = AffinityRuleMatchMode.Exclude },
+                                            new() { Pattern = "www.msftconnecttest.com",    Mode = AffinityRuleMatchMode.Exclude },
+                                            new() { Pattern = "www.msftncsi.com",           Mode = AffinityRuleMatchMode.Exclude },
+                                            new() { Pattern = "*",                          Mode = AffinityRuleMatchMode.Include }],
                 LimitQueryTypesCache = ["A", "AAAA", "CNAME", "HTTPS", "MX", "NS", "PTR", "SOA", "SRV", "TXT"],
-                UseMemoryCacheOnly = false,
-                DisableAddressCache = false,
+                AddressCacheInMemoryOnly = false,
+                AddressCacheDisabled = false,
                 LocalIpv4BindingAddress = "0.0.0.0",
                 LocalIpv4BindingPort = "53",
-                LocalIpv6BindingAddress = "0:0:0:0:0:0:0:0",
-                LocalIpv6BindingPort = "53",
-                GeneratedResponseTtl = "300",
-                UdpResponseTimeout = "3989",
-                TcpFirstByteTimeout = "3989",
-                TcpInternalTimeout = "3989",
-                Socks5FirstByteTimeout = "3989",
-                Socks5OtherByteTimeout = "3989",
-                Socks5ConnectTimeout = "3989",
-                Socks5ResponseTimeout = "3989",
+                LocalIpv6BindingAddress = "::",
+                LocalIpv6BindingPort = "53",             
+                GeneratedResponseTimeToLive = "0",
+                ServerUdpProtocolResponseTimeout = "3989",
+                ServerTcpProtocolResponseTimeout = "3989",
+                ServerTcpProtocolInternalTimeout = "3989",
+                ServerSocks5ProtocolProxyFirstByteTimeout = "3989",
+                ServerSocks5ProtocolProxyOtherBytesTimeout = "3989",
+                ServerSocks5ProtocolProxyRemoteConnectTimeout = "3989",
+                ServerSocks5ProtocolProxyRemoteResponseTimeout = "3989",
+                EnableHitLog = false,
                 LogEvents = ["X", "H", "C", "F"],
-                EnableFullLogDump = false,
-                LogMemoryBufferSize = "0"
+                HitLogFullDump = false,
+                HitLogMaxPendingHits = "0"
             };
         }
     }

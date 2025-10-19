@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
-using MaterialDesignThemes.Wpf;
 using SNIBypassGUI.Common;
 using SNIBypassGUI.Common.Extensions;
 using SNIBypassGUI.Interfaces;
@@ -17,32 +18,33 @@ namespace SNIBypassGUI.Models
         private Guid _id;
         private string _configName;
         private bool _isBuiltIn;
-        private bool _interceptIpv6Queries = true;
+        private bool _sinkholeIPv6Lookups = true;
         private bool _forwardPrivateReverseLookups = true;
-        private string _positiveResponseCacheTime;
-        private string _negativeResponseCacheTime;
-        private string _failedResponseCacheTime;
-        private string _silentCacheUpdateTime;
-        private string _cacheAutoCleanupTime;
-        private string _cacheDomainMatchingRule;
+        private string _addressCacheScavengingTime;
+        private string _addressCacheNegativeTime;
+        private string _addressCacheFailureTime;
+        private string _addressCacheSilentUpdateTime;
+        private string _addressCachePeriodicPruningTime;
+        private ObservableCollection<AffinityRule> _cacheDomainMatchingRules = [];
         private ObservableCollection<string> _limitQueryTypesCache = [];
-        private bool _useMemoryCacheOnly;
-        private bool _disableAddressCache;
+        private bool _addressCacheInMemoryOnly;
+        private bool _addressCacheDisabled;
         private string _localIpv4BindingAddress;
         private string _localIpv4BindingPort;
         private string _localIpv6BindingAddress;
         private string _localIpv6BindingPort;
-        private string _generatedResponseTtl;
-        private string _udpResponseTimeout;
-        private string _tcpFirstByteTimeout;
-        private string _tcpInternalTimeout;
-        private string _socks5ConnectTimeout;
-        private string _socks5ResponseTimeout;
-        private string _socks5FirstByteTimeout;
-        private string _socks5OtherByteTimeout;
+        private string _generatedResponseTimeToLive;
+        private string _serverUdpProtocolResponseTimeout;
+        private string _serverTcpProtocolResponseTimeout;
+        private string _serverTcpProtocolInternalTimeout;
+        private string _serverSocks5ProtocolProxyRemoteConnectTimeout;
+        private string _serverSocks5ProtocolProxyRemoteResponseTimeout;
+        private string _serverSocks5ProtocolProxyFirstByteTimeout;
+        private string _serverSocks5ProtocolProxyOtherBytesTimeout;
+        private bool _enableHitLog;
         private ObservableCollection<string> _logEvents = [];
-        private bool _enableFullLogDump;
-        private string _logMemoryBufferSize;
+        private bool _hitLogFullDump;
+        private string _hitLogMaxPendingHits;
         private ObservableCollection<DnsServer> _dnsServers = [];
         #endregion
 
@@ -67,25 +69,41 @@ namespace SNIBypassGUI.Models
         public bool IsBuiltIn
         {
             get => _isBuiltIn;
-            set
-            {
-                if (SetProperty(ref _isBuiltIn, value))
-                {
-                    OnPropertyChanged(nameof(ListIconKind));
-                    OnPropertyChanged(nameof(ListTypeDescription));
-                }
-            }
+            set => SetProperty(ref _isBuiltIn, value);
         }
 
         /// <summary>
         /// 此配置的 DNS 服务器列表。
         /// </summary>
-        public ObservableCollection<DnsServer> DnsServers { get => _dnsServers; set => SetProperty(ref _dnsServers, value); }
+        public ObservableCollection<DnsServer> DnsServers
+        {
+            get => _dnsServers;
+            set
+            {
+                if (_dnsServers != null)
+                {
+                    _dnsServers.CollectionChanged -= OnDnsServersChanged;
+                    foreach (var server in _dnsServers)
+                        server.PropertyChanged -= OnDnsServerPropertyChanged;
+                }
+
+                if (SetProperty(ref _dnsServers, value))
+                {
+                    if (_dnsServers != null)
+                    {
+                        _dnsServers.CollectionChanged += OnDnsServersChanged;
+                        foreach (var server in _dnsServers)
+                            server.PropertyChanged += OnDnsServerPropertyChanged;
+                    }
+                    OnPropertyChanged(nameof(RequiresIPv6));
+                }
+            }
+        }
 
         /// <summary>
         /// 是否拦截 IPv6 查询。
         /// </summary>
-        public bool InterceptIpv6Queries { get => _interceptIpv6Queries; set => SetProperty(ref _interceptIpv6Queries, value); }
+        public bool SinkholeIPv6Lookups { get => _sinkholeIPv6Lookups; set => SetProperty(ref _sinkholeIPv6Lookups, value); }
 
         /// <summary>
         /// 是否转发私有反向查询。
@@ -95,32 +113,32 @@ namespace SNIBypassGUI.Models
         /// <summary>
         /// 肯定响应缓存时间。
         /// </summary>
-        public string PositiveResponseCacheTime { get => _positiveResponseCacheTime; set => SetProperty(ref _positiveResponseCacheTime, value); }
+        public string AddressCacheScavengingTime { get => _addressCacheScavengingTime; set => SetProperty(ref _addressCacheScavengingTime, value); }
 
         /// <summary>
         /// 否定响应缓存时间。
         /// </summary>
-        public string NegativeResponseCacheTime { get => _negativeResponseCacheTime; set => SetProperty(ref _negativeResponseCacheTime, value); }
+        public string AddressCacheNegativeTime { get => _addressCacheNegativeTime; set => SetProperty(ref _addressCacheNegativeTime, value); }
 
         /// <summary>
         /// 失败响应缓存时间。
         /// </summary>
-        public string FailedResponseCacheTime { get => _failedResponseCacheTime; set => SetProperty(ref _failedResponseCacheTime, value); }
+        public string AddressCacheFailureTime { get => _addressCacheFailureTime; set => SetProperty(ref _addressCacheFailureTime, value); }
 
         /// <summary>
         /// 缓存静默更新阈值。
         /// </summary>
-        public string SilentCacheUpdateTime { get => _silentCacheUpdateTime; set => SetProperty(ref _silentCacheUpdateTime, value); }
+        public string AddressCacheSilentUpdateTime { get => _addressCacheSilentUpdateTime; set => SetProperty(ref _addressCacheSilentUpdateTime, value); }
 
         /// <summary>
-        /// 缓存自动清理时间。
+        /// 缓存定期清理时间。
         /// </summary>
-        public string CacheAutoCleanupTime { get => _cacheAutoCleanupTime; set => SetProperty(ref _cacheAutoCleanupTime, value); }
+        public string AddressCachePeriodicPruningTime { get => _addressCachePeriodicPruningTime; set => SetProperty(ref _addressCachePeriodicPruningTime, value); }
 
         /// <summary>
         /// 缓存域名匹配规则。
         /// </summary>
-        public string CacheDomainMatchingRule { get => _cacheDomainMatchingRule; set => SetProperty(ref _cacheDomainMatchingRule, value); }
+        public ObservableCollection<AffinityRule> CacheDomainMatchingRules { get => _cacheDomainMatchingRules; set => SetProperty(ref _cacheDomainMatchingRules, value); }
 
         /// <summary>
         /// 缓存查询类型限制列表。
@@ -130,12 +148,12 @@ namespace SNIBypassGUI.Models
         /// <summary>
         /// 是否仅使用内存缓存，不使用磁盘缓存。
         /// </summary>
-        public bool UseMemoryCacheOnly { get => _useMemoryCacheOnly; set => SetProperty(ref _useMemoryCacheOnly, value); }
+        public bool AddressCacheInMemoryOnly { get => _addressCacheInMemoryOnly; set => SetProperty(ref _addressCacheInMemoryOnly, value); }
 
         /// <summary>
         /// 是否禁用地址缓存。
         /// </summary>
-        public bool DisableAddressCache { get => _disableAddressCache; set => SetProperty(ref _disableAddressCache, value); }
+        public bool AddressCacheDisabled { get => _addressCacheDisabled; set => SetProperty(ref _addressCacheDisabled, value); }
 
         /// <summary>
         /// 本地 IPv4 绑定地址。
@@ -160,42 +178,47 @@ namespace SNIBypassGUI.Models
         /// <summary>
         /// 本地生成响应 TTL。
         /// </summary>
-        public string GeneratedResponseTtl { get => _generatedResponseTtl; set => SetProperty(ref _generatedResponseTtl, value); }
+        public string GeneratedResponseTimeToLive { get => _generatedResponseTimeToLive; set => SetProperty(ref _generatedResponseTimeToLive, value); }
 
         /// <summary>
         /// UDP 响应超时时间。
         /// </summary>
-        public string UdpResponseTimeout { get => _udpResponseTimeout; set => SetProperty(ref _udpResponseTimeout, value); }
+        public string ServerUdpProtocolResponseTimeout { get => _serverUdpProtocolResponseTimeout; set => SetProperty(ref _serverUdpProtocolResponseTimeout, value); }
 
         /// <summary>
         /// TCP 首字节超时时间。
         /// </summary>
-        public string TcpFirstByteTimeout { get => _tcpFirstByteTimeout; set => SetProperty(ref _tcpFirstByteTimeout, value); }
+        public string ServerTcpProtocolResponseTimeout { get => _serverTcpProtocolResponseTimeout; set => SetProperty(ref _serverTcpProtocolResponseTimeout, value); }
 
         /// <summary>
         /// TCP 内部超时时间。
         /// </summary>
-        public string TcpInternalTimeout { get => _tcpInternalTimeout; set => SetProperty(ref _tcpInternalTimeout, value); }
+        public string ServerTcpProtocolInternalTimeout { get => _serverTcpProtocolInternalTimeout; set => SetProperty(ref _serverTcpProtocolInternalTimeout, value); }
 
         /// <summary>
         /// SOCKS5 连接超时时间。
         /// </summary>
-        public string Socks5ConnectTimeout { get => _socks5ConnectTimeout; set => SetProperty(ref _socks5ConnectTimeout, value); }
+        public string ServerSocks5ProtocolProxyRemoteConnectTimeout { get => _serverSocks5ProtocolProxyRemoteConnectTimeout; set => SetProperty(ref _serverSocks5ProtocolProxyRemoteConnectTimeout, value); }
 
         /// <summary>
         /// SOCKS5 响应超时时间。
         /// </summary>
-        public string Socks5ResponseTimeout { get => _socks5ResponseTimeout; set => SetProperty(ref _socks5ResponseTimeout, value); }
+        public string ServerSocks5ProtocolProxyRemoteResponseTimeout { get => _serverSocks5ProtocolProxyRemoteResponseTimeout; set => SetProperty(ref _serverSocks5ProtocolProxyRemoteResponseTimeout, value); }
 
         /// <summary>
         /// SOCKS5 首字节超时时间。
         /// </summary>
-        public string Socks5FirstByteTimeout { get => _socks5FirstByteTimeout; set => SetProperty(ref _socks5FirstByteTimeout, value); }
+        public string ServerSocks5ProtocolProxyFirstByteTimeout { get => _serverSocks5ProtocolProxyFirstByteTimeout; set => SetProperty(ref _serverSocks5ProtocolProxyFirstByteTimeout, value); }
 
         /// <summary>
         /// SOCKS5 其他字节超时时间。
         /// </summary>
-        public string Socks5OtherByteTimeout { get => _socks5OtherByteTimeout; set => SetProperty(ref _socks5OtherByteTimeout, value); }
+        public string ServerSocks5ProtocolProxyOtherBytesTimeout { get => _serverSocks5ProtocolProxyOtherBytesTimeout; set => SetProperty(ref _serverSocks5ProtocolProxyOtherBytesTimeout, value); }
+
+        /// <summary>
+        /// 是否启用命中日志。
+        /// </summary>
+        public bool EnableHitLog { get => _enableHitLog; set => SetProperty(ref _enableHitLog, value); }
 
         /// <summary>
         /// 日志记录事件列表。
@@ -205,22 +228,38 @@ namespace SNIBypassGUI.Models
         /// <summary>
         /// 是否启用完整日志转储。
         /// </summary>
-        public bool EnableFullLogDump { get => _enableFullLogDump; set => SetProperty(ref _enableFullLogDump, value); }
+        public bool HitLogFullDump { get => _hitLogFullDump; set => SetProperty(ref _hitLogFullDump, value); }
 
         /// <summary>
         /// 日志内存缓冲区大小。
         /// </summary>
-        public string LogMemoryBufferSize { get => _logMemoryBufferSize; set => SetProperty(ref _logMemoryBufferSize, value); }
+        public string HitLogMaxPendingHits { get => _hitLogMaxPendingHits; set => SetProperty(ref _hitLogMaxPendingHits, value); }
 
         /// <summary>
-        /// 此配置的图标类型，供 UI 使用。
+        /// 此配置是否需要 IPv6 支持。
         /// </summary>
-        public PackIconKind ListIconKind => IsBuiltIn ? PackIconKind.ArchiveLockOutline : PackIconKind.FileDocumentEditOutline;
+        public bool RequiresIPv6 { get => DnsServers.Any(server => server.RequiresIPv6); }
+        #endregion
 
-        /// <summary>
-        /// 此配置的类型描述，供 UI 使用。
-        /// </summary>
-        public string ListTypeDescription => IsBuiltIn ? "(内置)" : "(用户)";
+        #region Event Handlers
+        private void OnDnsServersChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null)
+                foreach (DnsServer item in e.NewItems)
+                    item.PropertyChanged += OnDnsServerPropertyChanged;
+
+            if (e.OldItems != null)
+                foreach (DnsServer item in e.OldItems)
+                    item.PropertyChanged -= OnDnsServerPropertyChanged;
+
+            OnPropertyChanged(nameof(RequiresIPv6));
+        }
+
+        private void OnDnsServerPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DnsServer.RequiresIPv6))
+                OnPropertyChanged(nameof(RequiresIPv6));
+        }
         #endregion
 
         #region Methods
@@ -235,30 +274,30 @@ namespace SNIBypassGUI.Models
                 Id = Id,
                 ConfigName = ConfigName,
                 IsBuiltIn = IsBuiltIn,
-                InterceptIpv6Queries = InterceptIpv6Queries,
+                SinkholeIPv6Lookups = SinkholeIPv6Lookups,
                 ForwardPrivateReverseLookups = ForwardPrivateReverseLookups,
-                PositiveResponseCacheTime = PositiveResponseCacheTime,
-                NegativeResponseCacheTime = NegativeResponseCacheTime,
-                FailedResponseCacheTime = FailedResponseCacheTime,
-                SilentCacheUpdateTime = SilentCacheUpdateTime,
-                CacheAutoCleanupTime = CacheAutoCleanupTime,
-                CacheDomainMatchingRule = CacheDomainMatchingRule,
-                UseMemoryCacheOnly = UseMemoryCacheOnly,
-                DisableAddressCache = DisableAddressCache,
+                AddressCacheScavengingTime = AddressCacheScavengingTime,
+                AddressCacheNegativeTime = AddressCacheNegativeTime,
+                AddressCacheFailureTime = AddressCacheFailureTime,
+                AddressCacheSilentUpdateTime = AddressCacheSilentUpdateTime,
+                AddressCachePeriodicPruningTime = AddressCachePeriodicPruningTime,
+                CacheDomainMatchingRules = [.. CacheDomainMatchingRules.OrEmpty().Select(server => server.Clone())],
+                AddressCacheInMemoryOnly = AddressCacheInMemoryOnly,
+                AddressCacheDisabled = AddressCacheDisabled,
                 LocalIpv4BindingAddress = LocalIpv4BindingAddress,
                 LocalIpv4BindingPort = LocalIpv4BindingPort,
                 LocalIpv6BindingAddress = LocalIpv6BindingAddress,
                 LocalIpv6BindingPort = LocalIpv6BindingPort,
-                GeneratedResponseTtl = GeneratedResponseTtl,
-                UdpResponseTimeout = UdpResponseTimeout,
-                TcpFirstByteTimeout = TcpFirstByteTimeout,
-                TcpInternalTimeout = TcpInternalTimeout,
-                Socks5ConnectTimeout = Socks5ConnectTimeout,
-                Socks5ResponseTimeout = Socks5ResponseTimeout,
-                Socks5FirstByteTimeout = Socks5FirstByteTimeout,
-                Socks5OtherByteTimeout = Socks5OtherByteTimeout,
-                EnableFullLogDump = EnableFullLogDump,
-                LogMemoryBufferSize = LogMemoryBufferSize,
+                GeneratedResponseTimeToLive = GeneratedResponseTimeToLive,
+                ServerUdpProtocolResponseTimeout = ServerUdpProtocolResponseTimeout,
+                ServerTcpProtocolResponseTimeout = ServerTcpProtocolResponseTimeout,
+                ServerTcpProtocolInternalTimeout = ServerTcpProtocolInternalTimeout,
+                ServerSocks5ProtocolProxyRemoteConnectTimeout = ServerSocks5ProtocolProxyRemoteConnectTimeout,
+                ServerSocks5ProtocolProxyRemoteResponseTimeout = ServerSocks5ProtocolProxyRemoteResponseTimeout,
+                ServerSocks5ProtocolProxyFirstByteTimeout = ServerSocks5ProtocolProxyFirstByteTimeout,
+                ServerSocks5ProtocolProxyOtherBytesTimeout = ServerSocks5ProtocolProxyOtherBytesTimeout,
+                HitLogFullDump = HitLogFullDump,
+                HitLogMaxPendingHits = HitLogMaxPendingHits,
                 LimitQueryTypesCache = [.. LimitQueryTypesCache.OrEmpty()],
                 LogEvents = [.. LogEvents.OrEmpty()],
                 DnsServers = [.. DnsServers.OrEmpty().Select(server => server.Clone())]
@@ -275,32 +314,32 @@ namespace SNIBypassGUI.Models
             if (source == null) return;
             ConfigName = source.ConfigName;
             IsBuiltIn = source.IsBuiltIn;
-            InterceptIpv6Queries = source.InterceptIpv6Queries;
+            SinkholeIPv6Lookups = source.SinkholeIPv6Lookups;
             ForwardPrivateReverseLookups = source.ForwardPrivateReverseLookups;
-            PositiveResponseCacheTime = source.PositiveResponseCacheTime;
-            NegativeResponseCacheTime = source.NegativeResponseCacheTime;
-            FailedResponseCacheTime = source.FailedResponseCacheTime;
-            SilentCacheUpdateTime = source.SilentCacheUpdateTime;
-            CacheAutoCleanupTime = source.CacheAutoCleanupTime;
-            CacheDomainMatchingRule = source.CacheDomainMatchingRule;
+            AddressCacheScavengingTime = source.AddressCacheScavengingTime;
+            AddressCacheNegativeTime = source.AddressCacheNegativeTime;
+            AddressCacheFailureTime = source.AddressCacheFailureTime;
+            AddressCacheSilentUpdateTime = source.AddressCacheSilentUpdateTime;
+            AddressCachePeriodicPruningTime = source.AddressCachePeriodicPruningTime;
+            CacheDomainMatchingRules = [.. source.CacheDomainMatchingRules?.Select(w => w.Clone()).OrEmpty()];
             LimitQueryTypesCache = [.. source.LimitQueryTypesCache.OrEmpty()];
-            UseMemoryCacheOnly = source.UseMemoryCacheOnly;
-            DisableAddressCache = source.DisableAddressCache;
+            AddressCacheInMemoryOnly = source.AddressCacheInMemoryOnly;
+            AddressCacheDisabled = source.AddressCacheDisabled;
             LocalIpv4BindingAddress = source.LocalIpv4BindingAddress;
             LocalIpv4BindingPort = source.LocalIpv4BindingPort;
             LocalIpv6BindingAddress = source.LocalIpv6BindingAddress;
             LocalIpv6BindingPort = source.LocalIpv6BindingPort;
-            GeneratedResponseTtl = source.GeneratedResponseTtl;
-            UdpResponseTimeout = source.UdpResponseTimeout;
-            TcpFirstByteTimeout = source.TcpFirstByteTimeout;
-            TcpInternalTimeout = source.TcpInternalTimeout;
-            Socks5ConnectTimeout = source.Socks5ConnectTimeout;
-            Socks5ResponseTimeout = source.Socks5ResponseTimeout;
-            Socks5FirstByteTimeout = source.Socks5FirstByteTimeout;
-            Socks5OtherByteTimeout = source.Socks5OtherByteTimeout;
+            GeneratedResponseTimeToLive = source.GeneratedResponseTimeToLive;
+            ServerUdpProtocolResponseTimeout = source.ServerUdpProtocolResponseTimeout;
+            ServerTcpProtocolResponseTimeout = source.ServerTcpProtocolResponseTimeout;
+            ServerTcpProtocolInternalTimeout = source.ServerTcpProtocolInternalTimeout;
+            ServerSocks5ProtocolProxyRemoteConnectTimeout = source.ServerSocks5ProtocolProxyRemoteConnectTimeout;
+            ServerSocks5ProtocolProxyRemoteResponseTimeout = source.ServerSocks5ProtocolProxyRemoteResponseTimeout;
+            ServerSocks5ProtocolProxyFirstByteTimeout = source.ServerSocks5ProtocolProxyFirstByteTimeout;
+            ServerSocks5ProtocolProxyOtherBytesTimeout = source.ServerSocks5ProtocolProxyOtherBytesTimeout;
             LogEvents = [.. source.LogEvents.OrEmpty()];
-            EnableFullLogDump = source.EnableFullLogDump;
-            LogMemoryBufferSize = source.LogMemoryBufferSize;
+            HitLogFullDump = source.HitLogFullDump;
+            HitLogMaxPendingHits = source.HitLogMaxPendingHits;
             DnsServers = [.. source.DnsServers?.Select(w => w.Clone()).OrEmpty()];
         }
         #endregion

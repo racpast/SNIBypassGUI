@@ -17,7 +17,13 @@ using static SNIBypassGUI.Common.LogManager;
 
 namespace SNIBypassGUI.Services
 {
-    public class DnsMappingTablesService(IConfigsRepository<DnsMappingTable> repository, IFactory<DnsMappingTable> factory, IMapper<DnsMappingTable> tableMapper, IMapper<ResolverConfig> resolverMapper, IConfigSetService<ResolverConfig> resolverService) : IConfigSetService<DnsMappingTable>
+    public class DnsMappingTablesService(
+        IConfigsRepository<DnsMappingTable> repository, 
+        IFactory<DnsMappingTable> factory, 
+        IMapper<DnsMappingTable> tableMapper, 
+        IMapper<Resolver> resolverMapper, 
+        IConfigSetService<Resolver> resolverService) 
+        : IConfigSetService<DnsMappingTable>
     {
         /// <summary>
         /// 所有映射表的集合。
@@ -148,7 +154,7 @@ namespace SNIBypassGUI.Services
                         var resolverResult = resolverMapper.FromJObject(resolverObj);
                         if (!resolverResult.IsSuccess)
                         {
-                            WriteLog($"解析关联解析器时出错：{resolverResult.ErrorMessage}", LogLevel.Warning);
+                            WriteLog($"解析关联解析器时遇到异常：{resolverResult.ErrorMessage}", LogLevel.Warning);
                             continue;
                         }
 
@@ -175,7 +181,7 @@ namespace SNIBypassGUI.Services
                                 // 内容不同，创建新解析器
                                 var newResolver = importedResolver.Clone();
                                 newResolver.Id = Guid.NewGuid();
-                                newResolver.ConfigName = $"{importedResolver.ConfigName} - 关联导入";
+                                newResolver.ResolverName = $"{importedResolver.ResolverName} - 关联导入";
                                 newResolver.IsBuiltIn = false;
 
                                 resolverService.AllConfigs.Add(newResolver);

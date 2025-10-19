@@ -16,84 +16,88 @@ using static SNIBypassGUI.Common.LogManager;
 
 namespace SNIBypassGUI.Services
 {
-    public class ResolverConfigService(IConfigsRepository<ResolverConfig> repository, IFactory<ResolverConfig> factory, IMapper<ResolverConfig> mapper) : IConfigSetService<ResolverConfig>
+    public class ResolverService(
+        IConfigsRepository<Resolver> repository, 
+        IFactory<Resolver> factory, 
+        IMapper<Resolver> mapper)
+        : IConfigSetService<Resolver>
     {
         /// <summary>
-        /// 所有 DNS 解析器配置的集合。
+        /// 所有 DNS 解析器的集合。
         /// </summary>
-        public RangeObservableCollection<ResolverConfig> AllConfigs { get; } = [];
+        public RangeObservableCollection<Resolver> AllConfigs { get; } = [];
 
         /// <summary>
-        /// 事件，当 DNS 解析器配置被重命名时触发。
+        /// 事件，当 DNS 解析器被重命名时触发。
         /// </summary>
         public event Action<Guid, string> ConfigRenamed;
 
         /// <summary>
-        /// 事件，当 DNS 解析器配置被更新时触发。
+        /// 事件，当 DNS 解析器被更新时触发。
         /// </summary>
         public event Action<Guid> ConfigUpdated;
 
         /// <summary>
-        /// 事件，当 DNS 解析器配置被移除时触发。
+        /// 事件，当 DNS 解析器被移除时触发。
         /// </summary>
         public event Action<Guid> ConfigRemoved;
 
         /// <summary>
-        /// 加载所有 DNS 解析器配置。
+        /// 加载所有 DNS 解析器。
         /// </summary>
         public void LoadData()
         {
-            var builtInConfigs = repository.LoadAll(BuiltInResolverConfigsPath);
-            var userConfigs = repository.LoadAll(UserResolverConfigsPath);
+            var builtInConfigs = repository.LoadAll(BuiltInResolversPath);
+            var userConfigs = repository.LoadAll(UserResolversPath);
             AllConfigs.ReplaceAll(builtInConfigs.Concat(userConfigs));
         }
 
         /// <summary>
-        /// 新建 DNS 解析器配置。
+        /// 新建 DNS 解析器。
         /// </summary>
-        public ResolverConfig CreateDefault() =>
+        public Resolver CreateDefault() =>
             factory.CreateDefault();
 
         /// <summary>
-        /// 删除 DNS 解析器配置。
+        /// 删除 DNS 解析器。
         /// </summary>
-        public void DeleteConfig(ResolverConfig config)
+        public void DeleteConfig(Resolver config)
         {
             if (config == null || config.IsBuiltIn) return;
             AllConfigs.Remove(config);
-            repository.RemoveById(UserResolverConfigsPath, config.Id);
+            repository.RemoveById(UserResolversPath, config.Id);
             ConfigRemoved?.Invoke(config.Id); // 广播
         }
 
         /// <summary>
-        /// 保存对 DNS 解析器配置的修改。
+        /// 保存对 DNS 解析器的修改。
         /// </summary>
-        public Task SaveChangesAsync(ResolverConfig config)
+        public Task SaveChangesAsync(Resolver config)
         {
             if (config == null || config.IsBuiltIn) return Task.CompletedTask;
 
             var originalConfig = AllConfigs.FirstOrDefault(c => c.Id == config.Id);
             if (originalConfig != null)
             {
-                var oldName = originalConfig.ConfigName;
+                var oldName = originalConfig.ResolverName;
                 originalConfig.UpdateFrom(config);
 
                 return Task.Run(() =>
                 {
-                    repository.Save(UserResolverConfigsPath, originalConfig);
+                    repository.Save(UserResolversPath, originalConfig);
 
                     ConfigUpdated?.Invoke(originalConfig.Id);
 
-                    if (originalConfig.ConfigName != oldName)
+                    if (originalConfig.ResolverName != oldName)
                     {
                         if (Application.Current != null)
                         {
                             Application.Current.Dispatcher.Invoke(() =>
                             {
-                                ConfigRenamed?.Invoke(originalConfig.Id, originalConfig.ConfigName);
+                                ConfigRenamed?.Invoke(originalConfig.Id, originalConfig.ResolverName);
                             });
                         }
-                        else ConfigRenamed?.Invoke(originalConfig.Id, originalConfig.ConfigName);
+                        else ConfigRenamed?.Invoke(originalConfig.Id, originalConfig.ResolverName);
                     }
                 });
             }
@@ -102,9 +106,9 @@ namespace SNIBypassGUI.Services
         }
 
         /// <summary>
-        /// 导入 DNS 解析器配置。
+        /// 导入 DNS 解析器。
         /// </summary>
-        public ResolverConfig ImportConfig(string path)
+        public Resolver ImportConfig(string path)
         {
             if (!File.Exists(path)) return null;
             try
@@ -115,7 +119,7 @@ namespace SNIBypassGUI.Services
                 var magic = Encoding.ASCII.GetString(br.ReadBytes(4));
                 if (magic != SrcMagic)
                 {
-                    WriteLog("导入解析器配置失败，无效的解析器配置文件。", LogLevel.Warning);
+                    WriteLog("导入解析器失败，无效的解析器文件。", LogLevel.Warning);
                     return null;
                 }
 
@@ -136,24 +140,24 @@ namespace SNIBypassGUI.Services
                     var imported = result.Value;
                     if (AllConfigs.Any(p => p.Id == imported.Id))
                         imported.Id = Guid.NewGuid();
-                    repository.Save(UserResolverConfigsPath, imported);
+                    repository.Save(UserResolversPath, imported);
                     AllConfigs.Add(imported);
                     return imported;
                 }
                 else
-                    WriteLog($"导入解析器配置失败，{result.ErrorMessage}", LogLevel.Warning);
+                    WriteLog($"导入解析器失败，{result.ErrorMessage}", LogLevel.Warning);
             }
             catch (Exception ex)
             {
-                WriteLog("导入解析器配置时发生错误。", LogLevel.Error, ex);
+                WriteLog("导入解析器时发生错误。", LogLevel.Error, ex);
             }
             return null;
         }
 
         /// <summary>
-        /// 将指定的 DNS 解析器配置导出到文件。
+        /// 将指定的 DNS 解析器导出到文件。
         /// </summary>
-        public void ExportConfig(ResolverConfig config, string destinationPath)
+        public void ExportConfig(Resolver config, string destinationPath)
         {
 
             if (config == null ||
@@ -185,14 +189,14 @@ namespace SNIBypassGUI.Services
             }
             catch (Exception ex)
             {
-                WriteLog("导出解析器配置时发生错误。", LogLevel.Error, ex);
+                WriteLog("导出解析器时发生错误。", LogLevel.Error, ex);
             }
         }
 
         /// <summary>
-        /// 压缩用户 DNS 解析器配置库文件，移除未使用的配置。
+        /// 压缩用户 DNS 解析器库文件，移除未使用的配置。
         /// </summary>
         public void Compact() =>
-            repository.Compact(UserResolverConfigsPath);
+            repository.Compact(UserResolversPath);
     }
 }

@@ -14,12 +14,10 @@ namespace SNIBypassGUI.ViewModels.Items
     {
         #region State & Core Properties
         private bool _isExpanded;
+        private readonly Func<Guid?, bool> _requiresIpv6Lookup;
 
         public DnsMappingGroup Model { get; }
-
         public ObservableCollection<DnsMappingRuleViewModel> MappingRules { get; } = [];
-
-        private readonly Func<Guid?, ResolverConfig> _resolverLookup;
         #endregion
 
         #region UI Properties
@@ -31,8 +29,6 @@ namespace SNIBypassGUI.ViewModels.Items
 
         public BitmapImage GroupIcon => FileUtils.Base64ToBitmapImage(Model.GroupIconBase64);
 
-        public bool HasGroupIcon => !string.IsNullOrEmpty(Model.GroupIconBase64);
-
         public string DisplayText => $"{Model.GroupName} ({Model.MappingRules?.Count ?? 0})";
 
         public bool RequiresIPv6 => MappingRules.Any(vm => vm.RequiresIPv6);
@@ -43,10 +39,10 @@ namespace SNIBypassGUI.ViewModels.Items
         #endregion
 
         #region Constructor
-        public DnsMappingGroupViewModel(DnsMappingGroup model, Func<Guid?, ResolverConfig> resolverLookup)
+        public DnsMappingGroupViewModel(DnsMappingGroup model, Func<Guid?, bool> requiresIpv6Lookup)
         {
             Model = model ?? throw new ArgumentNullException(nameof(model));
-            _resolverLookup = resolverLookup ?? throw new ArgumentNullException(nameof(resolverLookup));
+            _requiresIpv6Lookup = requiresIpv6Lookup ?? throw new ArgumentNullException(nameof(requiresIpv6Lookup));
 
             Model.PropertyChanged += OnModelPropertyChanged;
             Model.MappingRules.CollectionChanged += OnModelRulesCollectionChanged;
@@ -67,20 +63,16 @@ namespace SNIBypassGUI.ViewModels.Items
         #region Event Handlers & Private Helpers
         private void OnModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            OnPropertyChanged(e.PropertyName);
+
             switch (e.PropertyName)
             {
                 case nameof(DnsMappingGroup.GroupName):
-                    OnPropertyChanged(nameof(GroupName));
                     OnPropertyChanged(nameof(DisplayText));
                     break;
 
                 case nameof(DnsMappingGroup.GroupIconBase64):
                     OnPropertyChanged(nameof(GroupIcon));
-                    OnPropertyChanged(nameof(HasGroupIcon));
-                    break;
-
-                case nameof(DnsMappingGroup.IsEnabled):
-                    OnPropertyChanged(nameof(IsEnabled));
                     break;
             }
         }
@@ -115,7 +107,7 @@ namespace SNIBypassGUI.ViewModels.Items
 
         private void AddRuleViewModel(DnsMappingRule ruleModel, int index = -1)
         {
-            var ruleVM = new DnsMappingRuleViewModel(ruleModel, this, _resolverLookup);
+            var ruleVM = new DnsMappingRuleViewModel(ruleModel, this, _requiresIpv6Lookup);
             ruleVM.PropertyChanged += OnRuleViewModelPropertyChanged;
             if (index >= 0) MappingRules.Insert(index, ruleVM);
             else MappingRules.Add(ruleVM);

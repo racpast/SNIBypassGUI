@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace SNIBypassGUI.Common.Extensions
@@ -61,12 +63,52 @@ namespace SNIBypassGUI.Common.Extensions
         }
 #endif
 
+#if !NET5_0_OR_GREATER
+#warning 在 .NET 5 及更高版本中应使用 System.String.StartsWith 方法。
+        public static bool StartsWith(this string value, char c)
+        {
+            if (string.IsNullOrEmpty(value))
+                return false;
+
+            return value[0] == c;
+        }
+#endif
+
         private static int ParseHexChar(char c)
         {
             if (c >= '0' && c <= '9') return c - '0';
             if (c >= 'A' && c <= 'F') return c - 'A' + 10;
             if (c >= 'a' && c <= 'f') return c - 'a' + 10;
             throw new FormatException($"Invalid hex character: '{c}'.");
+        }
+
+        public static bool ContainsAny(this string source, params object[] values)
+        {
+            if (string.IsNullOrEmpty(source) || values == null || values.Length == 0)
+                return false;
+
+            foreach (var v in values)
+            {
+                switch (v)
+                {
+                    case string s when !string.IsNullOrEmpty(s):
+                        if (source.Contains(s))
+                            return true;
+                        break;
+
+                    case char c:
+                        if (source.Contains(c))
+                            return true;
+                        break;
+
+                    case IEnumerable<char> charCollection:
+                        if (charCollection.Any(source.Contains))
+                            return true;
+                        break;
+                }
+            }
+
+            return false;
         }
     }
 }

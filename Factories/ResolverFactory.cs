@@ -5,18 +5,18 @@ using SNIBypassGUI.Models;
 
 namespace SNIBypassGUI.Factories
 {
-    public class ResolverConfigFactory : IFactory<ResolverConfig>
+    public class ResolverFactory : IFactory<Resolver>
     {
         /// <summary>
-        /// 新建 DNS 解析器配置。
+        /// 新建 DNS 解析器。
         /// </summary>
-        public ResolverConfig CreateDefault()
+        public Resolver CreateDefault()
         {
-            return new ResolverConfig
+            return new Resolver
             {
                 Id = Guid.NewGuid(),
-                ConfigName = "新解析器配置",
-                ProtocolType = ResolverConfigProtocol.Plain,
+                ResolverName = "新解析器",
+                ProtocolType = ResolverProtocol.Plain,
                 IsBuiltIn = false,
                 ServerAddress = string.Empty,
                 QueryTimeout = "6s",

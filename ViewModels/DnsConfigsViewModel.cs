@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.ComponentModel;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -12,55 +12,71 @@ using Microsoft.Win32;
 using SNIBypassGUI.Common;
 using SNIBypassGUI.Common.Codecs;
 using SNIBypassGUI.Common.Commands;
+using SNIBypassGUI.Common.Extensions;
+using SNIBypassGUI.Consts;
 using SNIBypassGUI.Enums;
 using SNIBypassGUI.Interfaces;
 using SNIBypassGUI.Models;
 using SNIBypassGUI.Validators;
-using SNIBypassGUI.ViewModels.Validation;
 using SNIBypassGUI.ViewModels.Helpers;
+using SNIBypassGUI.ViewModels.Items;
+using SNIBypassGUI.ViewModels.Validation;
 
 namespace SNIBypassGUI.ViewModels
 {
     public class DnsConfigsViewModel : NotifyPropertyChangedBase, IDisposable
     {
-        #region Dependencies & Core State
+        #region Constants
+        // DnsProtocol.pas
         private static readonly IReadOnlyList<string> s_allPossibleQueryTypes =
         [
             "A", "AAAA", "CNAME", "HTTPS", "MX", "NS",
-            "PTR", "SOA", "SRV", "TXT"
+            "PTR", "SOA", "SRV", "TXT", "ANY"
         ];
         private static readonly IReadOnlyList<string> s_allPossibleLogEvents =
         [
             "X", "H", "C", "F", "R", "U"
         ];
+        #endregion
+
+        #region Dependencies & Instance State
         private readonly IConfigSetService<DnsConfig> _configService;
         private readonly IDialogService _dialogService;
         private readonly IFactory<DnsServer> _serverFactory;
+        private readonly IFactory<AffinityRule> _ruleFactory;
         private readonly DnsConfigValidator _configValidator;
         private EditingState _currentState = EditingState.None;
         private bool _isBusy;
         private bool _canExecuteCopy = true;
         private DnsConfig _originalConfig;
         private DnsConfig _editingConfigCopy;
-        private DnsServer _selectedDnsServer;
+        private DnsConfigViewModel _editingConfigVM;
+        private DnsServerViewModel _selectedDnsServerVM;
         private IReadOnlyList<ValidationErrorNode> _validationErrors;
         private IReadOnlyList<ValidationErrorNode> _validationWarnings;
+        private readonly ObservableCollection<DnsConfigViewModel> _allConfigVMs = [];
         #endregion
 
         #region Constructor
         public DnsConfigsViewModel(
             IConfigSetService<DnsConfig> configService,
             IFactory<DnsServer> serverFactory,
+            IFactory<AffinityRule> ruleFactory,
             IDialogService dialogService)
         {
             _configService = configService;
             _serverFactory = serverFactory;
+            _ruleFactory = ruleFactory;
             _dialogService = dialogService;
             _configValidator = new();
-            AllConfigs = new ReadOnlyObservableCollection<DnsConfig>(_configService.AllConfigs);
-            ConfigSelector = new SilentSelector<DnsConfig>(HandleUserSelectionChangedAsync);
 
-            CopyLinkCodeCommand = new AsyncCommand<DnsConfig>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
+            AllConfigs = new ReadOnlyObservableCollection<DnsConfig>(_configService.AllConfigs);
+            AllConfigVMs = new ReadOnlyObservableCollection<DnsConfigViewModel>(_allConfigVMs);
+            _configService.AllConfigs.CollectionChanged += OnAllConfigsCollectionChanged;
+
+            ConfigSelector = new SilentSelector<DnsConfigViewModel>(HandleUserSelectionChangedAsync);
+
+            CopyLinkCodeCommand = new AsyncCommand<DnsConfigViewModel>(ExecuteCopyLinkCode, CanExecuteCopyLinkCode);
 
             AddNewConfigCommand = new AsyncCommand(ExecuteAddNewConfigAsync, CanExecuteWhenNotBusy);
             DuplicateConfigCommand = new AsyncCommand(ExecuteDuplicateConfigAsync, CanExecuteDuplicateConfig);
@@ -74,11 +90,25 @@ namespace SNIBypassGUI.ViewModels
             MoveSelectedServerUpCommand = new RelayCommand(ExecuteMoveSelectedServerUp, CanExecuteMoveUp);
             MoveSelectedServerDownCommand = new RelayCommand(ExecuteMoveSelectedServerDown, CanExecuteMoveDown);
 
+            EditDomainMatchingRulePatternCommand = new AsyncCommand<AffinityRule>(ExecuteEditDomainMatchingRulePatternAsync, CanExecuteEditDomainMatchingRule);
+            MoveDomainMatchingRuleUpCommand = new RelayCommand<AffinityRule>(ExecuteMoveDomainMatchingRuleUp, CanExecuteMoveDomainMatchingRuleUp);
+            MoveDomainMatchingRuleDownCommand = new RelayCommand<AffinityRule>(ExecuteMoveDomainMatchingRuleDown, CanExecuteMoveDomainMatchingRuleDown);
+            DeleteDomainMatchingRuleCommand = new RelayCommand<AffinityRule>(ExecuteDeleteDomainMatchingRule, CanExecuteWhenNotBusy);
+            AddDomainMatchingRuleCommand = new AsyncCommand(ExecuteAddDomainMatchingRuleAsync, CanExecuteWhenNotBusy);
+            DeleteAllDomainMatchingRulesCommand = new AsyncCommand(ExecuteDeleteAllDomainMatchingRulesAsync, CanExecuteDeleteAllDomainMatchingRules);
+
+            EditCacheDomainMatchingRulePatternCommand = new AsyncCommand<AffinityRule>(ExecuteEditCacheDomainMatchingRulePatternAsync, CanExecuteEditCacheDomainMatchingRule);
+            MoveCacheDomainMatchingRuleUpCommand = new RelayCommand<AffinityRule>(ExecuteMoveCacheDomainMatchingRuleUp, CanExecuteMoveCacheDomainMatchingRuleUp);
+            MoveCacheDomainMatchingRuleDownCommand = new RelayCommand<AffinityRule>(ExecuteMoveCacheDomainMatchingRuleDown, CanExecuteMoveCacheDomainMatchingRuleDown);
+            DeleteCacheDomainMatchingRuleCommand = new RelayCommand<AffinityRule>(ExecuteDeleteCacheDomainMatchingRule, CanExecuteWhenNotBusy);
+            AddCacheDomainMatchingRuleCommand = new AsyncCommand(ExecuteAddCacheDomainMatchingRuleAsync, CanExecuteWhenNotBusy);
+            DeleteAllCacheDomainMatchingRulesCommand = new AsyncCommand(ExecuteDeleteAllCacheDomainMatchingRulesAsync, CanExecuteDeleteAllCacheDomainMatchingRules);
+
             SaveChangesCommand = new AsyncCommand(ExecuteSaveChangesAsync, CanExecuteSave);
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, CanExecuteWhenDirty);
 
             _configService.LoadData();
-            if (AllConfigs.Any()) SwitchToConfig(AllConfigs.First());
+            if (AllConfigVMs.Any()) SwitchToConfig(AllConfigVMs.First());
         }
         #endregion
 
@@ -89,34 +119,44 @@ namespace SNIBypassGUI.ViewModels
 
         public ReadOnlyObservableCollection<DnsConfig> AllConfigs { get; }
 
-        public SilentSelector<DnsConfig> ConfigSelector { get; }
+        public ReadOnlyObservableCollection<DnsConfigViewModel> AllConfigVMs { get; }
+
+        public SilentSelector<DnsConfigViewModel> ConfigSelector { get; }
+
+        public DnsConfigViewModel EditingConfigVM
+        {
+            get => _editingConfigVM;
+            private set => SetProperty(ref _editingConfigVM, value);
+        }
 
         public DnsConfig EditingConfigCopy
         {
             get => _editingConfigCopy;
             private set
             {
-                // 取消对旧副本及其子项的监听
-                if (_editingConfigCopy != null)
-                    StopListeningToChanges(_editingConfigCopy);
-                // 你问我为什么 EditingConfigCopy.DnsServers[n].LimitQueryTypes的CollectionChanged 不需要被订阅也可以进入脏状态？
-                // 别问，问就是 DnsServer 的 LimitQueryTypes 集合的变化会通过 PropertyChanged 事件向上传播。
+                if (_editingConfigCopy != null) StopListeningToChanges(_editingConfigCopy);
 
-                // 设置新属性
-                SetProperty(ref _editingConfigCopy, value);
-
-                // 订阅新副本及其子项的事件
-                if (_editingConfigCopy != null)
-                    StartListeningToChanges(_editingConfigCopy);
+                if (SetProperty(ref _editingConfigCopy, value))
+                {
+                    EditingConfigVM?.Dispose();
+                    if (_editingConfigCopy != null)
+                    {
+                        EditingConfigVM = new DnsConfigViewModel(_editingConfigCopy);
+                        StartListeningToChanges(_editingConfigCopy);
+                    }
+                    else EditingConfigVM = null;
+                    OnPropertyChanged(nameof(EditingConfigVM));
+                    SelectedDnsServerVM = EditingConfigVM?.DnsServers.FirstOrDefault();
+                }
             }
         }
 
-        public DnsServer SelectedDnsServer
+        public DnsServerViewModel SelectedDnsServerVM
         {
-            get => _selectedDnsServer;
+            get => _selectedDnsServerVM;
             set
             {
-                if (SetProperty(ref _selectedDnsServer, value))
+                if (SetProperty(ref _selectedDnsServerVM, value))
                     UpdateCommandStates();
             }
         }
@@ -139,6 +179,7 @@ namespace SNIBypassGUI.ViewModels
         #endregion
 
         #region Public Commands
+        public ICommand CopyLinkCodeCommand { get; }
         public ICommand AddNewConfigCommand { get; }
         public ICommand DuplicateConfigCommand { get; }
         public ICommand DeleteConfigCommand { get; }
@@ -151,32 +192,35 @@ namespace SNIBypassGUI.ViewModels
         public ICommand RemoveSelectedServerCommand { get; }
         public ICommand MoveSelectedServerUpCommand { get; }
         public ICommand MoveSelectedServerDownCommand { get; }
-        public ICommand CopyLinkCodeCommand { get; }
 
+        public ICommand EditDomainMatchingRulePatternCommand { get; }
+        public ICommand MoveDomainMatchingRuleUpCommand { get; }
+        public ICommand MoveDomainMatchingRuleDownCommand { get; }
+        public ICommand DeleteDomainMatchingRuleCommand { get; }
+        public ICommand AddDomainMatchingRuleCommand { get; }
+        public ICommand DeleteAllDomainMatchingRulesCommand { get; }
+
+        public ICommand EditCacheDomainMatchingRulePatternCommand { get; }
+        public ICommand MoveCacheDomainMatchingRuleUpCommand { get; }
+        public ICommand MoveCacheDomainMatchingRuleDownCommand { get; }
+        public ICommand DeleteCacheDomainMatchingRuleCommand { get; }
+        public ICommand AddCacheDomainMatchingRuleCommand { get; }
+        public ICommand DeleteAllCacheDomainMatchingRulesCommand { get; }
         #endregion
 
         #region Lifecycle & State Management
-        private async Task HandleUserSelectionChangedAsync(DnsConfig newItem, DnsConfig oldItem)
+        private async Task HandleUserSelectionChangedAsync(DnsConfigViewModel newItem, DnsConfigViewModel oldItem)
         {
             _isBusy = true;
             UpdateCommandStates();
-
             try
             {
                 if (_currentState != EditingState.None)
                 {
                     var result = await PromptToSaveChangesAndContinueAsync();
-
-                    switch (result)
-                    {
-                        case SaveChangesResult.Save:
-                        case SaveChangesResult.Discard:
-                            SwitchToConfig(newItem);
-                            break;
-                        case SaveChangesResult.Cancel:
-                            ConfigSelector.SetItemSilently(oldItem);
-                            break;
-                    }
+                    if (result == SaveChangesResult.Save || result == SaveChangesResult.Discard)
+                        SwitchToConfig(newItem);
+                    else ConfigSelector.SetItemSilently(oldItem);
                 }
                 else SwitchToConfig(newItem);
             }
@@ -187,37 +231,16 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private void SwitchToConfig(DnsConfig newConfig)
+        private void SwitchToConfig(DnsConfigViewModel newConfigVM)
         {
-            // 更新 UI 选择器，确保 UI 与状态一致
-            ConfigSelector.SetItemSilently(newConfig);
-
-            // 加载到编辑区域，并重置编辑状态
+            ConfigSelector.SetItemSilently(newConfigVM);
             ResetToSelectedConfig();
-
-            if (EditingConfigCopy != null && EditingConfigCopy.DnsServers.Any())
-                SelectedDnsServer = EditingConfigCopy.DnsServers.First();
-            else SelectedDnsServer = null;
         }
 
         private void ResetToSelectedConfig()
         {
-            // 保存当前选中的服务器（如果有）
-            var currentSelectedServer = SelectedDnsServer;
-
-            _originalConfig = ConfigSelector.SelectedItem;
+            _originalConfig = ConfigSelector.SelectedItem?.Model;
             EditingConfigCopy = _originalConfig?.Clone();
-
-            // 重置后总是尝试选中第一个服务器
-            if (EditingConfigCopy != null && EditingConfigCopy.DnsServers.Any())
-            {
-                // 优先尝试保持原有选中，否则选第一个
-                SelectedDnsServer = EditingConfigCopy.DnsServers.Contains(currentSelectedServer)
-                    ? currentSelectedServer
-                    : EditingConfigCopy.DnsServers.First();
-            }
-            else SelectedDnsServer = null;
-
             TransitionToState(EditingState.None);
         }
 
@@ -225,13 +248,9 @@ namespace SNIBypassGUI.ViewModels
         {
             ConfigSelector.SetItemSilently(null);
             _originalConfig = null;
-            EditingConfigCopy = _configService.CreateDefault();
-            EditingConfigCopy.ConfigName = configName;
-
-            // 创建新配置时选中第一个服务器（说不定有呢）
-            if (EditingConfigCopy.DnsServers.Any())
-                SelectedDnsServer = EditingConfigCopy.DnsServers.First();
-
+            var newConfig = _configService.CreateDefault();
+            newConfig.ConfigName = configName;
+            EditingConfigCopy = newConfig;
             TransitionToState(EditingState.Creating);
         }
 
@@ -239,11 +258,12 @@ namespace SNIBypassGUI.ViewModels
         {
             _currentState = newState;
             ValidateEditingCopy();
+            UpdateCommandStates();
         }
 
         private void UpdateCommandStates()
         {
-            (CopyLinkCodeCommand as AsyncCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+            (CopyLinkCodeCommand as AsyncCommand<DnsConfigViewModel>)?.RaiseCanExecuteChanged();
 
             (AddNewConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DuplicateConfigCommand as AsyncCommand)?.RaiseCanExecuteChanged();
@@ -256,6 +276,20 @@ namespace SNIBypassGUI.ViewModels
             (RemoveSelectedServerCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedServerUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MoveSelectedServerDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+
+            (EditDomainMatchingRulePatternCommand as AsyncCommand<AffinityRule>)?.RaiseCanExecuteChanged();
+            (MoveDomainMatchingRuleUpCommand as RelayCommand<AffinityRule>)?.RaiseCanExecuteChanged();
+            (MoveDomainMatchingRuleDownCommand as RelayCommand<AffinityRule>)?.RaiseCanExecuteChanged();
+            (DeleteDomainMatchingRuleCommand as RelayCommand<AffinityRule>)?.RaiseCanExecuteChanged();
+            (AddDomainMatchingRuleCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DeleteAllDomainMatchingRulesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+
+            (EditCacheDomainMatchingRulePatternCommand as AsyncCommand<AffinityRule>)?.RaiseCanExecuteChanged();
+            (MoveCacheDomainMatchingRuleUpCommand as RelayCommand<AffinityRule>)?.RaiseCanExecuteChanged();
+            (MoveCacheDomainMatchingRuleDownCommand as RelayCommand<AffinityRule>)?.RaiseCanExecuteChanged();
+            (DeleteCacheDomainMatchingRuleCommand as RelayCommand<AffinityRule>)?.RaiseCanExecuteChanged();
+            (AddCacheDomainMatchingRuleCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+            (DeleteAllCacheDomainMatchingRulesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
 
             (SaveChangesCommand as AsyncCommand)?.RaiseCanExecuteChanged();
             (DiscardChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -307,8 +341,11 @@ namespace SNIBypassGUI.ViewModels
                     return;
                 }
             }
+            var configToCloneVM = ConfigSelector.SelectedItem;
+            if (configToCloneVM == null) return;
 
-            var configToClone = ConfigSelector.SelectedItem;
+            var configToClone = configToCloneVM.Model;
+
             var suggestedName = $"{configToClone.ConfigName} - 副本";
             var newName = await _dialogService.ShowTextInputAsync("创建副本", "请输入新配置的名称：", suggestedName);
 
@@ -322,7 +359,8 @@ namespace SNIBypassGUI.ViewModels
                 _configService.AllConfigs.Add(newConfig);
                 await _configService.SaveChangesAsync(newConfig);
 
-                SwitchToConfig(newConfig);
+                var newConfigVM = AllConfigVMs.FirstOrDefault(vm => vm.Model == newConfig);
+                if (newConfigVM != null) SwitchToConfig(newConfigVM);
             }
             else if (newName != null)
             {
@@ -355,21 +393,22 @@ namespace SNIBypassGUI.ViewModels
                 }
             }
 
-            var configToDelete = ConfigSelector.SelectedItem;
+            var configToDeleteVM = ConfigSelector.SelectedItem;
+            var configToDelete = configToDeleteVM.Model;
             var confirmResult = await _dialogService.ShowConfirmationAsync(
                 "确认删除",
-                $"您确定要删除 \"{configToDelete.ConfigName}\" 吗？\n此操作不可恢复！",
+                $"您确定要删除 “{configToDelete.ConfigName}” 吗？\n此操作不可恢复！",
                 "删除");
 
             if (confirmResult)
             {
-                DnsConfig nextSelection = null;
-                if (AllConfigs.Count > 1)
+                DnsConfigViewModel nextSelection = null;
+                if (AllConfigVMs.Count > 1)
                 {
-                    int currentIndex = AllConfigs.IndexOf(configToDelete);
-                    nextSelection = currentIndex == AllConfigs.Count - 1
-                        ? AllConfigs[currentIndex - 1]
-                        : AllConfigs[currentIndex + 1];
+                    int currentIndex = AllConfigVMs.IndexOf(configToDeleteVM);
+                    nextSelection = currentIndex == AllConfigVMs.Count - 1
+                        ? AllConfigVMs[currentIndex - 1]
+                        : AllConfigVMs[currentIndex + 1];
                 }
                 _configService.DeleteConfig(configToDelete);
                 SwitchToConfig(nextSelection);
@@ -394,27 +433,18 @@ namespace SNIBypassGUI.ViewModels
                     if (result == SaveChangesResult.Cancel) return;
                 }
 
-                var newName = await _dialogService.ShowTextInputAsync("重命名配置", $"为 \"{EditingConfigCopy.ConfigName}\" 输入新名称：", EditingConfigCopy.ConfigName);
-                if (newName != null)
+                var newName = await _dialogService.ShowTextInputAsync($"重命名 “{EditingConfigCopy.ConfigName}”", "请输入新的配置名称：", EditingConfigCopy.ConfigName);
+                if (newName != null && !string.IsNullOrWhiteSpace(newName))
                 {
-                    if (!string.IsNullOrWhiteSpace(newName))
+                    if (newName != EditingConfigCopy.ConfigName)
                     {
-                        if (newName != EditingConfigCopy.ConfigName)
-                        {
-                            EditingConfigCopy.ConfigName = newName;
-                            await _configService.SaveChangesAsync(EditingConfigCopy);
-                        }
-                        // 刷新显示并确保选中状态正确
-                        SwitchToConfig(EditingConfigCopy);
-                    }
-                    else
-                    {
-                        await _dialogService.ShowInfoAsync("重命名失败", "配置名称不能为空！");
-                        // 输入空名称后也需要重置选中状态
+                        EditingConfigCopy.ConfigName = newName;
+                        await _configService.SaveChangesAsync(EditingConfigCopy);
                         ResetToSelectedConfig();
                     }
                 }
-                else ResetToSelectedConfig(); // 用户取消输入后重置选中状态
+                else if (newName != null)
+                    await _dialogService.ShowInfoAsync("重命名失败", "配置名称不能为空！");
             }
             finally
             {
@@ -448,7 +478,11 @@ namespace SNIBypassGUI.ViewModels
                 if (openFileDialog.ShowDialog() == true)
                 {
                     var importedConfig = _configService.ImportConfig(openFileDialog.FileName);
-                    if (importedConfig != null) SwitchToConfig(importedConfig);
+                    if (importedConfig != null)
+                    {
+                        var importedConfigVM = AllConfigVMs.FirstOrDefault(vm => vm.Model == importedConfig);
+                        if (importedConfigVM != null) SwitchToConfig(importedConfigVM);
+                    }
                     else await _dialogService.ShowInfoAsync("错误", " DNS 配置导入失败。");
                 }
             }
@@ -489,7 +523,14 @@ namespace SNIBypassGUI.ViewModels
                 }
             }
 
-            var configToExport = ConfigSelector.SelectedItem;
+            var configToExportVM = ConfigSelector.SelectedItem;
+            if (configToExportVM == null)
+            {
+                await _dialogService.ShowInfoAsync("错误", "没有可导出的配置。");
+                return;
+            }
+
+            var configToExport = configToExportVM.Model;
             if (configToExport == null)
             {
                 await _dialogService.ShowInfoAsync("错误", "没有可导出的配置。");
@@ -504,9 +545,7 @@ namespace SNIBypassGUI.ViewModels
                 RestoreDirectory = true
             };
             if (saveFileDialog.ShowDialog() == true)
-            {
                 _configService.ExportConfig(configToExport, saveFileDialog.FileName);
-            }
         }
 
         private bool CanExecuteExport()
@@ -533,12 +572,28 @@ namespace SNIBypassGUI.ViewModels
             {
                 config.DnsServers.CollectionChanged += OnDnsServersCollectionChanged;
                 foreach (var server in config.DnsServers)
-                    server.PropertyChanged += OnDnsServerPropertyChanged;
+                {
+                    server.PropertyChanged += OnEditingCopyPropertyChanged;
+                    if (server.LimitQueryTypes != null)
+                        server.LimitQueryTypes.CollectionChanged += OnEditingCopyPropertyChanged;
+                    if (server.DomainMatchingRules != null)
+                    {
+                        server.DomainMatchingRules.CollectionChanged += OnAffinityRulesCollectionChanged;
+                        foreach (var rule in server.DomainMatchingRules)
+                            rule.PropertyChanged += OnEditingCopyPropertyChanged;
+                    }
+                }
             }
             if (config.LimitQueryTypesCache != null)
-                config.LimitQueryTypesCache.CollectionChanged += OnChildCollectionChanged;
+                config.LimitQueryTypesCache.CollectionChanged += OnEditingCopyPropertyChanged;
             if (config.LogEvents != null)
-                config.LogEvents.CollectionChanged += OnChildCollectionChanged;
+                config.LogEvents.CollectionChanged += OnEditingCopyPropertyChanged;
+            if (config.CacheDomainMatchingRules != null)
+            {
+                config.CacheDomainMatchingRules.CollectionChanged += OnAffinityRulesCollectionChanged;
+                foreach (var rule in config.CacheDomainMatchingRules)
+                    rule.PropertyChanged += OnEditingCopyPropertyChanged;
+            }
         }
 
         private void StopListeningToChanges(DnsConfig config)
@@ -548,51 +603,136 @@ namespace SNIBypassGUI.ViewModels
             {
                 config.DnsServers.CollectionChanged -= OnDnsServersCollectionChanged;
                 foreach (var server in config.DnsServers)
-                    server.PropertyChanged -= OnDnsServerPropertyChanged;
+                {
+                    server.PropertyChanged -= OnEditingCopyPropertyChanged;
+                    if (server.LimitQueryTypes != null)
+                        server.LimitQueryTypes.CollectionChanged -= OnEditingCopyPropertyChanged;
+                    if (server.DomainMatchingRules != null)
+                    {
+                        server.DomainMatchingRules.CollectionChanged -= OnAffinityRulesCollectionChanged;
+                        foreach (var rule in server.DomainMatchingRules)
+                            rule.PropertyChanged -= OnEditingCopyPropertyChanged;
+                    }
+                }
             }
             if (config.LimitQueryTypesCache != null)
-                config.LimitQueryTypesCache.CollectionChanged -= OnChildCollectionChanged;
+                config.LimitQueryTypesCache.CollectionChanged -= OnEditingCopyPropertyChanged;
             if (config.LogEvents != null)
-                config.LogEvents.CollectionChanged -= OnChildCollectionChanged;
-        }
-
-        private void OnEditingCopyPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(DnsConfig.DnsServers)) return;
-            if (_currentState == EditingState.None)
-                TransitionToState(EditingState.Editing);
-            ValidateEditingCopy();
+                config.LogEvents.CollectionChanged -= OnEditingCopyPropertyChanged;
+            if (config.CacheDomainMatchingRules != null)
+            {
+                config.CacheDomainMatchingRules.CollectionChanged -= OnAffinityRulesCollectionChanged;
+                foreach (var rule in config.CacheDomainMatchingRules)
+                    rule.PropertyChanged -= OnEditingCopyPropertyChanged;
+            }
         }
 
         private void OnDnsServersCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            // 为新添加的服务器订阅事件
             if (e.NewItems != null)
-                foreach (INotifyPropertyChanged item in e.NewItems)
-                    item.PropertyChanged += OnDnsServerPropertyChanged;
-
-            // 为被移除的服务器取消订阅事件
+            {
+                foreach (DnsServer server in e.NewItems)
+                {
+                    server.PropertyChanged += OnEditingCopyPropertyChanged;
+                    if (server.LimitQueryTypes != null)
+                        server.LimitQueryTypes.CollectionChanged += OnEditingCopyPropertyChanged;
+                    if (server.DomainMatchingRules != null)
+                    {
+                        server.DomainMatchingRules.CollectionChanged += OnEditingCopyPropertyChanged;
+                        foreach (var rule in server.DomainMatchingRules)
+                            rule.PropertyChanged += OnEditingCopyPropertyChanged;
+                    }
+                }
+            }
             if (e.OldItems != null)
-                foreach (INotifyPropertyChanged item in e.OldItems)
-                    item.PropertyChanged -= OnDnsServerPropertyChanged;
-
-            if (_currentState == EditingState.None)
-                TransitionToState(EditingState.Editing);
-            else ValidateEditingCopy();
+            {
+                foreach (DnsServer server in e.OldItems)
+                {
+                    server.PropertyChanged -= OnEditingCopyPropertyChanged;
+                    if (server.LimitQueryTypes != null)
+                        server.LimitQueryTypes.CollectionChanged -= OnEditingCopyPropertyChanged;
+                    if (server.DomainMatchingRules != null)
+                    {
+                        server.DomainMatchingRules.CollectionChanged -= OnEditingCopyPropertyChanged;
+                        foreach (var rule in server.DomainMatchingRules)
+                            rule.PropertyChanged -= OnEditingCopyPropertyChanged;
+                    }
+                }
+            }
+            OnEditingCopyPropertyChanged(sender, e);
         }
 
-        private void OnDnsServerPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnEditingCopyPropertyChanged(object sender, EventArgs e)
         {
             if (_currentState == EditingState.None)
                 TransitionToState(EditingState.Editing);
+
             ValidateEditingCopy();
         }
 
-        private void OnChildCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void OnAffinityRulesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            if (_currentState == EditingState.None)
-                TransitionToState(EditingState.Editing);
-            ValidateEditingCopy();
+            if (e.NewItems != null)
+                foreach (AffinityRule rule in e.NewItems)
+                    rule.PropertyChanged += OnEditingCopyPropertyChanged;
+            if (e.OldItems != null)
+                foreach (AffinityRule rule in e.OldItems)
+                    rule.PropertyChanged -= OnEditingCopyPropertyChanged;
+            OnEditingCopyPropertyChanged(sender, e);
+        }
+
+        private void OnAllConfigsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    int insertIndex = Math.Min(e.NewStartingIndex, _allConfigVMs.Count);
+                    foreach (DnsConfig model in e.NewItems)
+                    {
+                        _allConfigVMs.Insert(insertIndex, new DnsConfigViewModel(model));
+                        insertIndex++;
+                    }
+                    break;
+
+                case NotifyCollectionChangedAction.Remove:
+                    foreach (DnsConfig model in e.OldItems)
+                    {
+                        var vmToRemove = _allConfigVMs.FirstOrDefault(vm => vm.Model == model);
+                        if (vmToRemove != null)
+                        {
+                            vmToRemove.Dispose();
+                            _allConfigVMs.Remove(vmToRemove);
+                        }
+                    }
+                    break;
+
+                case NotifyCollectionChangedAction.Replace:
+                    for (int i = 0; i < e.OldItems.Count; i++)
+                    {
+                        var oldModel = (DnsConfig)e.OldItems[i];
+                        var newModel = (DnsConfig)e.NewItems[i];
+                        var vmIndex = _allConfigVMs.ToList().FindIndex(vm => vm.Model == oldModel);
+                        if (vmIndex >= 0)
+                        {
+                            _allConfigVMs[vmIndex].Dispose();
+                            _allConfigVMs[vmIndex] = new DnsConfigViewModel(newModel);
+                        }
+                    }
+                    break;
+
+                case NotifyCollectionChangedAction.Move:
+                    if (e.OldStartingIndex < _allConfigVMs.Count && e.NewStartingIndex < _allConfigVMs.Count)
+                        _allConfigVMs.Move(e.OldStartingIndex, e.NewStartingIndex);
+                    break;
+
+                case NotifyCollectionChangedAction.Reset:
+                    foreach (var vm in _allConfigVMs) vm.Dispose();
+                    _allConfigVMs.Clear();
+
+                    foreach (var model in _configService.AllConfigs)
+                        _allConfigVMs.Add(new DnsConfigViewModel(model));
+                    break;
+            }
         }
 
         private void ValidateEditingCopy()
@@ -660,8 +800,9 @@ namespace SNIBypassGUI.ViewModels
         private async Task ExecuteSaveChangesAsync()
         {
             _isBusy = true;
-            ValidateEditingCopy();
+            UpdateCommandStates();
 
+            ValidateEditingCopy();
             if (HasValidationErrors)
             {
                 var errorItems = ValidationErrors.Select(e => e.ToBulletedListItem());
@@ -678,7 +819,8 @@ namespace SNIBypassGUI.ViewModels
                     var newConfig = EditingConfigCopy;
                     _configService.AllConfigs.Add(newConfig);
                     await _configService.SaveChangesAsync(newConfig);
-                    SwitchToConfig(newConfig);
+                    var newVm = AllConfigVMs.FirstOrDefault(vm => vm.Model == newConfig);
+                    SwitchToConfig(newVm);
                 }
                 else if (_currentState == EditingState.Editing)
                 {
@@ -703,7 +845,7 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteDiscardChanges()
         {
-            if (_currentState == EditingState.Creating) SwitchToConfig(AllConfigs.FirstOrDefault());
+            if (_currentState == EditingState.Creating) SwitchToConfig(AllConfigVMs.FirstOrDefault());
             else
             {
                 EditingConfigCopy = _originalConfig?.Clone();
@@ -744,11 +886,9 @@ namespace SNIBypassGUI.ViewModels
         #region DNS Server Management
         private void ExecuteAddNewServer()
         {
-            var newServer = _serverFactory.CreateDefault();
-            EditingConfigCopy.DnsServers.Add(newServer);
-
-            // 自动选中新添加的项，方便用户立即编辑
-            SelectedDnsServer = newServer;
+            var newServerModel = _serverFactory.CreateDefault();
+            EditingConfigCopy.DnsServers.Add(newServerModel);
+            SelectedDnsServerVM = EditingConfigVM.DnsServers.FirstOrDefault(vm => vm.Model == newServerModel);
         }
 
         private bool CanExecuteAddNewServer() =>
@@ -758,28 +898,27 @@ namespace SNIBypassGUI.ViewModels
 
         private void ExecuteRemoveSelectedServer()
         {
-            var serverToRemove = SelectedDnsServer;
-            if (serverToRemove == null) return;
+            var vmToRemove = SelectedDnsServerVM;
+            if (vmToRemove == null) return;
 
-            var serversList = EditingConfigCopy.DnsServers;
-            int oldIndex = serversList.IndexOf(serverToRemove);
-            serversList.Remove(serverToRemove);
+            int oldIndex = EditingConfigVM.DnsServers.IndexOf(vmToRemove);
+            EditingConfigCopy.DnsServers.Remove(vmToRemove.Model);
 
-            if (serversList.Any())
+            if (EditingConfigVM.DnsServers.Any())
             {
-                int newIndex = oldIndex >= serversList.Count ? serversList.Count - 1 : oldIndex;
-                SelectedDnsServer = serversList[newIndex];
+                int newIndex = Math.Min(oldIndex, EditingConfigVM.DnsServers.Count - 1);
+                SelectedDnsServerVM = EditingConfigVM.DnsServers[newIndex];
             }
-            else SelectedDnsServer = null;
+            else SelectedDnsServerVM = null;
         }
 
         private void ExecuteMoveSelectedServerUp()
         {
-            var serverToMove = SelectedDnsServer;
+            var serverToMove = SelectedDnsServerVM;
             if (serverToMove == null) return;
 
             var serversList = EditingConfigCopy.DnsServers;
-            int currentIndex = serversList.IndexOf(serverToMove);
+            int currentIndex = serversList.IndexOf(serverToMove.Model);
             if (currentIndex > 0)
             {
                 serversList.Move(currentIndex, currentIndex - 1);
@@ -792,16 +931,16 @@ namespace SNIBypassGUI.ViewModels
         private bool CanExecuteMoveUp()
         {
             if (!CanExecuteOnSelectedServer()) return false;
-            return EditingConfigCopy.DnsServers.IndexOf(SelectedDnsServer) > 0;
+            return EditingConfigCopy.DnsServers.IndexOf(SelectedDnsServerVM.Model) > 0;
         }
 
         private void ExecuteMoveSelectedServerDown()
         {
-            var serverToMove = SelectedDnsServer;
+            var serverToMove = SelectedDnsServerVM;
             if (serverToMove == null) return;
 
             var serversList = EditingConfigCopy.DnsServers;
-            int currentIndex = serversList.IndexOf(serverToMove);
+            int currentIndex = serversList.IndexOf(serverToMove.Model);
             if (currentIndex < serversList.Count - 1)
             {
                 serversList.Move(currentIndex, currentIndex + 1);
@@ -814,27 +953,333 @@ namespace SNIBypassGUI.ViewModels
         private bool CanExecuteMoveDown()
         {
             if (!CanExecuteOnSelectedServer()) return false;
-            return EditingConfigCopy.DnsServers.IndexOf(SelectedDnsServer) < EditingConfigCopy.DnsServers.Count - 1;
+            return EditingConfigCopy.DnsServers.IndexOf(SelectedDnsServerVM.Model) < EditingConfigCopy.DnsServers.Count - 1;
         }
 
-        private bool CanExecuteOnSelectedServer() =>
-            !_isBusy &&
-            EditingConfigCopy != null &&
-            SelectedDnsServer != null;
+        private bool CanExecuteOnSelectedServer() => !_isBusy &&
+            EditingConfigCopy != null && SelectedDnsServerVM != null;
+        #endregion
+
+        #region Domain Matching Rule Management
+        private async Task ExecuteAddDomainMatchingRuleAsync()
+        {
+            if (SelectedDnsServerVM is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var server = SelectedDnsServerVM.Model;
+
+                var newPattern = await _dialogService.ShowTextInputAsync("添加模式", "请输入新的匹配模式：");
+                if (newPattern != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(newPattern))
+                    {
+                        if (newPattern.ContainsAny('^', ';', Chars.Whitespaces))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"“{newPattern}” 不是有效的匹配模式，不应包含 “^”、“;” 或任意空白字符。");
+                            return;
+                        }
+                        if (server.DomainMatchingRules.Any(rule => rule.Pattern == newPattern))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"匹配模式 “{newPattern}” 已存在！");
+                            return;
+                        }
+                        var newRule = _ruleFactory.CreateDefault();
+                        newRule.Pattern = newPattern;
+                        server.DomainMatchingRules.Add(newRule);
+                    }
+                    else await _dialogService.ShowInfoAsync("添加失败", "匹配模式不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private async Task ExecuteEditDomainMatchingRulePatternAsync(AffinityRule rule)
+        {
+            if (SelectedDnsServerVM is null || rule is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var server = SelectedDnsServerVM.Model;
+                var pattern = rule.Pattern;
+
+                var newPattern = await _dialogService.ShowTextInputAsync($"编辑 “{pattern}”", "请输入新的匹配模式：", pattern);
+                if (newPattern != null && newPattern != pattern)
+                {
+                    if (!string.IsNullOrWhiteSpace(newPattern))
+                    {
+                        if (newPattern.ContainsAny('^', ';', Chars.Whitespaces))
+                        {
+                            await _dialogService.ShowInfoAsync("编辑失败", $"“{newPattern}” 不是有效的匹配模式，不应包含 “^”、“;” 或任意空白字符。");
+                            return;
+                        }
+                        if (server.DomainMatchingRules.Any(rule => rule.Pattern == newPattern))
+                        {
+                            await _dialogService.ShowInfoAsync("编辑失败", $"匹配模式 “{newPattern}” 已存在！");
+                            return;
+                        }
+                        int index = server.DomainMatchingRules.IndexOf(rule);
+                        if (index >= 0) server.DomainMatchingRules[index].Pattern = newPattern;
+                    }
+                    else await _dialogService.ShowInfoAsync("编辑失败", "匹配模式不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private void ExecuteDeleteDomainMatchingRule(AffinityRule rule)
+        {
+            if (SelectedDnsServerVM is null || rule is null) return;
+            var server = SelectedDnsServerVM.Model;
+            if (server.DomainMatchingRules.Contains(rule))
+                server.DomainMatchingRules.Remove(rule);
+        }
+
+        private void ExecuteMoveDomainMatchingRuleUp(AffinityRule rule)
+        {
+            if (SelectedDnsServerVM == null || rule == null) return;
+
+            var server = SelectedDnsServerVM.Model;
+            int index = server.DomainMatchingRules.IndexOf(rule);
+            if (index > 0) server.DomainMatchingRules.Move(index, index - 1);
+        }
+
+        private void ExecuteMoveDomainMatchingRuleDown(AffinityRule rule)
+        {
+            if (SelectedDnsServerVM == null || rule == null) return;
+
+            var server = SelectedDnsServerVM.Model;
+            int index = server.DomainMatchingRules.IndexOf(rule);
+            if (index < server.DomainMatchingRules.Count - 1)
+                server.DomainMatchingRules.Move(index, index + 1);
+        }
+
+        private async Task ExecuteDeleteAllDomainMatchingRulesAsync()
+        {
+            if (SelectedDnsServerVM is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var server = SelectedDnsServerVM.Model;
+                if (server.DomainMatchingRules.Count > 0)
+                {
+                    var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除域名匹配规则中的所有条目吗？", "删除");
+                    if (!confirmResult) return;
+                    server.DomainMatchingRules.Clear();
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private bool CanExecuteMoveDomainMatchingRuleUp(AffinityRule rule)
+        {
+            if (SelectedDnsServerVM is null || rule is null)
+                return false;
+
+            var items = SelectedDnsServerVM.Model.DomainMatchingRules;
+            int index = items.IndexOf(rule);
+            return index > 0;
+        }
+
+        private bool CanExecuteMoveDomainMatchingRuleDown(AffinityRule rule)
+        {
+            if (SelectedDnsServerVM is null || rule is null)
+                return false;
+
+            var items = SelectedDnsServerVM.Model.DomainMatchingRules;
+            int index = items.IndexOf(rule);
+            return index < items.Count - 1;
+        }
+
+        private bool CanExecuteDeleteAllDomainMatchingRules() => SelectedDnsServerVM?.Model?.DomainMatchingRules.Any() == true && !_isBusy;
+
+        private bool CanExecuteEditDomainMatchingRule(AffinityRule rule) =>
+            rule != null && !_isBusy;
+        #endregion
+
+        #region Cache Domain Matching Rule Management
+        private async Task ExecuteAddCacheDomainMatchingRuleAsync()
+        {
+            if (EditingConfigCopy is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var newPattern = await _dialogService.ShowTextInputAsync("添加模式", "请输入新的匹配模式：");
+                if (newPattern != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(newPattern))
+                    {
+                        if (newPattern.ContainsAny('^', ';', Chars.Whitespaces))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"“{newPattern}” 不是有效的匹配模式，不应包含 “^”、“;” 或任意空白字符。");
+                            return;
+                        }
+                        if (EditingConfigCopy.CacheDomainMatchingRules.Any(rule => rule.Pattern == newPattern))
+                        {
+                            await _dialogService.ShowInfoAsync("添加失败", $"匹配模式 “{newPattern}” 已存在！");
+                            return;
+                        }
+                        var newRule = _ruleFactory.CreateDefault();
+                        newRule.Pattern = newPattern;
+                        EditingConfigCopy.CacheDomainMatchingRules.Add(newRule);
+                    }
+                    else await _dialogService.ShowInfoAsync("添加失败", "匹配模式不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private async Task ExecuteEditCacheDomainMatchingRulePatternAsync(AffinityRule rule)
+        {
+            if (EditingConfigCopy is null || rule is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                var pattern = rule.Pattern;
+                var newPattern = await _dialogService.ShowTextInputAsync($"编辑 “{pattern}”", "请输入新的匹配模式：", pattern);
+                if (newPattern != null && newPattern != pattern)
+                {
+                    if (!string.IsNullOrWhiteSpace(newPattern))
+                    {
+                        if (newPattern.ContainsAny('^', ';', Chars.Whitespaces))
+                        {
+                            await _dialogService.ShowInfoAsync("编辑失败", $"“{newPattern}” 不是有效的匹配模式，不应包含 “^”、“;” 或任意空白字符。");
+                            return;
+                        }
+                        if (EditingConfigCopy.CacheDomainMatchingRules.Any(rule => rule.Pattern == newPattern))
+                        {
+                            await _dialogService.ShowInfoAsync("编辑失败", $"匹配模式 “{newPattern}” 已存在！");
+                            return;
+                        }
+                        int index = EditingConfigCopy.CacheDomainMatchingRules.IndexOf(rule);
+                        if (index >= 0) EditingConfigCopy.CacheDomainMatchingRules[index].Pattern = newPattern;
+                    }
+                    else await _dialogService.ShowInfoAsync("编辑失败", "匹配模式不能为空！");
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private void ExecuteDeleteCacheDomainMatchingRule(AffinityRule rule)
+        {
+            if (EditingConfigCopy is null || rule is null) return;
+            if (EditingConfigCopy.CacheDomainMatchingRules.Contains(rule))
+                EditingConfigCopy.CacheDomainMatchingRules.Remove(rule);
+        }
+
+        private void ExecuteMoveCacheDomainMatchingRuleUp(AffinityRule rule)
+        {
+            if (EditingConfigCopy == null || rule == null) return;
+
+            int index = EditingConfigCopy.CacheDomainMatchingRules.IndexOf(rule);
+            if (index > 0) EditingConfigCopy.CacheDomainMatchingRules.Move(index, index - 1);
+        }
+
+        private void ExecuteMoveCacheDomainMatchingRuleDown(AffinityRule rule)
+        {
+            if (EditingConfigCopy == null || rule == null) return;
+
+            int index = EditingConfigCopy.CacheDomainMatchingRules.IndexOf(rule);
+            if (index < EditingConfigCopy.CacheDomainMatchingRules.Count - 1)
+                EditingConfigCopy.CacheDomainMatchingRules.Move(index, index + 1);
+        }
+
+        private async Task ExecuteDeleteAllCacheDomainMatchingRulesAsync()
+        {
+            if (EditingConfigCopy is null) return;
+
+            _isBusy = true;
+            UpdateCommandStates();
+
+            try
+            {
+                if (EditingConfigCopy.CacheDomainMatchingRules.Count > 0)
+                {
+                    var confirmResult = await _dialogService.ShowConfirmationAsync("确认删除", "您确定要删除缓存域名匹配规则中的所有条目吗？", "删除");
+                    if (!confirmResult) return;
+                    EditingConfigCopy.CacheDomainMatchingRules.Clear();
+                }
+            }
+            finally
+            {
+                _isBusy = false;
+                UpdateCommandStates();
+            }
+        }
+
+        private bool CanExecuteMoveCacheDomainMatchingRuleUp(AffinityRule rule)
+        {
+            if (EditingConfigCopy is null || rule is null)
+                return false;
+
+            int index = EditingConfigCopy.CacheDomainMatchingRules.IndexOf(rule);
+            return index > 0;
+        }
+
+        private bool CanExecuteMoveCacheDomainMatchingRuleDown(AffinityRule rule)
+        {
+            if (EditingConfigCopy is null || rule is null)
+                return false;
+
+            var items = EditingConfigCopy.CacheDomainMatchingRules;
+            int index = items.IndexOf(rule);
+            return index < items.Count - 1;
+        }
+
+        private bool CanExecuteDeleteAllCacheDomainMatchingRules() => EditingConfigCopy?.CacheDomainMatchingRules.Any() == true && !_isBusy;
+
+        private bool CanExecuteEditCacheDomainMatchingRule(AffinityRule rule) =>
+            rule != null && !_isBusy;
         #endregion
         #endregion
 
         #region Other Commands & Helpers
         #region Copy Link Code
-        private async Task ExecuteCopyLinkCode(DnsConfig config)
+        private async Task ExecuteCopyLinkCode(DnsConfigViewModel configVM)
         {
-            if (config is null || !_canExecuteCopy) return;
+            if (configVM is null || !_canExecuteCopy) return;
 
             try
             {
                 _canExecuteCopy = false;
-                (CopyLinkCodeCommand as AsyncCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<DnsConfigViewModel>)?.RaiseCanExecuteChanged();
 
+                var config = configVM.Model;
                 var linkCode = Base64Utils.EncodeString(config.Id.ToString());
                 for (int i = 0; i < 5; i++)
                 {
@@ -854,11 +1299,11 @@ namespace SNIBypassGUI.ViewModels
             finally
             {
                 _canExecuteCopy = true;
-                (CopyLinkCodeCommand as AsyncCommand<DnsConfig>)?.RaiseCanExecuteChanged();
+                (CopyLinkCodeCommand as AsyncCommand<DnsConfigViewModel>)?.RaiseCanExecuteChanged();
             }
         }
 
-        private bool CanExecuteCopyLinkCode(DnsConfig config) => config != null && !_isBusy && _canExecuteCopy;
+        private bool CanExecuteCopyLinkCode(DnsConfigViewModel configVM) => configVM != null && !_isBusy && _canExecuteCopy;
         #endregion
 
         #region General CanExecute Predicates
@@ -874,8 +1319,14 @@ namespace SNIBypassGUI.ViewModels
         #region IDisposable Implementation
         public void Dispose()
         {
-            if (_editingConfigCopy != null)
-                StopListeningToChanges(_editingConfigCopy);
+            _configService.AllConfigs.CollectionChanged -= OnAllConfigsCollectionChanged;
+
+            if (_editingConfigCopy != null) StopListeningToChanges(_editingConfigCopy);
+            EditingConfigVM?.Dispose();
+
+            foreach (var vm in _allConfigVMs) vm.Dispose();
+            _allConfigVMs.Clear();
+
             GC.SuppressFinalize(this);
         }
         #endregion

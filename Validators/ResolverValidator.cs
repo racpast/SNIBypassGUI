@@ -33,11 +33,11 @@ namespace SNIBypassGUI.Validators
     /// "D'oh!" moments. You're welcome!</para>
     /// </i>
     /// </remarks>
-    public class ResolverConfigValidator : AbstractValidator<ResolverConfig>
+    public class ResolverValidator : AbstractValidator<Resolver>
     {
-        public ResolverConfigValidator()
+        public ResolverValidator()
         {
-            RuleFor(config => config.ConfigName)
+            RuleFor(config => config.ResolverName)
                 .NotEmpty().WithMessage("配置名称不能为空。");
 
             RuleFor(config => config.ServerAddress)
@@ -166,7 +166,7 @@ namespace SNIBypassGUI.Validators
                         }
 
                         // 处理空端口情况
-                        if (string.IsNullOrEmpty(portPart))
+                        if (string.IsNullOrWhiteSpace(portPart))
                         {
                             if (NetworkUtils.IsValidIPv4(hostPart) || NetworkUtils.IsValidDomain(hostPart))
                                 context.AddFailure($"“{value}” 不是有效的服务器地址：冒号后缺少端口，应为 0 到 65535 的整数。");
@@ -205,7 +205,7 @@ namespace SNIBypassGUI.Validators
                             context.AddFailure($"“{value}” 不是有效的服务器地址：应为合法的域名或 IP 地址，可选择性地携带端口。");
                     }
                 })
-                .When(config => !string.IsNullOrWhiteSpace(config.ServerAddress) && config.ProtocolType != ResolverConfigProtocol.DnsOverHttps);
+                .When(config => !string.IsNullOrWhiteSpace(config.ServerAddress) && config.ProtocolType != ResolverProtocol.DnsOverHttps);
             RuleFor(config => config.ServerAddress)
                 .Custom((value, context) =>
                 {
@@ -381,9 +381,7 @@ namespace SNIBypassGUI.Validators
                         }
                         else hostCandidate = hostPortPart;
 
-                        bool isHostValid = NetworkUtils.IsValidIPv4(hostCandidate) ||
-                                            NetworkUtils.IsValidDomain(hostCandidate);
-
+                        bool isHostValid = NetworkUtils.IsValidIPv4(hostCandidate) || NetworkUtils.IsValidDomain(hostCandidate);
                         if (!isHostValid)
                         {
                             context.AddFailure($"“{value}” 不是有效的服务器地址：应为合法的域名或 IP 地址，可选择性地携带端口和路径。");
@@ -410,16 +408,17 @@ namespace SNIBypassGUI.Validators
                     // 路径验证
                     if (pathPart != null)
                     {
-                        // 检查空路径
+                        // 检查路径是否为空或只有一个斜杠
                         if (pathPart == "/" || string.IsNullOrWhiteSpace(pathPart.Trim('/')))
                         {
                             var warning = new ValidationFailure(
                                 context.PropertyPath,
-                                $"“{value}” 是有效的服务器地址，但是否缺少类似 “/dns-query” 的路径部分？"
+                                $"“{value}” 是有效的服务器地址，但是否缺少类似 “dns-query” 的路径部分？"
                             )
                             { Severity = Severity.Warning };
                             context.AddFailure(warning);
                         }
+                        // 检查路径格式是否合法
                         else if (!NetworkUtils.IsValidUrlPath(pathPart))
                             context.AddFailure($"“{value}” 不是有效的服务器地址：“{pathPart}” 不是有效的路径。");
                     }
@@ -433,7 +432,7 @@ namespace SNIBypassGUI.Validators
                         context.AddFailure(warning);
                     }
                 })
-                .When(config => !string.IsNullOrWhiteSpace(config.ServerAddress) && config.ProtocolType == ResolverConfigProtocol.DnsOverHttps);
+                .When(config => !string.IsNullOrWhiteSpace(config.ServerAddress) && config.ProtocolType == ResolverProtocol.DnsOverHttps);
 
             RuleFor(config => config.QueryTimeout)
                 .Must(x => !string.IsNullOrWhiteSpace(x))
@@ -751,7 +750,7 @@ namespace SNIBypassGUI.Validators
                 })
                 .When(config => !string.IsNullOrWhiteSpace(config.BootstrapTimeout));
 
-            When(config => config.ProtocolType == ResolverConfigProtocol.Plain, () =>
+            When(config => config.ProtocolType == ResolverProtocol.Plain, () =>
             {
                 RuleFor(config => config.UdpBufferSize)
                     .Must(x => !string.IsNullOrWhiteSpace(x))
@@ -766,7 +765,7 @@ namespace SNIBypassGUI.Validators
                     .When(p => !string.IsNullOrEmpty(p.UdpBufferSize));
             });
 
-            When(config => config.ProtocolType == ResolverConfigProtocol.DnsOverHttps || config.ProtocolType == ResolverConfigProtocol.DnsOverTls, () =>
+            When(config => config.ProtocolType == ResolverProtocol.DnsOverHttps || config.ProtocolType == ResolverProtocol.DnsOverTls, () =>
             {
                 RuleFor(config => config.TlsServerName)
                     .Must(x => !string.IsNullOrWhiteSpace(x))
@@ -794,7 +793,7 @@ namespace SNIBypassGUI.Validators
                     .When(config => !string.IsNullOrWhiteSpace(config.TlsServerName));                    
             });
 
-            When(config => config.ProtocolType == ResolverConfigProtocol.DnsOverHttps || config.ProtocolType == ResolverConfigProtocol.DnsOverTls || config.ProtocolType == ResolverConfigProtocol.DnsOverQuic, () =>
+            When(config => config.ProtocolType == ResolverProtocol.DnsOverHttps || config.ProtocolType == ResolverProtocol.DnsOverTls || config.ProtocolType == ResolverProtocol.DnsOverQuic, () =>
             {
                 RuleFor(config => config)
                     .Must(config => config.TlsMinVersion <= config.TlsMaxVersion)
@@ -880,7 +879,7 @@ namespace SNIBypassGUI.Validators
                     });
             });
 
-            When(config => config.ProtocolType == ResolverConfigProtocol.DnsCrypt, () =>
+            When(config => config.ProtocolType == ResolverProtocol.DnsCrypt, () =>
             {
                 RuleFor(config => config.DnsCryptProvider)
                     .NotEmpty()

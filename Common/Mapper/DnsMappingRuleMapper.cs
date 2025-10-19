@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -37,32 +38,39 @@ namespace SNIBypassGUI.Common.Mapper
             if (jObject == null)
                 return ParseResult<DnsMappingRule>.Failure("JSON 对象为空。");
 
-            if (!jObject.TryGetArray("domainPatterns", out IReadOnlyList<string> domainPatterns) ||
-                !jObject.TryGetEnum("ruleAction", out DnsMappingRuleAction ruleAction))
-                return ParseResult<DnsMappingRule>.Failure("一个或多个通用字段缺失或类型错误。");
-
-            var rule = new DnsMappingRule
+            try
             {
-                DomainPatterns = [.. domainPatterns],
-                RuleAction = ruleAction
-            };
+                if (!jObject.TryGetArray("domainPatterns", out IReadOnlyList<string> domainPatterns) ||
+                    !jObject.TryGetEnum("ruleAction", out DnsMappingRuleAction ruleAction))
+                    return ParseResult<DnsMappingRule>.Failure("一个或多个通用字段缺失或类型错误。");
 
-            if (ruleAction == DnsMappingRuleAction.IP)
-            {
-                if (!jObject.TryGetArray("targetSources", out IReadOnlyList<JObject> targetSourceObjects))
-                    return ParseResult<DnsMappingRule>.Failure("返回地址动作所需的字段缺失或类型错误。");
-                ObservableCollection<TargetIpSource> targetSources = [];
-                foreach (var item in targetSourceObjects.OfType<JObject>())
+                var rule = new DnsMappingRule
                 {
-                    var parsed = targetIpSourceMapper.FromJObject(item);
-                    if (!parsed.IsSuccess)
-                        return ParseResult<DnsMappingRule>.Failure($"解析 targetSources 时出错：{parsed.ErrorMessage}");
-                    targetSources.Add(parsed.Value);
-                }
-                rule.TargetSources = targetSources;
-            }
+                    DomainPatterns = [.. domainPatterns],
+                    RuleAction = ruleAction
+                };
 
-            return ParseResult<DnsMappingRule>.Success(rule);
+                if (ruleAction == DnsMappingRuleAction.IP)
+                {
+                    if (!jObject.TryGetArray("targetSources", out IReadOnlyList<JObject> targetSourceObjects))
+                        return ParseResult<DnsMappingRule>.Failure("返回地址动作所需的字段缺失或类型错误。");
+                    ObservableCollection<TargetIpSource> targetSources = [];
+                    foreach (var item in targetSourceObjects.OfType<JObject>())
+                    {
+                        var parsed = targetIpSourceMapper.FromJObject(item);
+                        if (!parsed.IsSuccess)
+                            return ParseResult<DnsMappingRule>.Failure($"解析 targetSources 时遇到异常：{parsed.ErrorMessage}");
+                        targetSources.Add(parsed.Value);
+                    }
+                    rule.TargetSources = targetSources;
+                }
+
+                return ParseResult<DnsMappingRule>.Success(rule);
+            }
+            catch (Exception ex)
+            {
+                return ParseResult<DnsMappingRule>.Failure($"解析 DnsMappingRule 时遇到异常：{ex.Message}");
+            }
         }
     }
 }

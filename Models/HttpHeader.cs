@@ -1,14 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
-using SNIBypassGUI.Common;
-using SNIBypassGUI.Common.Extensions;
-using SNIBypassGUI.Common.Results;
+﻿using SNIBypassGUI.Common;
 
 namespace SNIBypassGUI.Models
 {
     /// <summary>
     /// 表示一个 HTTP 头部条目。
     /// </summary>
-    public class HttpHeaderItem : NotifyPropertyChangedBase
+    public class HttpHeader : NotifyPropertyChangedBase
     {
         #region Fields
         private string _name;
@@ -37,12 +34,12 @@ namespace SNIBypassGUI.Models
 
         #region Methods
         /// <summary>
-        /// 创建当前 <see cref="HttpHeaderItem"/> 实例的完整副本。
+        /// 创建当前 <see cref="HttpHeader"/> 实例的完整副本。
         /// </summary>
         /// <returns>当前对象的一个完整副本。</returns>
-        public HttpHeaderItem Clone()
+        public HttpHeader Clone()
         {
-            return new HttpHeaderItem
+            return new HttpHeader
             {
                 Name = Name,
                 Value = Value

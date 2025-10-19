@@ -32,7 +32,7 @@ namespace SNIBypassGUI.Repositories
             storage.Remove(filePath, configId);
 
         /// <summary>
-        /// 压缩用户 DNS 解析器配置库文件，移除未使用的配置。
+        /// 压缩用户 DNS 解析器库文件，移除未使用的配置。
         /// </summary>
         public void Compact(string filePath) =>
             storage.Compact(filePath);

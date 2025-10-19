@@ -19,12 +19,14 @@
 
         <DataTemplate DataType="{x:Type fields:InputField}">
             <StackPanel Margin="0,8">
-                <TextBlock Text="{Binding Label}" FontWeight="Bold" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding Label}" FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,4"/>
                 <TextBox md:HintAssist.Hint="{Binding HintText}"
                          Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
         </DataTemplate>
 
+        
+        
         <DataTemplate DataType="{x:Type fields:ItemsListField}">
             <ItemsControl ItemsSource="{Binding ItemsSource}" Margin="0,8"/>
         </DataTemplate>

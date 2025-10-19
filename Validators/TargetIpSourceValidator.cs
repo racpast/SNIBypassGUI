@@ -63,5 +63,4 @@ namespace SNIBypassGUI.Validators
             });
         }
     }
-
 }

@@ -208,17 +208,20 @@ namespace SNIBypassGUI.Controls
 
             if (ForwardScrollAtBoundaries)
             {
-                double tolV = ScrollableHeight * BoundaryToleranceRatio;
-                double tolH = ScrollableWidth * BoundaryToleranceRatio;
-
-                bool nearTop = DoubleUtil.LessThanOrClose(VerticalOffset, tolV);
-                bool nearBottom = DoubleUtil.GreaterThanOrClose(VerticalOffset, ScrollableHeight - tolV);
-                bool nearLeft = DoubleUtil.LessThanOrClose(HorizontalOffset, tolH);
-                bool nearRight = DoubleUtil.GreaterThanOrClose(HorizontalOffset, ScrollableWidth - tolH);
-
-                shouldForward =
-                    (e.Delta > 0 && (useVertical ? nearTop : nearLeft)) ||
-                    (e.Delta < 0 && (useVertical ? nearBottom : nearRight));
+                if (ScrollOrientation == ScrollOrientationMode.Vertical)
+                {
+                    double tol = ScrollableHeight * BoundaryToleranceRatio;
+                    bool nearTop = DoubleUtil.LessThanOrClose(VerticalOffset, tol);
+                    bool nearBottom = DoubleUtil.GreaterThanOrClose(VerticalOffset, ScrollableHeight - tol);
+                    shouldForward = (e.Delta > 0 && nearTop) || (e.Delta < 0 && nearBottom);
+                }
+                else
+                {
+                    double tol = ScrollableWidth * BoundaryToleranceRatio;
+                    bool nearLeft = DoubleUtil.LessThanOrClose(HorizontalOffset, tol);
+                    bool nearRight = DoubleUtil.GreaterThanOrClose(HorizontalOffset, ScrollableWidth - tol);
+                    shouldForward = (e.Delta > 0 && nearLeft) || (e.Delta < 0 && nearRight);
+                }
 
                 if (shouldForward)
                 {

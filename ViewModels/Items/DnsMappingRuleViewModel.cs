@@ -13,7 +13,7 @@ namespace SNIBypassGUI.ViewModels.Items
     public class DnsMappingRuleViewModel : NotifyPropertyChangedBase, IDisposable
     {
         #region State & Core Properties
-        private readonly Func<Guid?, ResolverConfig> _resolverLookup;
+        private readonly Func<Guid?, bool> _requiresIpv6Lookup;
 
         public DnsMappingRule Model { get; }
         public DnsMappingGroupViewModel Parent { get; }
@@ -44,9 +44,7 @@ namespace SNIBypassGUI.ViewModels.Items
                                source.FallbackIpAddresses.All(f => NetworkUtils.RequiresPublicIPv6(f.Address));
                     }
 
-                    var resolver = _resolverLookup(source.ResolverId.Value);
-
-                    if (resolver?.RequiresIPv6 == true) return true;
+                    if (_requiresIpv6Lookup(source.ResolverId)) return true;
 
                     if (source.IpAddressType == IpAddressType.IPv6Only)
                     {
@@ -58,7 +56,7 @@ namespace SNIBypassGUI.ViewModels.Items
                         {
                             var lockedFallbacks = source.FallbackIpAddresses.Where(f => f.IsLocked);
                             // 如果没有任何锁定的回落地址，或者所有锁定的回落地址都是 IPv6，
-                            // 那就没有 IPv4 的备胎，所以也视为需要 IPv6。
+                            // 那就没有 IPv4 的备胎，所以也视为需要 IPv6
                             return !lockedFallbacks.Any() || lockedFallbacks.All(f => NetworkUtils.RequiresPublicIPv6(f.Address));
                         }
                     }
@@ -83,13 +81,12 @@ namespace SNIBypassGUI.ViewModels.Items
         #endregion
 
         #region Constructor
-        public DnsMappingRuleViewModel(DnsMappingRule model, DnsMappingGroupViewModel parent, Func<Guid?, ResolverConfig> resolverLookup)
+        public DnsMappingRuleViewModel(DnsMappingRule model, DnsMappingGroupViewModel parent, Func<Guid?, bool> requiresIpv6Lookup)
         {
             Model = model ?? throw new ArgumentNullException(nameof(model));
             Parent = parent ?? throw new ArgumentNullException(nameof(parent));
-            _resolverLookup = resolverLookup ?? throw new ArgumentNullException(nameof(resolverLookup));
+            _requiresIpv6Lookup = requiresIpv6Lookup ?? throw new ArgumentNullException(nameof(requiresIpv6Lookup));
 
-            // 订阅 Model 的属性变化
             Model.PropertyChanged += OnModelPropertyChanged;
 
             if (Model.DomainPatterns != null)
@@ -99,10 +96,9 @@ namespace SNIBypassGUI.ViewModels.Items
             {
                 Model.TargetSources.CollectionChanged += OnTargetSourcesCollectionChanged;
                 foreach (var source in Model.TargetSources)
-                    source.PropertyChanged += OnTargetSourcePropertyChanged;
+                    ListenToSource(source);
             }
         }
-
         #endregion
 
         #region Public Methods
@@ -113,6 +109,8 @@ namespace SNIBypassGUI.ViewModels.Items
         #region Event Handlers & Private Helpers
         private void OnModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            OnPropertyChanged(e.PropertyName);
+
             switch (e.PropertyName)
             {
                 case nameof(DnsMappingRule.RuleAction):
@@ -136,15 +134,45 @@ namespace SNIBypassGUI.ViewModels.Items
         private void OnTargetSourcesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.OldItems != null)
-                foreach (TargetIpSource item in e.OldItems) item.PropertyChanged -= OnTargetSourcePropertyChanged;
+                foreach (TargetIpSource item in e.OldItems) StopListeningToSource(item); // 使用辅助方法取消订阅
             if (e.NewItems != null)
-                foreach (TargetIpSource item in e.NewItems) item.PropertyChanged += OnTargetSourcePropertyChanged;
+                foreach (TargetIpSource item in e.NewItems) ListenToSource(item); // 使用辅助方法进行订阅
 
             OnPropertyChanged(nameof(RequiresIPv6));
         }
 
-        private void OnTargetSourcePropertyChanged(object sender, PropertyChangedEventArgs e) 
-            =>OnPropertyChanged(nameof(RequiresIPv6));
+        private void OnFallbackAddressesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+                foreach (FallbackAddress item in e.OldItems) item.PropertyChanged -= OnSourceDependenciesChanged;
+            if (e.NewItems != null)
+                foreach (FallbackAddress item in e.NewItems) item.PropertyChanged += OnSourceDependenciesChanged;
+
+            OnPropertyChanged(nameof(RequiresIPv6));
+        }
+
+        private void OnSourceDependenciesChanged(object sender, EventArgs e)
+            => OnPropertyChanged(nameof(RequiresIPv6));
+
+        private void ListenToSource(TargetIpSource source)
+        {
+            source.PropertyChanged += OnSourceDependenciesChanged;
+            source.Addresses.CollectionChanged += OnSourceDependenciesChanged;
+            source.FallbackIpAddresses.CollectionChanged += OnFallbackAddressesCollectionChanged; // 订阅回落地址列表
+
+            foreach (var fallback in source.FallbackIpAddresses)
+                fallback.PropertyChanged += OnSourceDependenciesChanged;
+        }
+
+        private void StopListeningToSource(TargetIpSource source)
+        {
+            source.PropertyChanged -= OnSourceDependenciesChanged;
+            source.Addresses.CollectionChanged -= OnSourceDependenciesChanged;
+            source.FallbackIpAddresses.CollectionChanged -= OnFallbackAddressesCollectionChanged;
+
+            foreach (var fallback in source.FallbackIpAddresses)
+                fallback.PropertyChanged -= OnSourceDependenciesChanged;
+        }
         #endregion
 
         #region IDisposable Implementation
@@ -159,7 +187,7 @@ namespace SNIBypassGUI.ViewModels.Items
             {
                 Model.TargetSources.CollectionChanged -= OnTargetSourcesCollectionChanged;
                 foreach (var source in Model.TargetSources)
-                    source.PropertyChanged -= OnTargetSourcePropertyChanged;
+                    StopListeningToSource(source);
             }
         }
         #endregion

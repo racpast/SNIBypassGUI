@@ -27,8 +27,7 @@ namespace SNIBypassGUI.ViewModels
 {
     public class DnsMappingTablesViewModel : NotifyPropertyChangedBase, IDisposable
     {
-        #region Dependencies, State & Constants
-        #region PCRE Syntax Constants
+        #region Constants
         private static readonly IReadOnlyList<SyntaxItem> s_pcreMetacharacters =
         [
             new(@"\", @"通用转义字符，用于转义特殊字符或引入特殊序列。"),
@@ -210,9 +209,9 @@ namespace SNIBypassGUI.ViewModels
         ];
         #endregion
 
-        #region Dependencies & Core State
+        #region Dependencies & Instance State
         private readonly IConfigSetService<DnsMappingTable> _tableService;
-        private readonly IConfigSetService<ResolverConfig> _resolverService;
+        private readonly IConfigSetService<Resolver> _resolverService;
         private readonly IDialogService _dialogService;
         private readonly IFactory<DnsMappingGroup> _groupFactory;
         private readonly IFactory<DnsMappingRule> _ruleFactory;
@@ -234,11 +233,16 @@ namespace SNIBypassGUI.ViewModels
         private IReadOnlyList<ValidationErrorNode> _validationWarnings;
         private readonly ObservableCollection<DnsMappingTableViewModel> _allTableVMs = [];
         #endregion
-        #endregion
 
         #region Constructor
-        public DnsMappingTablesViewModel(IConfigSetService<DnsMappingTable> tableService, IConfigSetService<ResolverConfig> resolverService,
-            IFactory<DnsMappingGroup> groupFactory, IFactory<DnsMappingRule> ruleFactory, IFactory<TargetIpSource> sourceFactory, IFactory<FallbackAddress> addressFactory, IDialogService dialogService)
+        public DnsMappingTablesViewModel(
+            IConfigSetService<DnsMappingTable> tableService,
+            IConfigSetService<Resolver> resolverService,
+            IFactory<DnsMappingGroup> groupFactory, 
+            IFactory<DnsMappingRule> ruleFactory, 
+            IFactory<TargetIpSource> sourceFactory, 
+            IFactory<FallbackAddress> addressFactory, 
+            IDialogService dialogService)
         {
             _tableService = tableService;
             _resolverService = resolverService;
@@ -365,7 +369,7 @@ namespace SNIBypassGUI.ViewModels
 
                     if (_editingTableCopy != null)
                     {
-                        EditingTableVM = new DnsMappingTableViewModel(_editingTableCopy, GetResolverById);
+                        EditingTableVM = new DnsMappingTableViewModel(_editingTableCopy, DoesResolverRequireIPv6);
                         StartListeningToChanges(_editingTableCopy);
                     }
                     else EditingTableVM = null;
@@ -750,7 +754,7 @@ namespace SNIBypassGUI.ViewModels
                     if (result == SaveChangesResult.Cancel) return;
                 }
 
-                var newName = await _dialogService.ShowTextInputAsync("重命名映射表", $"为 “{EditingTableCopy.TableName}” 输入新名称：", EditingTableCopy.TableName);
+                var newName = await _dialogService.ShowTextInputAsync($"重命名 “{EditingTableCopy.TableName}”", "请输入新的映射表名称：", EditingTableCopy.TableName);
                 if (newName != null && !string.IsNullOrWhiteSpace(newName))
                 {
                     if (newName != EditingTableCopy.TableName)
@@ -940,6 +944,10 @@ namespace SNIBypassGUI.ViewModels
         private void ListenToSource(TargetIpSource source)
         {
             source.PropertyChanged += OnEditingCopyPropertyChanged;
+
+            if (source.Addresses != null)
+                source.Addresses.CollectionChanged += OnEditingCopyPropertyChanged;
+
             if (source.FallbackIpAddresses != null)
             {
                 source.FallbackIpAddresses.CollectionChanged += OnFallbackAddressesCollectionChanged;
@@ -950,6 +958,10 @@ namespace SNIBypassGUI.ViewModels
         private void StopListeningToSource(TargetIpSource source)
         {
             source.PropertyChanged -= OnEditingCopyPropertyChanged;
+
+            if (source.Addresses != null)
+                source.Addresses.CollectionChanged -= OnEditingCopyPropertyChanged;
+
             if (source.FallbackIpAddresses != null)
             {
                 source.FallbackIpAddresses.CollectionChanged -= OnFallbackAddressesCollectionChanged;
@@ -984,7 +996,7 @@ namespace SNIBypassGUI.ViewModels
             if (e.NewItems != null) foreach (TargetIpSource item in e.NewItems) ListenToSource(item);
             if (e.OldItems != null) foreach (TargetIpSource item in e.OldItems) StopListeningToSource(item);
             if (CurrentState == EditingState.None) TransitionToState(EditingState.Editing);
-            ValidateEditingCopy();
+            OnEditingCopyPropertyChanged(sender, e);
         }
 
         private void OnFallbackAddressesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -1200,7 +1212,7 @@ namespace SNIBypassGUI.ViewModels
             {
                 var group = groupVM.Model;
 
-                var newName = await _dialogService.ShowTextInputAsync("重命名映射组", $"为 “{group.GroupName}” 输入新名称：", group.GroupName);
+                var newName = await _dialogService.ShowTextInputAsync($"重命名 “{group.GroupName}”", "请输入新的映射组名称：", group.GroupName);
                 if (newName != null && newName != group.GroupName)
                 {
 
@@ -1456,7 +1468,7 @@ namespace SNIBypassGUI.ViewModels
             {
                 var rule = ruleVM.Model;
 
-                var newPattern = await _dialogService.ShowTextInputAsync($"编辑 “{pattern}”", $"请输入新的域名匹配模式：", pattern);
+                var newPattern = await _dialogService.ShowTextInputAsync($"编辑 “{pattern}”", "请输入新的域名匹配模式：", pattern);
                 if (newPattern != null && newPattern != pattern)
                 {
                     if (!string.IsNullOrWhiteSpace(newPattern))
@@ -1665,7 +1677,7 @@ namespace SNIBypassGUI.ViewModels
 
             try
             {
-                var newIp = await _dialogService.ShowTextInputAsync($"编辑 “{address}”", $"请输入新的目标地址：", address);
+                var newIp = await _dialogService.ShowTextInputAsync($"编辑 “{address}”", "请输入新的目标地址：", address);
                 if (newIp != null && newIp != address)
                 {
                     string trimmed = newIp.Trim();
@@ -1737,7 +1749,7 @@ namespace SNIBypassGUI.ViewModels
                         SelectedSource.ResolverId = resolver.Id;
                         UpdateAssociatedResolverName();
                     }
-                    else await _dialogService.ShowInfoAsync("关联失败", "未找到对应关联码的解析器配置。");
+                    else await _dialogService.ShowInfoAsync("关联失败", "未找到对应关联码的解析器。");
                 }
             }
             finally
@@ -1760,7 +1772,7 @@ namespace SNIBypassGUI.ViewModels
             if (SelectedSource != null && SelectedSource.ResolverId.HasValue)
             {
                 var resolver = _resolverService.AllConfigs.FirstOrDefault(r => r.Id == SelectedSource.ResolverId.Value);
-                AssociatedResolverName = resolver != null ? resolver.ConfigName : "关联已失效";
+                AssociatedResolverName = resolver != null ? resolver.ResolverName : "关联已失效";
             }
             else AssociatedResolverName = string.Empty;
         }
@@ -1808,7 +1820,7 @@ namespace SNIBypassGUI.ViewModels
 
             try
             {
-                var newDomain = await _dialogService.ShowTextInputAsync($"编辑 “{domain}”", $"请输入新的查询域名：", domain);
+                var newDomain = await _dialogService.ShowTextInputAsync($"编辑 “{domain}”", "请输入新的查询域名：", domain);
                 if (newDomain != null && newDomain != domain)
                 {
                     string trimmed = newDomain.Trim();
@@ -1896,7 +1908,7 @@ namespace SNIBypassGUI.ViewModels
 
             try
             {
-                var newIp = await _dialogService.ShowTextInputAsync($"编辑 “{address.Address}”", $"请输入新的回落地址：", address.Address);
+                var newIp = await _dialogService.ShowTextInputAsync($"编辑 “{address.Address}”", "请输入新的回落地址：", address.Address);
                 if (newIp != null && newIp != address.Address)
                 {
                     string trimmed = newIp.Trim();
@@ -2032,7 +2044,7 @@ namespace SNIBypassGUI.ViewModels
             }
         }
 
-        private bool CanExecuteAddGroupIcon(DnsMappingGroupViewModel groupVM) => !groupVM.HasGroupIcon && !_isBusy;
+        private bool CanExecuteAddGroupIcon(DnsMappingGroupViewModel groupVM) => string.IsNullOrEmpty(groupVM.Model.GroupIconBase64) && !_isBusy;
 
         private void ExecuteRemoveGroupIcon(DnsMappingGroupViewModel groupVM)
         {
@@ -2040,7 +2052,7 @@ namespace SNIBypassGUI.ViewModels
             UpdateCommandStates();
         }
 
-        private bool CanExecuteRemoveGroupIcon(DnsMappingGroupViewModel groupVM) => groupVM.HasGroupIcon && !_isBusy;
+        private bool CanExecuteRemoveGroupIcon(DnsMappingGroupViewModel groupVM) => !string.IsNullOrEmpty(groupVM.Model.GroupIconBase64) && !_isBusy;
         #endregion
         #endregion
 
@@ -2053,7 +2065,7 @@ namespace SNIBypassGUI.ViewModels
                     int insertIndex = Math.Min(e.NewStartingIndex, _allTableVMs.Count);
                     foreach (DnsMappingTable model in e.NewItems)
                     {
-                        _allTableVMs.Insert(insertIndex, new DnsMappingTableViewModel(model, GetResolverById));
+                        _allTableVMs.Insert(insertIndex, new DnsMappingTableViewModel(model, DoesResolverRequireIPv6));
                         insertIndex++;
                     }
                     break;
@@ -2079,7 +2091,7 @@ namespace SNIBypassGUI.ViewModels
                         if (vmIndex >= 0)
                         {
                             _allTableVMs[vmIndex].Dispose();
-                            _allTableVMs[vmIndex] = new DnsMappingTableViewModel(newModel, GetResolverById);
+                            _allTableVMs[vmIndex] = new DnsMappingTableViewModel(newModel, DoesResolverRequireIPv6);
                         }
                     }
                     break;
@@ -2094,7 +2106,7 @@ namespace SNIBypassGUI.ViewModels
                     _allTableVMs.Clear();
 
                     foreach (var model in _tableService.AllConfigs)
-                        _allTableVMs.Add(new DnsMappingTableViewModel(model, GetResolverById));
+                        _allTableVMs.Add(new DnsMappingTableViewModel(model, DoesResolverRequireIPv6));
                     break;
             }
         }
@@ -2238,10 +2250,12 @@ namespace SNIBypassGUI.ViewModels
             return null;
         }
 
-        private ResolverConfig GetResolverById(Guid? id)
+        private bool DoesResolverRequireIPv6(Guid? resolverId)
         {
-            if (!id.HasValue) return null;
-            return _resolverService.AllConfigs.FirstOrDefault(r => r.Id == id.Value);
+            if (!resolverId.HasValue)
+                return false;
+            var resolver = _resolverService.AllConfigs.FirstOrDefault(r => r.Id == resolverId.Value);
+            return resolver?.RequiresIPv6 ?? false;
         }
         #endregion
         #endregion

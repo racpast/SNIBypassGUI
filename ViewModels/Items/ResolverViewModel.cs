@@ -6,10 +6,10 @@ using SNIBypassGUI.Models;
 
 namespace SNIBypassGUI.ViewModels.Items
 {
-    public class ResolverConfigViewModel : NotifyPropertyChangedBase, IDisposable
+    public class ResolverViewModel : NotifyPropertyChangedBase, IDisposable
     {
         #region State & Core Properties
-        public ResolverConfig Model { get; }
+        public Resolver Model { get; }
         #endregion
 
         #region UI Properties
@@ -17,7 +17,7 @@ namespace SNIBypassGUI.ViewModels.Items
 
         public PackIconKind ListIconKind => Model.IsBuiltIn ? PackIconKind.ArchiveLockOutline : PackIconKind.SearchWeb;
 
-        public string ConfigName { get => Model.ConfigName; set => Model.ConfigName = value; }
+        public string ResolverName { get => Model.ResolverName; set => Model.ResolverName = value; }
 
         public string ListTypeDescription => Model.IsBuiltIn ? "(内置)" : "(用户)";
 
@@ -25,7 +25,7 @@ namespace SNIBypassGUI.ViewModels.Items
         #endregion
 
         #region Constructor
-        public ResolverConfigViewModel(ResolverConfig model)
+        public ResolverViewModel(Resolver model)
         {
             Model = model ?? throw new ArgumentNullException(nameof(model));
             Model.PropertyChanged += OnModelPropertyChanged;

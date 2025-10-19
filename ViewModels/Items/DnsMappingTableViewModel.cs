@@ -12,11 +12,11 @@ namespace SNIBypassGUI.ViewModels.Items
     public class DnsMappingTableViewModel : NotifyPropertyChangedBase, IDisposable
     {
         #region State & Properties
+        private readonly Func<Guid?, bool> _requiresIpv6Lookup;
+
         public DnsMappingTable Model { get; }
-
         public ObservableCollection<DnsMappingGroupViewModel> MappingGroups { get; } = [];
-
-        private readonly Func<Guid?, ResolverConfig> _resolverLookup;
+        private ObservableCollection<DnsMappingGroup> _subscribedMappingGroups;
         #endregion
 
         #region UI Properties
@@ -26,20 +26,20 @@ namespace SNIBypassGUI.ViewModels.Items
 
         public PackIconKind ListIconKind => Model.IsBuiltIn ? PackIconKind.ArchiveLockOutline : PackIconKind.ListBoxOutline;
 
+        public bool RequiresIPv6 => MappingGroups.Any(vm => vm.RequiresIPv6 && vm.IsEnabled);
+
         public string TableName { get => Model.TableName; set => Model.TableName = value; }
         #endregion
 
         #region Constructor
-        public DnsMappingTableViewModel(DnsMappingTable model, Func<Guid?, ResolverConfig> resolverLookup)
+        public DnsMappingTableViewModel(DnsMappingTable model, Func<Guid?, bool> requiresIpv6Lookup)
         {
             Model = model ?? throw new ArgumentNullException(nameof(model));
-            _resolverLookup = resolverLookup ?? throw new ArgumentNullException(nameof(resolverLookup));
+            _requiresIpv6Lookup = requiresIpv6Lookup ?? throw new ArgumentNullException(nameof(requiresIpv6Lookup));
 
             Model.PropertyChanged += OnModelPropertyChanged;
-            Model.MappingGroups.CollectionChanged += OnModelGroupsCollectionChanged;
 
-            foreach (var groupModel in Model.MappingGroups)
-                AddGroupViewModel(groupModel);
+            HandleMappingGroupsChanged();
         }
         #endregion
 
@@ -54,6 +54,8 @@ namespace SNIBypassGUI.ViewModels.Items
         #region Private Helpers & Event Handlers
         private void OnModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            OnPropertyChanged(e.PropertyName);
+
             switch (e.PropertyName)
             {
                 case nameof(DnsMappingTable.TableName):
@@ -65,7 +67,34 @@ namespace SNIBypassGUI.ViewModels.Items
                     OnPropertyChanged(nameof(ListTypeDescription));
                     OnPropertyChanged(nameof(ListIconKind));
                     break;
+
+                case nameof(DnsMappingTable.MappingGroups):
+                    HandleMappingGroupsChanged();
+                    break;
             }
+        }
+
+        private void HandleMappingGroupsChanged()
+        {
+            if (_subscribedMappingGroups != null)
+                _subscribedMappingGroups.CollectionChanged -= OnModelGroupsCollectionChanged;
+
+            foreach (var vm in MappingGroups)
+            {
+                vm.PropertyChanged -= OnGroupViewModelPropertyChanged;
+                vm.Dispose();
+            }
+            MappingGroups.Clear();
+
+            _subscribedMappingGroups = Model.MappingGroups;
+            if (_subscribedMappingGroups != null)
+            {
+                foreach (var groupModel in _subscribedMappingGroups)
+                    AddGroupViewModel(groupModel);
+                _subscribedMappingGroups.CollectionChanged += OnModelGroupsCollectionChanged;
+            }
+
+            OnPropertyChanged(nameof(RequiresIPv6));
         }
 
         private void OnModelGroupsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -86,15 +115,32 @@ namespace SNIBypassGUI.ViewModels.Items
                     MappingGroups.Move(e.OldStartingIndex, e.NewStartingIndex);
                     break;
                 case NotifyCollectionChangedAction.Reset:
-                    foreach (var vm in MappingGroups) vm.Dispose();
+                    foreach (var vm in MappingGroups)
+                    {
+                        vm.PropertyChanged -= OnGroupViewModelPropertyChanged;
+                        vm.Dispose();
+                    }
                     MappingGroups.Clear();
                     break;
+            }
+
+            if (e.Action != NotifyCollectionChangedAction.Move)
+                OnPropertyChanged(nameof(RequiresIPv6));
+        }
+
+        private void OnGroupViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DnsMappingGroupViewModel.RequiresIPv6) ||
+                e.PropertyName == nameof(DnsMappingGroupViewModel.IsEnabled))
+            {
+                OnPropertyChanged(nameof(RequiresIPv6));
             }
         }
 
         private void AddGroupViewModel(DnsMappingGroup groupModel, int index = -1)
         {
-            var groupVM = new DnsMappingGroupViewModel(groupModel, _resolverLookup);
+            var groupVM = new DnsMappingGroupViewModel(groupModel, _requiresIpv6Lookup);
+            groupVM.PropertyChanged += OnGroupViewModelPropertyChanged;
             if (index >= 0) MappingGroups.Insert(index, groupVM);
             else MappingGroups.Add(groupVM);
         }
@@ -104,6 +150,7 @@ namespace SNIBypassGUI.ViewModels.Items
             var groupVM = MappingGroups.FirstOrDefault(vm => vm.Model == groupModel);
             if (groupVM != null)
             {
+                groupVM.PropertyChanged -= OnGroupViewModelPropertyChanged;
                 groupVM.Dispose();
                 MappingGroups.Remove(groupVM);
             }
@@ -114,9 +161,14 @@ namespace SNIBypassGUI.ViewModels.Items
         public void Dispose()
         {
             Model.PropertyChanged -= OnModelPropertyChanged;
-            Model.MappingGroups.CollectionChanged -= OnModelGroupsCollectionChanged;
+            if (_subscribedMappingGroups != null)
+                _subscribedMappingGroups.CollectionChanged -= OnModelGroupsCollectionChanged;
 
-            foreach (var groupVM in MappingGroups) groupVM.Dispose();
+            foreach (var groupVM in MappingGroups)
+            {
+                groupVM.PropertyChanged -= OnGroupViewModelPropertyChanged;
+                groupVM.Dispose();
+            }
             MappingGroups.Clear();
         }
         #endregion

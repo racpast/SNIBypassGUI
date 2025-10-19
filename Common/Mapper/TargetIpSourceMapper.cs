@@ -42,42 +42,49 @@ namespace SNIBypassGUI.Common.Mapper
             if (jObject == null)
                 return ParseResult<TargetIpSource>.Failure("JSON 对象为空。");
 
-            if (!jObject.TryGetEnum("sourceType", out IpAddressSourceType sourceType))
-                return ParseResult<TargetIpSource>.Failure("一个或多个通用字段缺失或类型错误。");
-
-            var source = new TargetIpSource { SourceType = sourceType };
-
-            if (sourceType == IpAddressSourceType.Static)
+            try
             {
-                if (!jObject.TryGetArray("addresses", out IReadOnlyList<string> addresses))
-                    return ParseResult<TargetIpSource>.Failure("直接指定模式所需的字段缺失或类型错误。");
+                if (!jObject.TryGetEnum("sourceType", out IpAddressSourceType sourceType))
+                    return ParseResult<TargetIpSource>.Failure("一个或多个通用字段缺失或类型错误。");
 
-                source.Addresses = [.. addresses];
-            }
-            else
-            {
-                if (!jObject.TryGetArray("queryDomains", out IReadOnlyList<string> queryDomains) ||
-                    !jObject.TryGetNullableGuid("resolverId", out Guid? resolverId) ||
-                    !jObject.TryGetEnum("ipAddressType", out IpAddressType ipAddressType) ||
-                    !jObject.TryGetBool("enableFallbackAutoUpdate", out bool enableFallbackAutoUpdate) ||
-                    !jObject.TryGetArray("fallbackIpAddresses", out IReadOnlyList<JObject> fallbackIpAddressObjects))
-                    return ParseResult<TargetIpSource>.Failure("解析获取模式所需的字段缺失或类型错误。");
-                ObservableCollection<FallbackAddress> fallbackIpAddresses = [];
-                foreach (var item in fallbackIpAddressObjects.OfType<JObject>())
+                var source = new TargetIpSource { SourceType = sourceType };
+
+                if (sourceType == IpAddressSourceType.Static)
                 {
-                    var parsed = fallbackAddressMapper.FromJObject(item);
-                    if (!parsed.IsSuccess)
-                        return ParseResult<TargetIpSource>.Failure($"解析 fallbackIpAddresses 时出错：{parsed.ErrorMessage}");
-                    fallbackIpAddresses.Add(parsed.Value);
-                }
-                source.QueryDomains = [.. queryDomains];
-                source.ResolverId = resolverId;
-                source.IpAddressType = ipAddressType;
-                source.FallbackIpAddresses = fallbackIpAddresses;
-                source.EnableFallbackAutoUpdate = enableFallbackAutoUpdate;
-            }
+                    if (!jObject.TryGetArray("addresses", out IReadOnlyList<string> addresses))
+                        return ParseResult<TargetIpSource>.Failure("直接指定模式所需的字段缺失或类型错误。");
 
-            return ParseResult<TargetIpSource>.Success(source);
+                    source.Addresses = [.. addresses];
+                }
+                else
+                {
+                    if (!jObject.TryGetArray("queryDomains", out IReadOnlyList<string> queryDomains) ||
+                        !jObject.TryGetNullableGuid("resolverId", out Guid? resolverId) ||
+                        !jObject.TryGetEnum("ipAddressType", out IpAddressType ipAddressType) ||
+                        !jObject.TryGetBool("enableFallbackAutoUpdate", out bool enableFallbackAutoUpdate) ||
+                        !jObject.TryGetArray("fallbackIpAddresses", out IReadOnlyList<JObject> fallbackIpAddressObjects))
+                        return ParseResult<TargetIpSource>.Failure("解析获取模式所需的字段缺失或类型错误。");
+                    ObservableCollection<FallbackAddress> fallbackIpAddresses = [];
+                    foreach (var item in fallbackIpAddressObjects.OfType<JObject>())
+                    {
+                        var parsed = fallbackAddressMapper.FromJObject(item);
+                        if (!parsed.IsSuccess)
+                            return ParseResult<TargetIpSource>.Failure($"解析 fallbackIpAddresses 时遇到异常：{parsed.ErrorMessage}");
+                        fallbackIpAddresses.Add(parsed.Value);
+                    }
+                    source.QueryDomains = [.. queryDomains];
+                    source.ResolverId = resolverId;
+                    source.IpAddressType = ipAddressType;
+                    source.FallbackIpAddresses = fallbackIpAddresses;
+                    source.EnableFallbackAutoUpdate = enableFallbackAutoUpdate;
+                }
+
+                return ParseResult<TargetIpSource>.Success(source);
+            }
+            catch (Exception ex)
+            {
+                return ParseResult<TargetIpSource>.Failure($"解析 TargetIpSource 时遇到异常：{ex.Message}");
+            }
         }
     }
 }

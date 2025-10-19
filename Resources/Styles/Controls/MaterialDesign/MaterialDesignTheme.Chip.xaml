@@ -1,6 +1,7 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:assist="clr-namespace:SNIBypassGUI.Controls.Assist"
+                    xmlns:converters="clr-namespace:SNIBypassGUI.Converters"
                     xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes">
     <Style TargetType="{x:Type md:Chip}">
         <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
@@ -38,7 +39,7 @@
 										FontWeight="Regular"
 										Foreground="{TemplateBinding IconForeground}"
 										IsTabStop="False"
-										Visibility="{TemplateBinding Icon, Converter={StaticResource NullableToVisibilityConverter}}">
+										Visibility="{TemplateBinding Icon, Converter={x:Static converters:NullableToVisibilityConverter.CollapsedInstance}}">
                             <ContentControl.Clip>
                                 <EllipseGeometry Center="16,16"
 												 RadiusX="16"
@@ -88,7 +89,8 @@
 													 Height="12"
 													 HorizontalAlignment="Center"
 													 VerticalAlignment="Center"
-													 Kind="Close" />
+                                                     Foreground="{DynamicResource ForegroundBrush}"
+													 Kind="Close"/>
                                     </Grid>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
