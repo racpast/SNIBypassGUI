@@ -274,6 +274,7 @@ namespace SNIBypassGUI.Models
                 Id = Id,
                 ConfigName = ConfigName,
                 IsBuiltIn = IsBuiltIn,
+                DnsServers = [.. DnsServers.OrEmpty().Select(server => server.Clone())],
                 SinkholeIPv6Lookups = SinkholeIPv6Lookups,
                 ForwardPrivateReverseLookups = ForwardPrivateReverseLookups,
                 AddressCacheScavengingTime = AddressCacheScavengingTime,
@@ -296,11 +297,11 @@ namespace SNIBypassGUI.Models
                 ServerSocks5ProtocolProxyRemoteResponseTimeout = ServerSocks5ProtocolProxyRemoteResponseTimeout,
                 ServerSocks5ProtocolProxyFirstByteTimeout = ServerSocks5ProtocolProxyFirstByteTimeout,
                 ServerSocks5ProtocolProxyOtherBytesTimeout = ServerSocks5ProtocolProxyOtherBytesTimeout,
+                EnableHitLog = EnableHitLog,
                 HitLogFullDump = HitLogFullDump,
                 HitLogMaxPendingHits = HitLogMaxPendingHits,
                 LimitQueryTypesCache = [.. LimitQueryTypesCache.OrEmpty()],
                 LogEvents = [.. LogEvents.OrEmpty()],
-                DnsServers = [.. DnsServers.OrEmpty().Select(server => server.Clone())]
             };
 
             return clone;
@@ -314,6 +315,7 @@ namespace SNIBypassGUI.Models
             if (source == null) return;
             ConfigName = source.ConfigName;
             IsBuiltIn = source.IsBuiltIn;
+            DnsServers = [.. source.DnsServers?.Select(w => w.Clone()).OrEmpty()];
             SinkholeIPv6Lookups = source.SinkholeIPv6Lookups;
             ForwardPrivateReverseLookups = source.ForwardPrivateReverseLookups;
             AddressCacheScavengingTime = source.AddressCacheScavengingTime;
@@ -337,10 +339,10 @@ namespace SNIBypassGUI.Models
             ServerSocks5ProtocolProxyRemoteResponseTimeout = source.ServerSocks5ProtocolProxyRemoteResponseTimeout;
             ServerSocks5ProtocolProxyFirstByteTimeout = source.ServerSocks5ProtocolProxyFirstByteTimeout;
             ServerSocks5ProtocolProxyOtherBytesTimeout = source.ServerSocks5ProtocolProxyOtherBytesTimeout;
+            EnableHitLog = source.EnableHitLog;
             LogEvents = [.. source.LogEvents.OrEmpty()];
             HitLogFullDump = source.HitLogFullDump;
             HitLogMaxPendingHits = source.HitLogMaxPendingHits;
-            DnsServers = [.. source.DnsServers?.Select(w => w.Clone()).OrEmpty()];
         }
         #endregion
     }

@@ -22,6 +22,7 @@ namespace SNIBypassGUI.Common.Mapper
                 ["id"] = dnsConfig.Id.ToString(),
                 ["configName"] = dnsConfig.ConfigName.OrDefault(),
                 ["isBuiltIn"] = dnsConfig.IsBuiltIn,
+                ["dnsServers"] = new JArray(dnsConfig.DnsServers?.Select(dnsServerMapper.ToJObject).OrEmpty()),
                 ["sinkholeIPv6Lookups"] = dnsConfig.SinkholeIPv6Lookups,
                 ["forwardPrivateReverseLookups"] = dnsConfig.ForwardPrivateReverseLookups,
                 ["addressCacheScavengingTime"] = dnsConfig.AddressCacheScavengingTime.OrDefault(),
@@ -45,10 +46,10 @@ namespace SNIBypassGUI.Common.Mapper
                 ["serverSocks5ProtocolProxyRemoteResponseTimeout"] = dnsConfig.ServerSocks5ProtocolProxyRemoteResponseTimeout.OrDefault(),
                 ["serverSocks5ProtocolProxyFirstByteTimeout"] = dnsConfig.ServerSocks5ProtocolProxyFirstByteTimeout.OrDefault(),
                 ["serverSocks5ProtocolProxyOtherBytesTimeout"] = dnsConfig.ServerSocks5ProtocolProxyOtherBytesTimeout.OrDefault(),
+                ["enableHitLog"] = dnsConfig.EnableHitLog,
                 ["logEvents"] = new JArray(dnsConfig.LogEvents.OrEmpty()),
                 ["hitLogFullDump"] = dnsConfig.HitLogFullDump,
-                ["hitLogMaxPendingHits"] = dnsConfig.HitLogMaxPendingHits.OrDefault(),
-                ["dnsServers"] = new JArray(dnsConfig.DnsServers?.Select(dnsServerMapper.ToJObject).OrEmpty())
+                ["hitLogMaxPendingHits"] = dnsConfig.HitLogMaxPendingHits.OrDefault()
             };
 
             return jObject;
@@ -67,6 +68,7 @@ namespace SNIBypassGUI.Common.Mapper
                 if (!jObject.TryGetGuid("id", out Guid id) ||
                 !jObject.TryGetString("configName", out string configName) ||
                 !jObject.TryGetBool("isBuiltIn", out bool isBuiltIn) ||
+                !jObject.TryGetArray("dnsServers", out IReadOnlyList<JObject> dnsServerObjects) ||
                 !jObject.TryGetBool("sinkholeIPv6Lookups", out bool sinkholeIPv6Lookups) ||
                 !jObject.TryGetBool("forwardPrivateReverseLookups", out bool forwardPrivateReverseLookups) ||
                 !jObject.TryGetString("addressCacheScavengingTime", out string addressCacheScavengingTime) ||
@@ -93,7 +95,7 @@ namespace SNIBypassGUI.Common.Mapper
                 !jObject.TryGetArray("logEvents", out IReadOnlyList<string> logEvents) ||
                 !jObject.TryGetBool("hitLogFullDump", out bool hitLogFullDump) ||
                 !jObject.TryGetString("hitLogMaxPendingHits", out string hitLogMaxPendingHits) ||
-                !jObject.TryGetArray("dnsServers", out IReadOnlyList<JObject> dnsServerObjects))
+                !jObject.TryGetBool("enableHitLog", out bool enableHitLog))
                     return ParseResult<DnsConfig>.Failure("一个或多个通用字段缺失或类型错误。");
 
                 ObservableCollection<DnsServer> dnsServers = [];
@@ -119,6 +121,7 @@ namespace SNIBypassGUI.Common.Mapper
                     Id = id,
                     ConfigName = configName,
                     IsBuiltIn = isBuiltIn,
+                    DnsServers = dnsServers,
                     SinkholeIPv6Lookups = sinkholeIPv6Lookups,
                     ForwardPrivateReverseLookups = forwardPrivateReverseLookups,
                     AddressCacheScavengingTime = addressCacheScavengingTime,
@@ -142,10 +145,10 @@ namespace SNIBypassGUI.Common.Mapper
                     ServerSocks5ProtocolProxyRemoteResponseTimeout = serverSocks5ProtocolProxyRemoteResponseTimeout,
                     ServerSocks5ProtocolProxyFirstByteTimeout = serverSocks5ProtocolProxyFirstByteTimeout,
                     ServerSocks5ProtocolProxyOtherBytesTimeout = serverSocks5ProtocolProxyOtherBytesTimeout,
+                    EnableHitLog = enableHitLog,
                     LogEvents = [.. logEvents],
                     HitLogFullDump = hitLogFullDump,
                     HitLogMaxPendingHits = hitLogMaxPendingHits,
-                    DnsServers = dnsServers
                 };
 
                 return ParseResult<DnsConfig>.Success(config);
