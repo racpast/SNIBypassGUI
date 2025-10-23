@@ -374,7 +374,7 @@ namespace SNIBypassGUI.ViewModels
                     }
                     else EditingTableVM = null;
 
-                    OnPropertyChanged(nameof(EditingTableVM)); // 通知UI更新
+                    OnPropertyChanged(nameof(EditingTableVM));
 
                     SelectedTreeItem = null;
                     SelectedSource = null;
@@ -1066,11 +1066,8 @@ namespace SNIBypassGUI.ViewModels
                     ValidationWarnings = warnings;
                 }
             }
-
-            OnPropertyChanged(nameof(ValidationWarnings));
-            OnPropertyChanged(nameof(HasValidationWarnings));
-            OnPropertyChanged(nameof(ValidationErrors));
-            OnPropertyChanged(nameof(HasValidationErrors));
+            OnPropertyChanged(nameof(ValidationWarnings), nameof(HasValidationWarnings),
+                nameof(ValidationErrors), nameof(HasValidationErrors));
             UpdateCommandStates();
         }
         #endregion

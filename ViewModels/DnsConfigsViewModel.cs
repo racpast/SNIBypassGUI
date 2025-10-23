@@ -787,11 +787,8 @@ namespace SNIBypassGUI.ViewModels
                     ValidationWarnings = warnings;
                 }
             }
-
-            OnPropertyChanged(nameof(ValidationWarnings));
-            OnPropertyChanged(nameof(HasValidationWarnings));
-            OnPropertyChanged(nameof(ValidationErrors));
-            OnPropertyChanged(nameof(HasValidationErrors));
+            OnPropertyChanged(nameof(ValidationWarnings), nameof(HasValidationWarnings),
+                nameof(ValidationErrors), nameof(HasValidationErrors));
             UpdateCommandStates();
         }
         #endregion

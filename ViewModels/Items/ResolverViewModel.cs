@@ -43,10 +43,7 @@ namespace SNIBypassGUI.ViewModels.Items
             OnPropertyChanged(e.PropertyName);
 
             if (e.PropertyName == nameof(Model.IsBuiltIn))
-            {
-                OnPropertyChanged(nameof(ListIconKind));
-                OnPropertyChanged(nameof(ListTypeDescription));
-            }
+                OnPropertyChanged(nameof(ListIconKind), nameof(ListTypeDescription));
         }
         #endregion
 

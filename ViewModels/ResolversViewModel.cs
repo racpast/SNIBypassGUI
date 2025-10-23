@@ -713,10 +713,8 @@ namespace SNIBypassGUI.ViewModels
                     ValidationWarnings = [.. result.Errors.Where(e => e.Severity == FluentValidation.Severity.Warning).Select(e => e.ErrorMessage)];
                 }
             }
-            OnPropertyChanged(nameof(ValidationErrors));
-            OnPropertyChanged(nameof(HasValidationErrors));
-            OnPropertyChanged(nameof(ValidationWarnings));
-            OnPropertyChanged(nameof(HasValidationWarnings));
+            OnPropertyChanged(nameof(ValidationWarnings), nameof(HasValidationWarnings),
+                nameof(ValidationErrors), nameof(HasValidationErrors));
             UpdateCommandStates();
         }
         #endregion

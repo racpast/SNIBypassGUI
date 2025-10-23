@@ -63,9 +63,7 @@ namespace SNIBypassGUI.ViewModels.Items
                     break;
 
                 case nameof(DnsMappingTable.IsBuiltIn):
-                    OnPropertyChanged(nameof(IsBuiltIn));
-                    OnPropertyChanged(nameof(ListTypeDescription));
-                    OnPropertyChanged(nameof(ListIconKind));
+                    OnPropertyChanged(nameof(IsBuiltIn), nameof(ListTypeDescription), nameof(ListIconKind));
                     break;
 
                 case nameof(DnsMappingTable.MappingGroups):

@@ -37,10 +37,7 @@ namespace SNIBypassGUI.Models
             set
             {
                 if (SetProperty(ref _sourceType, value))
-                {
-                    OnPropertyChanged(nameof(ListIconKind));
-                    OnPropertyChanged(nameof(DisplayText));
-                }
+                    OnPropertyChanged(nameof(ListIconKind), nameof(DisplayText));
             }
         }
 
@@ -191,17 +188,11 @@ namespace SNIBypassGUI.Models
         #endregion
 
         #region Methods
-        private void Addresses_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e) 
-        {
-            OnPropertyChanged(nameof(Addresses));
-            OnPropertyChanged(nameof(DisplayText));
-        }
+        private void Addresses_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+            OnPropertyChanged(nameof(Addresses), nameof(DisplayText));
 
-        private void QueryDomains_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            OnPropertyChanged(nameof(QueryDomains));
-            OnPropertyChanged(nameof(DisplayText));
-        }
+        private void QueryDomains_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+            OnPropertyChanged(nameof(QueryDomains), nameof(DisplayText));
 
         private void FallbackAddresses_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {

@@ -62,8 +62,7 @@ namespace SNIBypassGUI.ViewModels.Items
                     break;
 
                 case nameof(DnsConfig.IsBuiltIn):
-                    OnPropertyChanged(nameof(ListTypeDescription));
-                    OnPropertyChanged(nameof(ListIconKind));
+                    OnPropertyChanged(nameof(ListTypeDescription), nameof(ListIconKind));
                     break;
 
                 case nameof(DnsConfig.DnsServers):

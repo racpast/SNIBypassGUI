@@ -101,8 +101,7 @@ namespace SNIBypassGUI.ViewModels.Items
                     MappingRules.Clear();
                     break;
             }
-            OnPropertyChanged(nameof(DisplayText));
-            OnPropertyChanged(nameof(RequiresIPv6));
+            OnPropertyChanged(nameof(DisplayText), nameof(RequiresIPv6));
         }
 
         private void AddRuleViewModel(DnsMappingRule ruleModel, int index = -1)

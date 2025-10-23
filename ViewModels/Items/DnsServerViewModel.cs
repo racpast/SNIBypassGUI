@@ -91,8 +91,7 @@ namespace SNIBypassGUI.ViewModels.Items
             switch (e.PropertyName)
             {
                 case nameof(DnsServer.ProtocolType):
-                    OnPropertyChanged(nameof(ListIconKind));
-                    OnPropertyChanged(nameof(SecondaryDisplayText));
+                    OnPropertyChanged(nameof(ListIconKind), nameof(SecondaryDisplayText));
                     break;
 
                 case nameof(DnsServer.ServerAddress):

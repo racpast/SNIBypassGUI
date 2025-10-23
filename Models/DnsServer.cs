@@ -58,7 +58,11 @@ namespace SNIBypassGUI.Models
         public DnsServerProtocol ProtocolType
         {
             get => _protocolType;
-            set => SetProperty(ref _protocolType, value);
+            set
+            {
+                if (SetProperty(ref _protocolType, value))
+                    OnPropertyChanged(nameof(RequiresIPv6));
+            }
         }
 
         /// <summary>

@@ -114,8 +114,7 @@ namespace SNIBypassGUI.ViewModels.Items
             switch (e.PropertyName)
             {
                 case nameof(DnsMappingRule.RuleAction):
-                    OnPropertyChanged(nameof(ListIconKind));
-                    OnPropertyChanged(nameof(RequiresIPv6));
+                    OnPropertyChanged(nameof(ListIconKind), nameof(RequiresIPv6));
                     break;
 
                 case nameof(DnsMappingRule.DomainPatterns):
