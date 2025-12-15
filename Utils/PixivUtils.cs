@@ -10,7 +10,7 @@ namespace SNIBypassGUI.Utils
     public static class PixivUtils
     {
         /// <summary>
-        /// Pixiv IP 优选
+        /// Pixiv IP 优选。
         /// </summary>
         public static async Task OptimizePixivIPRouting()
         {
@@ -34,7 +34,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 恢复原始 Pixiv DNS
+        /// 恢复原始 Pixiv DNS。
         /// </summary>
         public static async Task RestoreOriginalPixivDNS()
         {

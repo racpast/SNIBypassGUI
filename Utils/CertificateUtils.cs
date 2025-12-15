@@ -20,6 +20,9 @@ namespace SNIBypassGUI.Utils
 {
     public static class CertificateUtils
     {
+        /// <summary>
+        /// 证书用途枚举。
+        /// </summary>
         public enum CertificatePurpose
         {
             None,
@@ -32,7 +35,7 @@ namespace SNIBypassGUI.Utils
         private const string DefaultPfxPassword = "password";
 
         /// <summary>
-        /// 生成根证书
+        /// 生成根证书。
         /// </summary>
         public static X509Certificate2 CreateRootCertificate(Dictionary<string, string> subjectAttributes, int keySize = 2048, DateTime? notBefore = null, DateTime? notAfter = null)
         {
@@ -108,7 +111,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 从 CSR 创建证书
+        /// 从 CSR 创建证书。
         /// </summary>
         public static X509Certificate2 CreateCertificateFromCsr(byte[] csrDer, X509Certificate2 issuerCert, DateTime? notBefore = null, DateTime? notAfter = null)
         {
@@ -133,7 +136,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 创建 X509Certificate2
+        /// 创建 X509Certificate2。
         /// </summary>
         private static X509Certificate2 CreateX509Certificate2(Org.BouncyCastle.X509.X509Certificate certificate, AsymmetricKeyParameter privateKey)
         {
@@ -148,7 +151,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取 X509Certificate2 的私钥
+        /// 获取 X509Certificate2 的私钥。
         /// </summary>
         private static AsymmetricKeyParameter GetPrivateKeyFromX509(X509Certificate2 cert)
         {
@@ -169,7 +172,8 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 创建 X509Name
+        /// 创建 X509Name。
+        /// </summary>
         private static X509Name CreateX509Name(Dictionary<string, string> attributes)
         {
             var oids = new List<DerObjectIdentifier>();
@@ -183,7 +187,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取证书用途的 KeyPurposeID
+        /// 获取证书用途的 KeyPurposeID。
         /// </summary>
         private static KeyPurposeID GetKeyPurposeId(CertificatePurpose purpose)
         {
@@ -198,7 +202,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 导出 PEM 格式证书
+        /// 导出 PEM 格式证书。
         /// </summary>
         public static string ExportToPem(X509Certificate2 cert)
         {
@@ -211,15 +215,12 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 导出 DER 格式证书
+        /// 导出 DER 格式证书。
         /// </summary>
-        public static byte[] ExportToDer(X509Certificate2 cert)
-        {
-            return cert.RawData;
-        }
+        public static byte[] ExportToDer(X509Certificate2 cert) => cert.RawData;
 
         /// <summary>
-        /// 导出 PFX 格式证书
+        /// 导出 PFX 格式证书。
         /// </summary>
         public static byte[] ExportToPfx(X509Certificate2 cert, string password)
         {
@@ -228,40 +229,27 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 导出 P7B 格式证书
+        /// 导出 P7B 格式证书。
         /// </summary>
-        public static byte[] ExportToP7b(X509Certificate2Collection certs)
-        {
-            return certs.Export(X509ContentType.Pkcs7);
-        }
+        public static byte[] ExportToP7b(X509Certificate2Collection certs) => certs.Export(X509ContentType.Pkcs7);
 
         /// <summary>
-        /// 加载 PEM 格式证书
+        /// 加载 PEM 格式证书。
         /// </summary>
-        public static X509Certificate2 LoadFromPem(string pem)
-        {
-            byte[] der = ExtractDerFromPem(pem);
-            return new X509Certificate2(der);
-        }
+        public static X509Certificate2 LoadFromPem(string pem) => new(ExtractDerFromPem(pem));
 
         /// <summary>
-        /// 加载 DER 格式证书
+        /// 加载 DER 格式证书。
         /// </summary>
-        public static X509Certificate2 LoadFromDer(byte[] derBytes)
-        {
-            return new X509Certificate2(derBytes);
-        }
+        public static X509Certificate2 LoadFromDer(byte[] derBytes) => new(derBytes);
 
         /// <summary>
-        /// 加载 PFX 格式证书
+        /// 加载 PFX 格式证书。
         /// </summary>
-        public static X509Certificate2 LoadFromPfx(byte[] pfxBytes, string password)
-        {
-            return new X509Certificate2(pfxBytes, password, X509KeyStorageFlags.Exportable);
-        }
+        public static X509Certificate2 LoadFromPfx(byte[] pfxBytes, string password) => new(pfxBytes, password, X509KeyStorageFlags.Exportable);
 
         /// <summary>
-        /// 加载 P7B 格式证书
+        /// 加载 P7B 格式证书。
         /// </summary>
         public static X509Certificate2Collection LoadFromP7b(byte[] p7bBytes)
         {
@@ -271,7 +259,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 提取 PEM 格式证书中的 DER 数据
+        /// 提取 PEM 格式证书中的 DER 数据。
         /// </summary>
         private static byte[] ExtractDerFromPem(string pem)
         {
@@ -287,7 +275,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 验证证书
+        /// 验证证书。
         /// </summary>
         public static bool VerifyCertificate(X509Certificate2 cert, X509Certificate2 rootCert)
         {
@@ -299,7 +287,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取证书信息
+        /// 获取证书信息。
         /// </summary>
         public static Dictionary<string, string> GetCertificateInfo(X509Certificate2 cert)
         {
@@ -315,7 +303,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 检查证书是否已安装
+        /// 检查证书是否已安装。
         /// </summary>
         public static bool IsCertificateInstalled(string thumbprint)
         {
@@ -339,7 +327,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 安装证书
+        /// 安装证书。
         /// </summary>
         public static void InstallCertificate(string certificatePath)
         {
@@ -361,7 +349,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 卸载证书
+        /// 卸载证书。
         /// </summary>
         public static void UninstallCertificate(string thumbprint)
         {

@@ -11,11 +11,15 @@ using static SNIBypassGUI.Utils.CommandUtils;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.NetworkUtils;
 using static SNIBypassGUI.Utils.WinApiUtils;
+using System.Windows;
 
 namespace SNIBypassGUI.Utils
 {
     public static class NetworkAdapterUtils
     {
+        /// <summary>
+        /// 网络适配器的查询范围枚举。
+        /// </summary>
         public enum ScopeNeeded
         {
             All,
@@ -42,16 +46,18 @@ namespace SNIBypassGUI.Utils
             return GetNetworkAdaptersInternalAsync(condition);
         }
 
-        // Internal async implementation doing the actual work
+        /// <summary>
+        /// 获取指定条件的网络适配器的信息（内部方法），并返回 NetworkAdapter 列表。
+        /// </summary>
         private static async Task<List<NetworkAdapter>> GetNetworkAdaptersInternalAsync(string wmiCondition)
         {
             return await Task.Run(() =>
             {
                 var adapters = new List<NetworkAdapter>();
-                var guidToIPv6DNSServer = new Dictionary<string, string[]>();
+                var guidToIPv6DNSServer = new Dictionary<Guid, string[]>();
                 var interfaceIndexToConfig = new Dictionary<uint, ManagementObject>();
-                var guidToIPv4DNSAuto = new Dictionary<string, bool>();
-                var guidToIPv6DNSAuto = new Dictionary<string, bool>();
+                var guidToIPv4DNSAuto = new Dictionary<Guid, bool>();
+                var guidToIPv6DNSAuto = new Dictionary<Guid, bool>();
 
                 try
                 {
@@ -64,14 +70,11 @@ namespace SNIBypassGUI.Utils
                                 .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6)
                                 .Select(ip => ip.ToString())
                                 .ToArray();
-                            if (!string.IsNullOrEmpty(netInterface.Id) && !guidToIPv6DNSServer.ContainsKey(netInterface.Id))
-                            {
-                                guidToIPv6DNSServer.Add(netInterface.Id, ipv6Dns);
-                            }
+                            if (!string.IsNullOrEmpty(netInterface.Id) && !guidToIPv6DNSServer.ContainsKey(new Guid(netInterface.Id))) guidToIPv6DNSServer.Add(new Guid(netInterface.Id), ipv6Dns);
                         }
                         catch (Exception ex)
                         {
-                            WriteLog($"Error getting properties for NetworkInterface {netInterface.Id} ({netInterface.Name}): {ex.Message}", LogLevel.Warning);
+                            WriteLog($"获取 GUID 为 {netInterface.Id} 的网络接口 {netInterface.Name} 信息时遇到异常。", LogLevel.Error, ex);
                         }
                     }
 
@@ -84,10 +87,7 @@ namespace SNIBypassGUI.Utils
                             try
                             {
                                 uint ifIndex = (uint)config["InterfaceIndex"];
-                                if (!interfaceIndexToConfig.ContainsKey(ifIndex))
-                                {
-                                    interfaceIndexToConfig.Add(ifIndex, config);
-                                }
+                                if (!interfaceIndexToConfig.ContainsKey(ifIndex)) interfaceIndexToConfig.Add(ifIndex, config);
                             }
                             catch (Exception ex)
                             {
@@ -108,7 +108,7 @@ namespace SNIBypassGUI.Utils
                                     if (key != null)
                                     {
                                         string ns = key.GetValue("NameServer", null) as string;
-                                        guidToIPv4DNSAuto.Add(guidKeyName, string.IsNullOrEmpty(ns));
+                                        guidToIPv4DNSAuto.Add(new Guid(guidKeyName), string.IsNullOrEmpty(ns));
                                     }
                                 }
                             }
@@ -122,7 +122,7 @@ namespace SNIBypassGUI.Utils
                                 if (key != null)
                                 {
                                     string ns = key.GetValue("NameServer", null) as string;
-                                    guidToIPv6DNSAuto.Add(guidKeyName, string.IsNullOrEmpty(ns));
+                                    guidToIPv6DNSAuto.Add(new Guid(guidKeyName), string.IsNullOrEmpty(ns));
                                 }
                             }
                         }
@@ -139,8 +139,15 @@ namespace SNIBypassGUI.Utils
                     {
                         try
                         {
+                            // 尝试将 WMI 获取到的 GUID 字符串安全地解析为 Guid 对象
+                            string guidString = adapter["GUID"]?.ToString();
+                            if (string.IsNullOrEmpty(guidString) || !Guid.TryParse(guidString, out Guid guid))
+                            {
+                                // 如果 GUID 字符串为空、null 或无法解析为有效的 Guid，则跳过此适配器
+                                WriteLog($"GUID 无效或缺失，位于 InterfaceIndex 为 {adapter["InterfaceIndex"] ?? "N/A"}，描述为 {adapter["Description"] ?? "N/A"} 的适配器中，跳过。", LogLevel.Warning);
+                                continue;
+                            }
                             uint interfaceIndex = (uint)(adapter["InterfaceIndex"] ?? 0u);
-                            string guid = adapter["GUID"]?.ToString()?.ToUpperInvariant() ?? "";
 
                             if (interfaceIndexToConfig.TryGetValue(interfaceIndex, out var ipConfig))
                             {
@@ -148,13 +155,13 @@ namespace SNIBypassGUI.Utils
                                 string friendlyName = adapter["NetConnectionID"]?.ToString() ?? "";
                                 string description = ipConfig["Description"]?.ToString() ?? adapter["Description"]?.ToString() ?? "";
                                 string serviceName = ipConfig["ServiceName"]?.ToString() ?? adapter["ServiceName"]?.ToString() ?? "";
-                                string macAddress = ipConfig["MACAddress"]?.ToString() ?? adapter["MACAddress"]?.ToString() ?? ""; // Config MAC is often more reliable
+                                string macAddress = ipConfig["MACAddress"]?.ToString() ?? adapter["MACAddress"]?.ToString() ?? "";
                                 string manufacturer = adapter["Manufacturer"]?.ToString() ?? "";
                                 bool isPhysicalAdapter = (bool)(adapter["PhysicalAdapter"] ?? false);
                                 bool isNetEnabled = (bool)(adapter["NetEnabled"] ?? false);
                                 ushort netConnectionStatus = (ushort)(adapter["NetConnectionStatus"] ?? 0);
-                                bool isIPv4DNSAuto = string.IsNullOrEmpty(guid) || !guidToIPv4DNSAuto.TryGetValue(guid, out bool v4Auto) || v4Auto; // Default true if GUID invalid or not found
-                                bool isIPv6DNSAuto = string.IsNullOrEmpty(guid) || !guidToIPv6DNSAuto.TryGetValue(guid, out bool v6Auto) || v6Auto; // Default true
+                                bool isIPv4DNSAuto = !guidToIPv4DNSAuto.TryGetValue(guid, out bool v4Auto) || v4Auto;
+                                bool isIPv6DNSAuto = !guidToIPv6DNSAuto.TryGetValue(guid, out bool v6Auto) || v6Auto;
 
                                 bool isIPEnabled = ipConfig["IPEnabled"] as bool? ?? false;
                                 string[] allIPAddresses = ipConfig["IPAddress"] as string[] ?? [];
@@ -188,7 +195,7 @@ namespace SNIBypassGUI.Utils
                                 string[] dnsServers = ipConfig["DNSServerSearchOrder"] as string[] ?? [];
                                 List<string> ipv4DnsServerList = [];
                                 ipv4DnsServerList.AddRange(dnsServers.Where(dns => dns != null && !dns.Contains(':')));
-                                string[] ipv6DnsServerArray = !string.IsNullOrEmpty(guid) && guidToIPv6DNSServer.TryGetValue(guid, out var dns6) ? dns6 : [];
+                                string[] ipv6DnsServerArray = guidToIPv6DNSServer.TryGetValue(guid, out var dns6) ? dns6 : [];
 
                                 adapters.Add(new NetworkAdapter(
                                     name, friendlyName, description, serviceName, interfaceIndex, macAddress, manufacturer,
@@ -196,21 +203,21 @@ namespace SNIBypassGUI.Utils
                                     [.. ipAddressV4List], [.. ipSubnetV4List], defaultIPGateway,
                                     isDhcpEnabled, dhcpServer, dhcpLeaseObtained, dhcpLeaseExpires,
                                     [.. ipv4DnsServerList], isIPv4DNSAuto, isIPv6DNSAuto,
-                                    ipAddressV6List.Count > 0, // isIPv6Enabled based on addresses found
+                                    ipAddressV6List.Count > 0,
                                     [.. ipAddressV6List], [.. ipSubnetV6PrefixList], ipv6DnsServerArray
                                 ));
                             }
-                            else WriteLog($"未找到 InterfaceIndex 为 {interfaceIndex} 的适配器 {adapter["Name"]}，跳过详细的 IP 信息。", LogLevel.Debug);
+                            else WriteLog($"未找到 InterfaceIndex 为 {interfaceIndex} 的适配器 {adapter["Name"] ?? "N/A"}，跳过详细的 IP 信息。", LogLevel.Debug);
                         }
                         catch (Exception ex)
                         {
-                            WriteLog($"获取 InterfaceIndex 为 {adapter["InterfaceIndex"]} 的适配器 {adapter["Name"]} 信息时遇到异常。", LogLevel.Error, ex);
+                            WriteLog($"获取 InterfaceIndex 为 {adapter["InterfaceIndex"] ?? "N/A"} 的适配器 {adapter["Name"] ?? "N/A"} 信息时遇到异常。", LogLevel.Error, ex);
                         }
                     }
                 }
                 catch (ManagementException mgmtEx)
                 {
-                    WriteLog($"WMI 查询或操作失败。", LogLevel.Error, mgmtEx);
+                    WriteLog("WMI 查询或操作失败。", LogLevel.Error, mgmtEx);
                 }
                 catch (Exception ex)
                 {
@@ -221,13 +228,14 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 刷新指定的网络适配器信息
+        /// 刷新指定的网络适配器的信息。
         /// </summary>
         public static async Task<NetworkAdapter> RefreshAsync(NetworkAdapter networkAdapter)
         {
-            if (networkAdapter == null || string.IsNullOrEmpty(networkAdapter.GUID)) return null;
-            // Use the async internal method
-            var adapters = await GetNetworkAdaptersInternalAsync($" WHERE GUID='{networkAdapter.GUID}'");
+            if (networkAdapter == null || networkAdapter.GUID == null) return null;
+
+            // 使用异步的内部方法
+            var adapters = await GetNetworkAdaptersInternalAsync($" WHERE GUID='{networkAdapter.GUID.ToString("B").ToUpperInvariant()}'");
             return adapters.FirstOrDefault();
         }
 
@@ -242,18 +250,12 @@ namespace SNIBypassGUI.Utils
                 using ManagementObjectSearcher searcher = new(query);
                 using ManagementObjectCollection adapterCollection = searcher.Get();
                 ManagementObject adapter = adapterCollection.Cast<ManagementObject>().FirstOrDefault();
-                if (adapter != null)
-                {
-                    var result = adapter.InvokeMethod("SetDNSServerSearchOrder", [dnsServers]);
-                }
-                else
-                {
-                    WriteLog($"未找到 InterfaceIndex 为 {networkAdapter.InterfaceIndex} 的适配器配置。", LogLevel.Warning);
-                }
+                if (adapter != null) adapter.InvokeMethod("SetDNSServerSearchOrder", [dnsServers]);
+                else WriteLog($"未找到 InterfaceIndex 为 {networkAdapter.InterfaceIndex} 的适配器配置。", LogLevel.Warning);
             }
             catch (Exception ex)
             {
-                WriteLog($"设置 {networkAdapter.FriendlyName} 的 IPv4 DNS 服务器时遇到异常。", LogLevel.Error, ex);
+                WriteLog($"设置 {networkAdapter.FriendlyName ?? "N/A"} 的 IPv4 DNS 服务器时遇到异常。", LogLevel.Error, ex);
             }
         }
 

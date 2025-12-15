@@ -42,6 +42,9 @@ namespace SNIBypassGUI.Utils
         /// <returns>转换后的布尔值</returns>
         public static bool StringToBool(string input) => !string.IsNullOrEmpty(input) && input.Trim().ToLower() == "true";
 
+        /// <summary>
+        /// 文件大小转换器。
+        /// </summary>
         public static class FileSizeConverter
         {
             private const long BytesInKB = 1024;
@@ -49,6 +52,9 @@ namespace SNIBypassGUI.Utils
             private const long BytesInGB = BytesInMB * 1024;
             private const long BytesInTB = BytesInGB * 1024;
 
+            /// <summary>
+            /// 表示文件大小的单位。
+            /// </summary>
             public enum SizeUnit
             {
                 B,
@@ -59,11 +65,11 @@ namespace SNIBypassGUI.Utils
             }
 
             /// <summary>
-            /// 将字节数转换为指定单位的大小
+            /// 将字节数转换为指定单位的大小。
             /// </summary>
             /// <param name="bytes">字节数</param>
             /// <param name="toUnit">目标单位</param>
-            /// <exception cref="ArgumentException"></exception>
+            /// <exception cref="ArgumentException">不支持的单位</exception>
             private static double ConvertFromBytes(long bytes, SizeUnit toUnit)
             {
                 return toUnit switch
@@ -78,7 +84,7 @@ namespace SNIBypassGUI.Utils
             }
 
             /// <summary>
-            /// 将指定大小转换为字节数
+            /// 将指定大小转换为字节数。
             /// </summary>
             /// <param name="size">指定大小</param>
             /// <param name="fromUnit">源单位</param>
@@ -97,16 +103,12 @@ namespace SNIBypassGUI.Utils
             }
 
             /// <summary>
-            /// 将指定大小从一个单位转换为另一个单位
+            /// 将指定大小从一个单位转换为另一个单位。
             /// </summary>
             /// <param name="size">指定大小</param>
             /// <param name="fromUnit">源单位</param>
             /// <param name="toUnit">目标单位</param>
-            public static double ConvertBetweenUnits(double size, SizeUnit fromUnit, SizeUnit toUnit)
-            {
-                long sizeInBytes = ConvertToBytes(size, fromUnit);
-                return ConvertFromBytes(sizeInBytes, toUnit);
-            }
+            public static double ConvertBetweenUnits(double size, SizeUnit fromUnit, SizeUnit toUnit) => ConvertFromBytes(ConvertToBytes(size, fromUnit), toUnit);
         }
     }
 }

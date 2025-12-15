@@ -17,7 +17,7 @@ namespace SNIBypassGUI.Utils
     public static class FileUtils
     {
         /// <summary>
-        /// 将内容写到指定文件顶部
+        /// 将内容写到指定文件顶部。
         /// </summary>
         /// <param name="filePath">指定的文件</param>
         /// <param name="linesToAdd">需要追加的内容（数组形式）</param>
@@ -44,7 +44,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 将内容写到指定文件顶部
+        /// 将内容写到指定文件顶部。
         /// </summary>
         /// <param name="filePath">指定的文件路径</param>
         /// <param name="linesToAdd">需要写入的内容（列表形式）</param>
@@ -54,14 +54,14 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 将内容写到指定文件顶部
+        /// 将内容写到指定文件顶部。
         /// </summary>
         /// <param name="filePath">指定的文件路径</param>
         /// <param name="linesToAdd">需要写入的内容（单行）</param>
         public static void PrependToFile(string filePath, string lineToAdd) => PrependToFile(filePath, new[] { lineToAdd });
 
         /// <summary>
-        /// 将内容写入指定文件末尾
+        /// 将内容写入指定文件末尾。
         /// </summary>
         /// <param name="filePath">指定的文件路径</param>
         /// <param name="linesToAdd">需要追加的内容（数组形式）</param>
@@ -86,21 +86,21 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 将内容写入指定文件末尾
+        /// 将内容写入指定文件末尾。
         /// </summary>
         /// <param name="filePath">指定的文件路径</param>
         /// <param name="linesToAdd">需要追加的内容（列表形式）</param>
         public static void AppendToFile(string filePath, List<string> linesToAdd, Encoding encoding = null) => AppendToFile(filePath, linesToAdd.ToArray(), encoding);
 
         /// <summary>
-        /// 将单行内容写入指定文件末尾
+        /// 将单行内容写入指定文件末尾。
         /// </summary>
         /// <param name="filePath">指定的文件路径</param>
         /// <param name="lineToAdd">需要追加的内容（单行）</param>
         public static void AppendToFile(string filePath, string lineToAdd, Encoding encoding = null) => AppendToFile(filePath, new[] { lineToAdd }, encoding);
 
         /// <summary>
-        /// 确保指定目录存在
+        /// 确保指定目录存在。
         /// </summary>
         /// <param name="path">指定目录</param>
         public static void EnsureDirectoryExists(string path)
@@ -117,7 +117,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 清空指定目录
+        /// 清空指定目录。
         /// </summary>
         /// <param name="folderPath">指定的目录</param>
         /// <param name="deleteFilesIndividually">指示是否递归删除</param>
@@ -151,7 +151,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 递归删除指定目录
+        /// 递归删除指定目录。
         /// </summary>
         /// <param name="folderPath">指定的目录</param>
         private static void EmptyFolder(string folderPath)
@@ -195,7 +195,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 释放资源文件
+        /// 释放资源文件。
         /// </summary>
         /// <param name="resource">指定的资源</param>
         /// <param name="path">指定释放的路径</param>
@@ -229,7 +229,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取目录大小（以指定单位为单位）
+        /// 获取目录大小（以字节为单位）。
         /// </summary>
         /// <param name="directoryPath">指定目录</param>
         public static long GetDirectorySize(string directoryPath)
@@ -254,7 +254,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取给定文件路径列表中的文件总大小（以字节为单位）
+        /// 获取给定文件路径列表中的文件总大小（以字节为单位）。
         /// </summary>
         /// <param name="paths">包含指定路径的数组</param>
         public static long GetTotalSize(string[] paths)
@@ -278,13 +278,13 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取给定文件路径列表中的文件总大小（以字节为单位）
+        /// 获取给定文件路径列表中的文件总大小（以字节为单位）。
         /// </summary>
         /// <param name="paths">包含指定路径的列表</param>
         public static long GetTotalSize(List<string> paths) => GetTotalSize(paths.ToArray());
 
         /// <summary>
-        /// 释放资源型加载图像，支持缓存和动态调整解码尺寸
+        /// 释放资源型加载图像，支持缓存和动态调整解码尺寸。
         /// </summary>
         /// <param name="imagePath">图像路径</param>
         /// <param name="cache">缓存字典（可选）</param>
@@ -334,7 +334,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 重命名部分
+        /// 重命名部分。
         /// </summary>
         public static void RenameSection(string[] oldNames, string[] newNames, string filePath)
         {
@@ -388,7 +388,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 从文件中移除从“#   sectionName Start”到“#   sectionName End”的部分
+        /// 从文件中移除从“#   sectionName Start”到“#   sectionName End”的部分。
         /// </summary>
         /// <param name="filePath">文件路径</param>
         /// <param name="sectionName">部分名称</param>
@@ -436,7 +436,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 从文件中移除从“# sectionName Start”到“# sectionName End”的多个部分
+        /// 从文件中移除从“# sectionName Start”到“# sectionName End”的多个部分。
         /// </summary>
         /// <param name="filePath">文件路径</param>
         /// <param name="sectionNames">需要移除的部分名称数组</param>
@@ -546,7 +546,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 从文件中获取从“#   sectionName Start”到“#   sectionName End”的部分
+        /// 从文件中获取从“#   sectionName Start”到“#   sectionName End”的部分。
         /// </summary>
         /// <param name="filePath">文件路径</param>
         /// <param name="sectionName">部分名称</param>
@@ -601,7 +601,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 尝试删除指定文件或目录
+        /// 尝试删除指定文件或目录。
         /// </summary>
         /// <param name="path">路径</param>
         /// <param name="maxRetries">最大重试次数</param>
@@ -634,7 +634,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 尝试删除指定文件或目录
+        /// 尝试删除指定文件或目录。
         /// </summary>
         /// <param name="paths">包含路径的数组</param>
         public static void TryDelete(string[] paths)
@@ -649,7 +649,7 @@ namespace SNIBypassGUI.Utils
         public static void TryDelete(List<string> paths) => TryDelete(paths.ToArray());
 
         /// <summary>
-        /// 创建文件
+        /// 创建文件。
         /// </summary>
         /// <param name="filePath">文件路径</param>
         public static void EnsureFileExists(string filePath)
@@ -722,7 +722,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 计算文件哈希值
+        /// 计算文件哈希值。
         /// </summary>
         public static string CalculateFileHash(string filePath)
         {
@@ -748,7 +748,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取图片尺寸
+        /// 获取图片尺寸。
         /// </summary>
         public static (int, int) GetImageSize(string path)
         {
@@ -766,7 +766,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 停止所有对指定文件的追踪进程，若路径为空则终止所有追踪进程
+        /// 停止所有对指定文件的追踪进程，若路径为空则终止所有追踪进程。
         /// </summary>
         /// <param name="filePath">要停止监控的文件路径，空则终止所有</param>
         /// <returns>成功终止的进程数量</returns>
@@ -817,7 +817,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 追踪文件实时变化，不等待启动时返回 null
+        /// 追踪文件实时变化，不等待启动时返回 null。
         /// </summary>
         public static Process TailFile(string filePath, string title = "TailTracking", bool waitForStart = false)
         {
@@ -853,7 +853,7 @@ namespace SNIBypassGUI.Utils
 
                 // 启动批处理文件，显示窗口
                 StartProcess(tempBatchFile, useShellExecute: true, createNoWindow: false);
-                WriteLog($"成功启动批处理文件 {tempBatchFile}。", LogLevel.Debug);
+                WriteLog($"成功启动批处理文件 {tempBatchFile}。", LogLevel.Info);
 
                 if (waitForStart)
                 {

@@ -1,10 +1,20 @@
 ﻿using System;
+using System.Text;
 using System.Runtime.InteropServices;
 
 namespace SNIBypassGUI.Utils
 {
     public static class WinApiUtils
     {
+        [DllImport("kernel32", CharSet = CharSet.Unicode)]
+        public static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
+
+        [DllImport("kernel32", CharSet = CharSet.Unicode)]
+        public static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
+
+        [DllImport("kernel32", CharSet = CharSet.Unicode)]
+        public static extern uint GetPrivateProfileSection(string lpAppName, byte[] lpReturnedString, uint nSize, string lpFileName);
+
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr OpenSCManager(
             string lpMachineName,
@@ -137,7 +147,7 @@ namespace SNIBypassGUI.Utils
         public const uint SERVICE_PAUSED = 0x00000007;
 
         /// <summary>
-        /// 刷新系统通知区域
+        /// 刷新系统通知区域。
         /// </summary>
         public static void RefreshNotification()
         {
@@ -148,7 +158,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 刷新窗口
+        /// 刷新窗口。
         /// </summary>
         private static void RefreshWindow(IntPtr windowHandle)
         {
@@ -160,7 +170,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取系统通知区域句柄
+        /// 获取系统通知区域句柄。
         /// </summary>
         private static IntPtr GetNotifyAreaHandle()
         {
@@ -172,7 +182,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取溢出通知区域句柄
+        /// 获取溢出通知区域句柄。
         /// </summary>
         private static IntPtr GetNotifyOverHandle()
         {

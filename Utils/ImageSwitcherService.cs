@@ -55,12 +55,12 @@ namespace SNIBypassGUI.Utils
         public int changeInterval { get; private set; }
 
         /// <summary>
-        /// 服务构造函数
+        /// 服务构造函数。
         /// </summary>
         public ImageSwitcherService() => InitializeService();
 
         /// <summary>
-        /// 初始化服务核心逻辑
+        /// 初始化服务核心逻辑。
         /// </summary>
         private void InitializeService()
         {
@@ -114,7 +114,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 验证当前图片是否存在
+        /// 验证当前图片是否存在。
         /// </summary>
         public void ValidateCurrentImage()
         {
@@ -138,7 +138,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 重新加载所有配置
+        /// 重新加载所有配置。
         /// </summary>
         public void ReloadConfig()
         {
@@ -169,7 +169,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 更新定时器间隔
+        /// 更新定时器间隔。
         /// </summary>
         private void UpdateTimer()
         {
@@ -179,7 +179,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 重置图片顺序
+        /// 重置图片顺序。
         /// </summary>
         private void ResetImageOrder()
         {
@@ -190,7 +190,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 计时器触发事件
+        /// 计时器触发事件。
         /// </summary>
         private void Timer_Tick(object sender, EventArgs e)
         {
@@ -214,7 +214,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 计算下一个索引
+        /// 计算下一个索引。
         /// </summary>
         private int CalculateNextIndex()
         {
@@ -239,7 +239,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 清理资源
+        /// 清理资源。
         /// </summary>
         public void Cleanup()
         {
@@ -249,12 +249,12 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 清空所有图片的缓存
+        /// 清空所有图片的缓存。
         /// </summary>
         public void CleanAllCache() => pathToImageCache.Clear();
 
         /// <summary>
-        /// 清理指定路径图片的缓存
+        /// 清理指定路径图片的缓存。
         /// </summary>
         public void CleanCacheByPath(string path)
         {
@@ -266,7 +266,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 重载指定路径的图片
+        /// 重载指定路径的图片。
         /// </summary>
         public void ReloadByPath(string path)
         {
@@ -293,7 +293,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 属性变更通知
+        /// 属性变更通知。
         /// </summary>
         protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }

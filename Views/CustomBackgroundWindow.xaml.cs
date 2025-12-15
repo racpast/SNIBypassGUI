@@ -10,10 +10,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using SNIBypassGUI.Utils;
 using static SNIBypassGUI.Consts.AppConsts;
 using static SNIBypassGUI.Consts.ConfigConsts;
 using static SNIBypassGUI.Consts.PathConsts;
-using SNIBypassGUI.Utils;
 using static SNIBypassGUI.Utils.ConvertUtils.FileSizeConverter;
 using static SNIBypassGUI.Utils.FileUtils;
 using static SNIBypassGUI.Utils.IniFileUtils;
@@ -45,7 +45,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 构造函数
+        /// 窗口构造函数。
         /// </summary>
         public CustomBackgroundWindow()
         {
@@ -70,7 +70,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 加载图像列表
+        /// 加载图像列表。
         /// </summary>
         private void LoadImagesToList()
         {
@@ -119,7 +119,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 窗口加载完成事件
+        /// 窗口加载完成事件。
         /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -130,7 +130,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 移除按钮点击事件
+        /// 移除按钮点击事件。
         /// </summary>
         private void RemoveBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -181,7 +181,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 添加按钮点击事件
+        /// 添加按钮点击事件。
         /// </summary>
         private void AddBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -238,7 +238,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 上移按钮点击事件
+        /// 上移按钮点击事件。
         /// </summary>
         private void UpBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -280,7 +280,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 下移按钮点击事件
+        /// 下移按钮点击事件。
         /// </summary>
         private void DownBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -322,7 +322,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 设置时间按钮点击事件
+        /// 设置时间按钮点击事件。
         /// </summary>
         private void SetTimeBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -350,6 +350,9 @@ namespace SNIBypassGUI.Views
             WriteLog("完成 SetTimeBtn_Click。", LogLevel.Debug);
         }
 
+        /// <summary>
+        /// 切换模式按钮点击事件。
+        /// </summary>
         private void ToggleModeBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 ToggleModeBtn_Click。", LogLevel.Debug);
@@ -365,7 +368,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 裁剪按钮点击事件
+        /// 裁剪按钮点击事件。
         /// </summary>
         private void CutBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -460,7 +463,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 重置按钮点击事件
+        /// 重置按钮点击事件。
         /// </summary>
         private void ResetBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -469,6 +472,9 @@ namespace SNIBypassGUI.Views
             WriteLog("完成 ResetBtn_Click。", LogLevel.Debug);
         }
 
+        /// <summary>
+        /// 完成按钮点击事件。
+        /// </summary>
         private async void DoneBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 DoneBtn_Click。", LogLevel.Debug);
@@ -492,7 +498,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 图片列表选择改变事件
+        /// 图片列表选择改变事件。
         /// </summary>
         private void ImageListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -526,7 +532,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 从配置文件同步控件
+        /// 从配置文件同步控件。
         /// </summary>
         private void SyncControlsFromConfig()
         {
@@ -538,7 +544,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 淡入
+        /// 淡入。
         /// </summary>
         private void FadeIn()
         {
@@ -550,7 +556,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 淡出
+        /// 淡出。
         /// </summary>
         private async Task FadeOut(bool dialogResult = false)
         {
@@ -569,7 +575,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 背景动画逻辑
+        /// 背景动画逻辑。
         /// </summary>
         private void OnBackgroundChanged(object sender, PropertyChangedEventArgs e)
         {

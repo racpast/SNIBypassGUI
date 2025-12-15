@@ -15,33 +15,42 @@ namespace SNIBypassGUI.Utils
     public static class GitHubUtils
     {
         /// <summary>
-        /// GitHub API 优选
+        /// GitHub API 优选。
         /// </summary>
         public static async Task OptimizeGitHubAPIRouting()
         {
-            RemoveSection(SystemHosts, "api.github.com");
-            IPAddress ip = FindFastestIP([.. await ResolveAAsync("api.github.com")]);
-            if (ip != null)
+            await Task.Run(async () =>
             {
-                string[] NewAPIRecord =
-                [
-                "#\tapi.github.com Start",
-                $"{ip}       api.github.com",
-                "#\tapi.github.com End",
-                ];
-                PrependToFile(SystemHosts, NewAPIRecord);
-                FlushDNSCache();
-            }
-            else WriteLog("GitHub API 优选失败，没有找到最优 IP。", LogLevel.Warning);
+                RemoveSection(SystemHosts, "api.github.com");
+                IPAddress ip = FindFastestIP([.. await ResolveAAsync("api.github.com")]);
+                if (ip != null)
+                {
+                    string[] NewAPIRecord =
+                    [
+                        "#\tapi.github.com Start",
+                        $"{ip} api.github.com",
+                        "#\tapi.github.com End",
+                    ];
+                    PrependToFile(SystemHosts, NewAPIRecord);
+                    FlushDNSCache();
+                }
+                else WriteLog("GitHub API 优选失败，没有找到最优 IP。", LogLevel.Warning);
+            });
         }
 
         /// <summary>
-        /// 恢复原始 GitHub API DNS
+        /// 恢复原始 GitHub API 解析。
         /// </summary>
-        public static void RestoreOriginalGitHubAPIDNS() => RemoveSection(SystemHosts, "api.github.com");
+        public static async Task RestoreOriginalGitHubAPIDNS()
+        {
+            await Task.Run(() =>
+            {
+                RemoveSection(SystemHosts, "api.github.com");
+            });
+        }
 
         /// <summary>
-        /// 寻找最优代理
+        /// 寻找最优代理。
         /// </summary>
         /// <param name="targetUrl">目标 URL</param>
         public static async Task<string> FindFastestProxy(string targetUrl)
@@ -49,26 +58,24 @@ namespace SNIBypassGUI.Utils
             var proxyTasks = ghproxyMirrors.Select(async proxy =>
             {
                 var proxyUri = new Uri($"https://{proxy}");
-                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                var stopwatch = new Stopwatch();
+                stopwatch.Start();
+                try
                 {
-                    var stopwatch = new Stopwatch();
-                    stopwatch.Start();
-                    try
-                    {
-                        var response = await client.GetAsync(proxyUri + targetUrl, HttpCompletionOption.ResponseHeadersRead);
-                        response.EnsureSuccessStatusCode();
-                        WriteLog(proxy + " —— " + response.Content.Headers, LogLevel.Debug);
-                        return (proxy, stopwatch.ElapsedMilliseconds, null);
-                    }
-                    catch (Exception ex)
-                    {
-                        WriteLog(proxyUri + targetUrl + " —— " + ex, LogLevel.Debug);
-                        return (proxy, stopwatch.ElapsedMilliseconds, ex);
-                    }
-                    finally
-                    {
-                        stopwatch.Stop();
-                    }
+                    var response = await client.GetAsync(proxyUri + targetUrl, HttpCompletionOption.ResponseHeadersRead);
+                    response.EnsureSuccessStatusCode();
+                    WriteLog(proxy + " —— " + response.Content.Headers, LogLevel.Debug);
+                    return (proxy, stopwatch.ElapsedMilliseconds, null);
+                }
+                catch (Exception ex)
+                {
+                    WriteLog(proxyUri + targetUrl + " —— " + ex, LogLevel.Debug);
+                    return (proxy, stopwatch.ElapsedMilliseconds, ex);
+                }
+                finally
+                {
+                    stopwatch.Stop();
                 }
             }).ToList();
             var proxyResults = await Task.WhenAll(proxyTasks);

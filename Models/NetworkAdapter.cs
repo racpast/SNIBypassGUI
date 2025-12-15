@@ -2,7 +2,7 @@
 
 namespace SNIBypassGUI.Models
 {
-    public class NetworkAdapter(string name, string friendlyName, string description, string serviceName, uint interfaceIndex, string macAddress, string manufacturer, bool isPhysicalAdapter, string guid, bool isNetEnabled, ushort netConnectionStatus, bool isIPEnabled, string[] ipAddress, string[] ipSubnet, string[] defaultIPGateway, bool isDhcpEnabled, string dhcpServer, DateTime dhcpLeaseObtained, DateTime dhcpLeaseExpires, string[] ipv4DnsServer, bool isIPv4DNSAuto, bool isIPv6DNSAuto, bool isIPv6Enabled, string[] ipv6Address, ushort[] ipv6PrefixLength, string[] ipv6DnsServer)
+    public class NetworkAdapter(string name, string friendlyName, string description, string serviceName, uint interfaceIndex, string macAddress, string manufacturer, bool isPhysicalAdapter, Guid guid, bool isNetEnabled, ushort netConnectionStatus, bool isIPEnabled, string[] ipAddress, string[] ipSubnet, string[] defaultIPGateway, bool isDhcpEnabled, string dhcpServer, DateTime dhcpLeaseObtained, DateTime dhcpLeaseExpires, string[] ipv4DnsServer, bool isIPv4DNSAuto, bool isIPv6DNSAuto, bool isIPv6Enabled, string[] ipv6Address, ushort[] ipv6PrefixLength, string[] ipv6DnsServer)
     {
         /// <summary>
         /// 适配器的内部名称，这个名字通常和设备管理器里的网卡名称相同。
@@ -56,7 +56,7 @@ namespace SNIBypassGUI.Models
         /// Windows 为每个网络适配器分配的 唯一标识符。
         /// 来自 Win32_NetworkAdapter 类的 GUID 属性。
         /// </summary>
-        public string GUID { get; } = guid;
+        public Guid GUID { get; } = guid;
 
         /// <summary>
         /// 指示适配器是否已启用。

@@ -8,7 +8,7 @@ namespace SNIBypassGUI.Utils
     public static class CommandLineUtils
     {
         /// <summary>
-        /// 尝试获取参数的值
+        /// 尝试获取参数的值。
         /// </summary>
         public static bool TryGetArgumentValue(string[] args, string argName, out string value)
         {
@@ -25,7 +25,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 判断是否含有参数
+        /// 判断是否含有参数。
         /// </summary>
         public static bool ContainsArgument(string[] args, string argName)
         {
@@ -33,7 +33,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取进程的命令行参数
+        /// 获取进程的命令行参数。
         /// </summary>
         public static string GetCommandLine(Process process)
         {

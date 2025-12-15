@@ -13,12 +13,12 @@ namespace SNIBypassGUI.Utils
         private static readonly LogLevel CurrentLogLevel = LogLevel.Debug;
 
         /// <summary>
-        /// 是否启用日志
+        /// 是否启用日志。
         /// </summary>
         public static bool IsLogEnabled => OutputLog;
 
         /// <summary>
-        /// 启用日志
+        /// 启用日志。
         /// </summary>
         public static void EnableLog()
         {
@@ -27,17 +27,17 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 停用日志
+        /// 停用日志。
         /// </summary>
         public static void DisableLog() => OutputLog = false;
 
         /// <summary>
-        /// 获取日志文件路径
+        /// 获取日志文件路径。
         /// </summary>
         public static string GetLogPath() => Path.Combine(LogDirectory, $"SNIBypassGUI-{DateTime.Now:yyyy-MM-dd}.log");
 
         /// <summary>
-        /// 写入日志
+        /// 写入日志。
         /// </summary>
         /// <param name="message">日志消息</param>
         /// <param name="logLevel">日志等级</param>
@@ -55,7 +55,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 日志级别枚举
+        /// 日志级别枚举。
         /// </summary>
         public enum LogLevel
         {

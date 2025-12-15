@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using static SNIBypassGUI.Consts.LinksConsts;
 using SNIBypassGUI.Utils;
+using static SNIBypassGUI.Consts.LinksConsts;
 using static SNIBypassGUI.Utils.LogManager;
 using static SNIBypassGUI.Utils.StringUtils;
 using MessageBox = HandyControl.Controls.MessageBox;
@@ -30,7 +30,7 @@ namespace SNIBypassGUI.Views
         };
 
         /// <summary>
-        /// 窗口构造函数
+        /// 窗口构造函数。
         /// </summary>
         public FeedbackWindow()
         {
@@ -53,7 +53,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 发送验证码按钮点击事件
+        /// 发送验证码按钮点击事件。
         /// </summary>
         private async void SendCodeBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -98,7 +98,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 定时器每秒调用一次，更新按钮文本
+        /// 定时器每秒调用一次，更新按钮文本。
         /// </summary>
         private void Timer_Tick(object sender, EventArgs e)
         {
@@ -115,7 +115,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 提交反馈按钮点击事件
+        /// 提交反馈按钮点击事件。
         /// </summary>
         private async void OKBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -198,7 +198,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 取消按钮点击事件
+        /// 取消按钮点击事件。
         /// </summary>
         private async void CancelBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -208,7 +208,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 窗口加载完成事件
+        /// 窗口加载完成事件。
         /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -228,7 +228,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 淡入
+        /// 淡入。
         /// </summary>
         private void FadeIn()
         {
@@ -240,7 +240,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 淡出
+        /// 淡出。
         /// </summary>
         private async Task FadeOut(bool dialogResult = false)
         {
@@ -259,7 +259,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 背景动画逻辑
+        /// 背景动画逻辑。
         /// </summary>
         private void OnBackgroundChanged(object sender, PropertyChangedEventArgs e)
         {

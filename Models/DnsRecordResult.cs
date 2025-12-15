@@ -12,6 +12,9 @@ namespace SNIBypassGUI.Models
         public override string ToString() => $"[{RecordType}] {Name} (TTL: {TTL?.TotalSeconds}s) → {Value}";
     }
 
+    /// <summary>
+    /// DNS 查询类型。
+    /// </summary>
     public enum DnsQueryType
     {
         A,     // IPv4

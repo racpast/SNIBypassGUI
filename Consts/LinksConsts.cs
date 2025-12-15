@@ -15,5 +15,6 @@
         public const string 当您在停止时遇到适配器设置失败或不确定该软件是否对适配器造成影响时 = "https://github.com/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#当您在停止时遇到适配器设置失败，或不确定该软件是否对适配器造成影响时";
         public const string 当您的主服务运行后自动停止或遇到80端口被占用的提示时 = "https://github.com/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#当您的主服务运行后自动停止，或遇到80端口被占用的提示时";
         public const string 当您遇到对系统hosts的访问被拒绝的提示时 = "https://github.com/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#当您遇到对系统hosts的访问被拒绝的提示时";
+        public const string Net472DownloadUrl = "https://dotnet.microsoft.com/zh-cn/download/dotnet-framework/net472";
     }
 }

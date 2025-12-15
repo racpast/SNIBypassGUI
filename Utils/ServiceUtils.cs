@@ -19,7 +19,7 @@ namespace SNIBypassGUI.Utils
         /// <param name="serviceName">服务名称（注册时使用）</param>
         /// <param name="displayName">服务显示名称</param>
         /// <param name="startType">启动类型，默认为自动启动，可传入 SERVICE_DEMAND_START 表示手动启动</param>
-        /// <returns>安装成功返回 true；否则返回 false</returns>
+        /// <returns>指示服务是否安装成功</returns>
         public static bool InstallService(string serviceExePath, string serviceName, string displayName, uint startType = SERVICE_AUTO_START)
         {
             IntPtr scm = OpenSCManager(null, null, SC_MANAGER_ALL_ACCESS);
@@ -68,7 +68,7 @@ namespace SNIBypassGUI.Utils
         /// 卸载指定名称的服务。如果服务正在运行，会先尝试停止服务。
         /// </summary>
         /// <param name="serviceName">服务名称</param>
-        /// <returns>卸载成功返回 true；否则返回 false</returns>
+        /// <returns>指示服务是否卸载成功</returns>
         public static bool UninstallService(string serviceName)
         {
             // 如果服务正在运行，先尝试停止
@@ -105,7 +105,7 @@ namespace SNIBypassGUI.Utils
         /// </summary>
         /// <param name="serviceName">服务名称</param>
         /// <param name="startType">新启动类型（例如 SERVICE_DEMAND_START 或 SERVICE_AUTO_START）</param>
-        /// <returns>修改成功返回 true；否则返回 false</returns>
+        /// <returns>指示修改是否成功</returns>
         public static bool ChangeServiceStartType(string serviceName, uint startType)
         {
             IntPtr scm = OpenSCManager(null, null, SC_MANAGER_ALL_ACCESS);
@@ -150,7 +150,7 @@ namespace SNIBypassGUI.Utils
         /// 启动指定名称的服务。
         /// </summary>
         /// <param name="serviceName">服务名称</param>
-        /// <returns>启动成功返回 true；否则返回 false</returns>
+        /// <returns>指示是否启动成功</returns>
         public static bool StartServiceByName(string serviceName)
         {
             IntPtr scm = OpenSCManager(null, null, SC_MANAGER_ALL_ACCESS);
@@ -169,10 +169,7 @@ namespace SNIBypassGUI.Utils
             }
 
             bool result = StartService(svc, 0, null);
-            if (!result)
-            {
-                WriteLog("启动服务失败：" + Marshal.GetLastWin32Error() + "。", LogLevel.Error);
-            }
+            if (!result) WriteLog("启动服务失败：" + Marshal.GetLastWin32Error() + "。", LogLevel.Error);
 
             CloseServiceHandle(svc);
             CloseServiceHandle(scm);
@@ -183,8 +180,8 @@ namespace SNIBypassGUI.Utils
         /// 停止指定名称的服务。如果服务未运行，则不做任何操作。
         /// </summary>
         /// <param name="serviceName">服务名称</param>
-        /// <returns>停止成功返回 true；否则返回 false</returns>
-        public static bool StopService(string serviceName)
+        /// <returns>指示是否停止成功</returns>
+        public static bool StopService(string serviceName, int timeout = 30000, int sleepInterval = 300)
         {
             SERVICE_STATUS status = new();
 
@@ -219,8 +216,6 @@ namespace SNIBypassGUI.Utils
             }
 
             // 等待服务状态变为停止
-            int timeout = 30000; // 最长等待 30 秒
-            int sleepInterval = 500;
             int elapsed = 0;
             while (status.dwCurrentState != SERVICE_STOPPED && elapsed < timeout)
             {
@@ -274,7 +269,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取服务的二进制路径
+        /// 获取服务的二进制路径。
         /// </summary>
         /// <param name="serviceName">服务名</param>
         /// <returns>服务二进制路径</returns>

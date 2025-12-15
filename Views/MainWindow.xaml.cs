@@ -57,7 +57,7 @@ namespace SNIBypassGUI.Views
         public static ImageSwitcherService BackgroundService { get; private set; }
 
         /// <summary>
-        /// 构造函数
+        /// 窗口构造函数。
         /// </summary>
         public MainWindow()
         {
@@ -116,7 +116,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 将代理开关项逐个添加到列表
+        /// 将代理开关项逐个添加到列表。
         /// </summary>
         private async Task AddSwitchesToList()
         {
@@ -166,7 +166,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 将指定开关添加到用户界面
+        /// 将指定开关添加到用户界面。
         /// </summary>
         private void AddSwitchToUI(SwitchItem item)
         {
@@ -280,7 +280,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 更新临时文件大小
+        /// 更新临时文件大小。
         /// </summary>
         private void UpdateTempFilesSize()
         {
@@ -291,7 +291,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 更新适配器列表
+        /// 更新适配器列表。
         /// </summary>
         private async Task UpdateAdaptersCombo()
         {
@@ -337,7 +337,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 更新服务状态
+        /// 更新服务状态。
         /// </summary>
         public void UpdateServiceStatus()
         {
@@ -385,7 +385,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 检查必要目录、文件的存在性，并在缺失时创建或释放
+        /// 检查必要目录、文件的存在性，并在缺失时创建或释放。
         /// </summary>
         public void InitializeDirectoriesAndFiles()
         {
@@ -508,7 +508,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 更新一言
+        /// 更新一言。
         /// </summary>
         public async Task UpdateYiyan()
         {
@@ -542,7 +542,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 从配置文件向 Hosts 文件更新
+        /// 从配置文件向 Hosts 文件更新。
         /// </summary>
         public async Task UpdateHostsFromConfig()
         {
@@ -591,7 +591,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 移除 Hosts 中全部有关记录
+        /// 移除 Hosts 中全部有关记录。
         /// </summary>
         public async Task RemoveHostsRecords()
         {
@@ -626,7 +626,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 从配置文件同步有关控件
+        /// 从配置文件同步有关控件。
         /// </summary>
         private async Task SyncControlsFromConfig()
         {
@@ -695,7 +695,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 从代理开关列表向配置文件同步
+        /// 从代理开关列表向配置文件同步。
         /// </summary>
         public void UpdateConfigFromToggleButtons()
         {
@@ -717,7 +717,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 设置指定网络适配器首选DNS为环回地址并记录先前的DNS服务器地址
+        /// 设置指定网络适配器首选DNS为环回地址并记录先前的 DNS 服务器地址。
         /// </summary>
         /// <param name="Adapter">指定的网络适配器</param>
         public async Task SetLoopbackDNS(NetworkAdapter Adapter)
@@ -730,17 +730,18 @@ namespace SNIBypassGUI.Views
                     if (Adapter.IPv4DNSServer.Length == 0 || Adapter.IPv4DNSServer[0] != "127.0.0.1")
                     {
                         // 指定适配器的首选DNS不是127.0.0.1的情况
-                        WriteLog($"开始配置网络适配器： {Adapter.FriendlyName}。", LogLevel.Info);
+                        WriteLog($"开始配置网络适配器：{Adapter.FriendlyName}。", LogLevel.Info);
 
                         // 在设置DNS之前记录DNS服务器是否为自动获取
-                        bool? isIPv4DNSAuto = Adapter.IsIPv4DNSAuto;
+                        //bool? isIPv4DNSAuto = Adapter.IsIPv4DNSAuto;
+                        bool? isIPv4DNSAuto = false;
                         bool? isIPv6DNSAuto = Adapter.IsIPv6DNSAuto;
 
                         // 用于暂存DNS服务器地址
                         List<string> PreviousDNSv4 = [], PreviousDNSv6 = [];
 
                         // 遍历 DNS 地址并获取有效的 DNS
-                        if (isIPv4DNSAuto != true) foreach (var dns in Adapter.IPv4DNSServer) if (IsValidIPv4(dns) && dns != "127.0.0.1") PreviousDNSv4.Add(dns);
+                        if (isIPv4DNSAuto != true) foreach (var dns in Adapter.IPv4DNSServer) if (IsValidIPv4(dns) && dns != "127.0.0.1") PreviousDNSv4.Add(dns);     
                         if (isIPv6DNSAuto != true) foreach (var dns in Adapter.IPv6DNSServer) if (IsValidIPv6(dns) && dns != "::1") PreviousDNSv6.Add(dns);
 
                         // 将指定适配器的IPv4 DNS服务器设置为首选127.0.0.1
@@ -760,9 +761,9 @@ namespace SNIBypassGUI.Views
 
                         string ipv4Dns = Adapter.IPv4DNSServer.Length > 0 ? Adapter.IPv4DNSServer[0] : "未设置";
                         string ipv6Dns = Adapter.IPv6DNSServer.Length > 0 ? Adapter.IPv6DNSServer[0] : "未设置";
-                        WriteLog($"指定网络适配器是否为自动获取 DNS： {BoolToYesNo(isIPv4DNSAuto)}", LogLevel.Info);
-                        WriteLog($"成功设置指定网络适配器的 IPv4 首选 DNS 为 {ipv4Dns}，IPv6 首选 DNS 为 {ipv6Dns}", LogLevel.Info);
-                        WriteLog($"将暂存的DNS服务器为： {MergeStrings("、", [.. PreviousDNSv4])}，{MergeStrings("、", [.. PreviousDNSv6])}", LogLevel.Debug);
+                        WriteLog($"指定网络适配器是否为自动获取 DNS：{BoolToYesNo(isIPv4DNSAuto)}。", LogLevel.Info);
+                        WriteLog($"成功设置指定网络适配器的 IPv4 首选 DNS 为 {ipv4Dns}，IPv6 首选 DNS 为 {ipv6Dns}。", LogLevel.Info);
+                        WriteLog($"将暂存的DNS服务器为：{MergeStrings("、", [.. PreviousDNSv4])}，{MergeStrings("、", [.. PreviousDNSv6])}。", LogLevel.Debug);
 
                         // 将停止服务时恢复适配器所需要的信息写入配置文件备用
                         INIWrite(TemporaryData, PreviousIPv4DNS, MergeStrings(",", [.. PreviousDNSv4]), INIPath);
@@ -781,7 +782,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 从配置文件还原适配器
+        /// 从配置文件还原适配器。
         /// </summary>
         /// <param name="Adapter">指定的网络适配器</param>
         public async Task RestoreAdapterDNS(NetworkAdapter Adapter)
@@ -851,7 +852,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 启动主服务
+        /// 启动主服务。
         /// </summary>
         public async Task StartNginx()
         {
@@ -879,7 +880,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 按需启动服务
+        /// 按需启动服务。
         /// </summary>
         public async Task StartService()
         {
@@ -957,7 +958,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 停止所有服务
+        /// 停止所有服务。
         /// </summary>
         public async Task StopService()
         {
@@ -1017,7 +1018,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 刷新状态按钮点击事件
+        /// 刷新状态按钮点击事件。
         /// </summary>
         private async void RefreshBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1028,7 +1029,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 启动按钮点击事件
+        /// 启动按钮点击事件。
         /// </summary>
         private async void StartBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1066,7 +1067,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 停止按钮点击事件
+        /// 停止按钮点击事件。
         /// </summary>
         private async void StopBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1091,7 +1092,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 创建计划任务
+        /// 创建计划任务。
         /// </summary>
         private void CreateTask(string taskName, string description, string author, string path, string args)
         {
@@ -1138,7 +1139,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 设置开机启动按钮点击事件
+        /// 设置开机启动按钮点击事件。
         /// </summary>
         private void SetStartBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1161,7 +1162,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 停止开机启动按钮点击事件
+        /// 停止开机启动按钮点击事件。
         /// </summary>
         private void StopStartBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1184,7 +1185,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 退出工具按钮点击事件
+        /// 退出工具按钮点击事件。
         /// </summary>
         private void ExitBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1195,7 +1196,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 退出并清理
+        /// 退出并清理。
         /// </summary>
         private void Exit(bool stopTail = true)
         {
@@ -1234,7 +1235,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 更新数据按钮点击事件
+        /// 更新数据按钮点击事件。
         /// </summary>
         private async void UpdateBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1250,7 +1251,7 @@ namespace SNIBypassGUI.Views
             {
                 /*
                 /// <summary>
-                /// 先从主服务器获取最新版本信息，如果失败则从 GitHub 更新
+                /// 先从主服务器获取最新版本信息，如果失败则从 GitHub 更新。
                 /// </summary>
                 string jsonResponse;
                 string fastestProxy = DefaultProxy;
@@ -1327,7 +1328,7 @@ namespace SNIBypassGUI.Views
                 */
 
                 /// <summary>
-                /// 从 GitHub 更新
+                /// 从 GitHub 更新。
                 /// </summary>
                 string jsonResponse;
                 string fastestProxy = DefaultProxy;
@@ -1351,16 +1352,16 @@ namespace SNIBypassGUI.Views
                 string exeUrl = $"https://{fastestProxy}/{files["SNIBypassGUI.exe"]}";
 
                 // 下载文件并覆盖
-                await DownloadFileWithProgress(acrylichostsUrl, AcrylicHostsAll, UpdateProgress, 10);
-                await DownloadFileWithProgress(systemhostsUrl, SystemHostsAll, UpdateProgress, 10);
-                await DownloadFileWithProgress(switchdataUrl, SwitchData, UpdateProgress, 10);
-                await DownloadFileWithProgress(crtUrl, CRTFile, UpdateProgress, 10);
-                await DownloadFileWithProgress(nginxconfUrl, nginxConfigFile, UpdateProgress, 10);
+                await TryDownloadFile(acrylichostsUrl, AcrylicHostsAll, UpdateProgress, 10);
+                await TryDownloadFile(systemhostsUrl, SystemHostsAll, UpdateProgress, 10);
+                await TryDownloadFile(switchdataUrl, SwitchData, UpdateProgress, 10);
+                await TryDownloadFile(crtUrl, CRTFile, UpdateProgress, 10);
+                await TryDownloadFile(nginxconfUrl, nginxConfigFile, UpdateProgress, 10);
 
                 if (version != CurrentVersion)
                 {
                     UpdateBtn.Content = "更新主程序…";
-                    await DownloadFileWithProgress(exeUrl, NewVersionExe, UpdateProgress, 120);
+                    await TryDownloadFile(exeUrl, NewVersionExe, UpdateProgress, 120);
 
                     UpdateBtn.Content = "校验哈希值…";
                     string realhash = CalculateFileHash(NewVersionExe);
@@ -1407,18 +1408,12 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 用于更新下载进度
+        /// 用于更新下载进度。
         /// </summary>
-        private void UpdateProgress(double progress)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                UpdateBtn.Content = $"下载中… ({progress:F1}%)";
-            });
-        }
+        private void UpdateProgress(double progress) => Dispatcher.Invoke(() => { UpdateBtn.Content = $"下载中… ({progress:F1}%)"; });
 
         /// <summary>
-        /// 清理按钮点击事件
+        /// 清理按钮点击事件。
         /// </summary>
         private async void CleanBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1499,7 +1494,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 选项卡发生改变事件
+        /// 选项卡发生改变事件。
         /// </summary>
         private async void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -1540,7 +1535,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 全部开启按钮点击事件
+        /// 全部开启按钮点击事件。
         /// </summary>
         private void AllOnBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1561,7 +1556,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 全部关闭按钮点击事件
+        /// 全部关闭按钮点击事件。
         /// </summary>
         private void AllOffBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1581,7 +1576,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 安装证书按钮点击事件
+        /// 安装证书按钮点击事件。
         /// </summary>
         private void InstallCertBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1601,7 +1596,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 自定义背景按钮点击事件
+        /// 自定义背景按钮点击事件。
         /// </summary>
         private void CustomBkgBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1620,7 +1615,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 恢复默认背景按钮点击事件
+        /// 恢复默认背景按钮点击事件。
         /// </summary>
         private void DefaultBkgBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1650,7 +1645,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 代理开关点击事件
+        /// 代理开关点击事件。
         /// </summary>
         private void ToggleButtonsClick(object sender, RoutedEventArgs e)
         {
@@ -1660,7 +1655,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 链接文本点击事件
+        /// 链接文本点击事件。
         /// </summary>
         private void LinkText_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -1678,7 +1673,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 应用更改按钮点击事件
+        /// 应用更改按钮点击事件。
         /// </summary>
         private async void ApplyBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1719,7 +1714,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 取消更改按钮点击事件
+        /// 取消更改按钮点击事件。
         /// </summary>
         private async void UnchangeBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1730,7 +1725,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 菜单：显示主窗口点击事件
+        /// 菜单：显示主窗口点击事件。
         /// </summary>
         private void MenuItem_ShowMainWin_Click(object sender, RoutedEventArgs e)
         {
@@ -1746,7 +1741,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 菜单：启动服务点击事件
+        /// 菜单：启动服务点击事件。
         /// </summary>
         private void MenuItem_StartService_Click(object sender, RoutedEventArgs e)
         {
@@ -1757,7 +1752,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 菜单：停止服务点击事件
+        /// 菜单：停止服务点击事件。
         /// </summary>
         private void MenuItem_StopService_Click(object sender, RoutedEventArgs e)
         {
@@ -1768,7 +1763,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 菜单：退出工具点击事件
+        /// 菜单：退出工具点击事件。
         /// </summary>
         private void MenuItem_ExitTool_Click(object sender, RoutedEventArgs e)
         {
@@ -1778,7 +1773,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 托盘图标点击事件
+        /// 托盘图标点击事件。
         /// </summary>
         public async void TaskbarIcon_LeftClick()
         {
@@ -1789,7 +1784,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 最小化到托盘图标运行按钮点击事件
+        /// 最小化到托盘图标运行按钮点击事件。
         /// </summary>
         private void TaskbarIconRunBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -1805,7 +1800,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 用于 JSON 解析的结构
+        /// 用于 JSON 解析的结构。
         /// </summary>
         public class SwitchList
         {
@@ -1821,7 +1816,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 窗口加载完成事件
+        /// 窗口加载完成事件。
         /// </summary>
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -1934,22 +1929,22 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        ///控件状态更新计时器触发事件
+        ///控件状态更新计时器触发事件。
         /// </summary>
         private async void ControlsStatusUpdateTimer_Tick(object sender, EventArgs e) => await SyncControlsFromConfig();
 
         /// <summary>
-        /// 临时文件大小更新计时器触发事件
+        /// 临时文件大小更新计时器触发事件。
         /// </summary>
         private void TempFilesSizeUpdateTimer_Tick(object sender, EventArgs e) => UpdateTempFilesSize();
 
         /// <summary>
-        /// 服务状态更新计时器触发事件
+        /// 服务状态更新计时器触发事件。
         /// </summary>
         private void ServiceStatusUpdateTimer_Tick(object sender, EventArgs e) => UpdateServiceStatus();
 
         /// <summary>
-        /// 窗口关闭事件
+        /// 窗口关闭事件。
         /// </summary>
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
@@ -1960,7 +1955,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 菜单选项鼠标进入事件
+        /// 菜单选项鼠标进入事件。
         /// </summary>
         private void MenuItem_MouseEnter(object sender, MouseEventArgs e)
         {
@@ -1983,7 +1978,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 菜单选项鼠标离开事件
+        /// 菜单选项鼠标离开事件。
         /// </summary>
         private void MenuItem_MouseLeave(object sender, MouseEventArgs e)
         {
@@ -1998,7 +1993,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 调试模式按钮点击事件
+        /// 调试模式按钮点击事件。
         /// </summary>
         private async void DebugModeBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2017,7 +2012,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 域名解析模式按钮点击事件
+        /// 域名解析模式按钮点击事件。
         /// </summary>
         private async void SwitchDomainNameResolutionMethodBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2029,7 +2024,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// DNS 调试按钮点击事件
+        /// DNS 调试按钮点击事件。
         /// </summary>
         private async void AcrylicDebugBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2041,7 +2036,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// GUI 调试按钮点击事件
+        /// GUI 调试按钮点击事件。
         /// </summary>
         private async void GUIDebugBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2062,7 +2057,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 编辑系统 Hosts 按钮点击事件
+        /// 编辑系统 Hosts 按钮点击事件。
         /// </summary>
         private void EditHostsBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2077,7 +2072,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 一键卸载按钮点击事件
+        /// 一键卸载按钮点击事件。
         /// </summary>
        private async void UninstallBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2175,7 +2170,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 适配器下拉框选择项改变事件
+        /// 适配器下拉框选择项改变事件。
         /// </summary>
         private void AdaptersCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -2186,7 +2181,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 自动获取活动适配器按钮点击事件
+        /// 自动获取活动适配器按钮点击事件。
         /// </summary>
         private async void GetActiveAdapterBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2213,7 +2208,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 如何选择适配器按钮点击事件
+        /// 如何选择适配器按钮点击事件。
         /// </summary>
         private void HelpBtn_HowToFindActiveAdapter_Click(object sender, RoutedEventArgs e)
         {
@@ -2223,7 +2218,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 反馈按钮点击事件
+        /// 反馈按钮点击事件。
         /// </summary>
         private void FeedbackBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2242,7 +2237,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// Pixiv IP 优选按钮点击事件
+        /// Pixiv IP 优选按钮点击事件。
         /// </summary>
         private async void PixivIPPreferenceBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2287,7 +2282,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 还原数据按钮点击事件
+        /// 还原数据按钮点击事件。
         /// </summary>
         private async void ResetBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2321,7 +2316,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 主题切换按钮点击事件
+        /// 主题切换按钮点击事件。
         /// </summary>
         private void ThemeSwitchTB_Checked(object sender, RoutedEventArgs e)
         {
@@ -2339,7 +2334,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 切换主题
+        /// 切换主题。
         /// </summary>
         public void SwitchTheme(bool isNightMode)
         {
@@ -2393,7 +2388,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 背景动画逻辑
+        /// 背景动画逻辑。
         /// </summary>
         private void OnBackgroundChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -2415,7 +2410,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 窗口关闭事件
+        /// 窗口关闭事件。
         /// </summary>
         protected override void OnClosed(EventArgs e)
         {
@@ -2425,9 +2420,8 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 指示是否有任何对话框打开
+        /// 指示是否有任何对话框打开。
         /// </summary>
-        /// <returns></returns>
         private static bool IsAnyDialogOpen()
         {
             foreach (Window window in Application.Current.Windows) if (window is FeedbackWindow || window is CustomBackgroundWindow) return true;
@@ -2435,7 +2429,7 @@ namespace SNIBypassGUI.Views
         }
 
         /// <summary>
-        /// 播放窗口动画
+        /// 播放窗口动画。
         /// </summary>
         private void AnimateWindow(double from, double to, Action onCompleted = null)
         {

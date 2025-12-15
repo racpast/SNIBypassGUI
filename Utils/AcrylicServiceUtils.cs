@@ -17,12 +17,12 @@ namespace SNIBypassGUI.Utils
     public static class AcrylicServiceUtils
     {
         /// <summary>
-        /// 检查 Acrylic DNS Proxy 服务是否已安装
+        /// 检查 Acrylic DNS Proxy 服务是否已安装。
         /// </summary>
         public static bool IsAcrylicServiceInstalled() => IsServiceInstalled(DnsServiceName);
 
         /// <summary>
-        /// 安装 Acrylic DNS Proxy 服务
+        /// 安装 Acrylic DNS Proxy 服务。
         /// </summary>
         public static async Task InstallAcrylicService()
         {
@@ -44,7 +44,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 卸载 Acrylic DNS Proxy 服务
+        /// 卸载 Acrylic DNS Proxy 服务。
         /// </summary>
         public static async Task UninstallAcrylicService()
         {
@@ -62,12 +62,12 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 检查 Acrylic DNS Proxy 服务是否正在运行
+        /// 检查 Acrylic DNS Proxy 服务是否正在运行。
         /// </summary>
         public static bool IsAcrylicServiceRunning() => IsProcessRunning("AcrylicService");
 
         /// <summary>
-        /// 启动 Acrylic DNS Proxy 服务
+        /// 启动 Acrylic DNS Proxy 服务。
         /// </summary>
         public static async Task StartAcrylicService()
         {
@@ -78,7 +78,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 停止 Acrylic DNS Proxy 服务
+        /// 停止 Acrylic DNS Proxy 服务。
         /// </summary>
         public static async Task  StopAcrylicService()
         {
@@ -89,22 +89,22 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取命中日志路径
+        /// 获取命中日志路径。
         /// </summary>
         public static string GetLogPath() => Path.Combine(LogDirectory, $"HitLog-{DateTime.Now:yyyy-MM-dd}.log");
 
         /// <summary>
-        /// 检查 Acrylic DNS Proxy 服务的命中日志是否启用
+        /// 检查 Acrylic DNS Proxy 服务的命中日志是否启用。
         /// </summary>
         public static bool IsAcrylicServiceHitLogEnabled() => StringToBool(INIRead(AdvancedSettings, AcrylicDebug, INIPath));
 
         /// <summary>
-        /// 清理 Acrylic DNS Proxy 服务的缓存文件
+        /// 清理 Acrylic DNS Proxy 服务的缓存文件。
         /// </summary>
         public static void RemoveAcrylicCacheFile() => TryDelete(AcrylicCacheFilePath);
 
         /// <summary>
-        /// 启用 Acrylic DNS Proxy 服务的命中日志
+        /// 启用 Acrylic DNS Proxy 服务的命中日志。
         /// </summary>
         public static void EnableAcrylicServiceHitLog()
         {
@@ -122,7 +122,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 禁用 Acrylic DNS Proxy 服务的命中日志
+        /// 禁用 Acrylic DNS Proxy 服务的命中日志。
         /// </summary>
         public static void DisableAcrylicServiceHitLog() => INIWrite("GlobalSection", "HitLogFileName", string.Empty, AcrylicConfigurationPath);
     }

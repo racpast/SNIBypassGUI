@@ -10,10 +10,9 @@ namespace SNIBypassGUI.Utils
     public static class ProcessUtils
     {
         /// <summary>
-        /// 检查进程是否正在运行
+        /// 检查进程是否正在运行。
         /// </summary>
         /// <param name="processName">进程名称</param>
-        /// <returns>是否正在运行</returns>
         public static bool IsProcessRunning(string processName)
         {
             try
@@ -28,7 +27,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取进程数量
+        /// 获取进程数量。
         /// </summary>
         /// <param name="processName">进程名称</param>
         /// <returns>找到的进程数</returns>
@@ -36,10 +35,7 @@ namespace SNIBypassGUI.Utils
         {
             try
             {
-                if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                {
-                    processName = Path.GetFileNameWithoutExtension(processName);
-                }
+                if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) processName = Path.GetFileNameWithoutExtension(processName);
                 return Process.GetProcessesByName(processName).Length;
             }
             catch (Exception ex)
@@ -50,7 +46,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 启动进程
+        /// 启动进程。
         /// </summary>
         /// <param name="fileName">路径</param>
         /// <param name="arguments">启动参数</param>
@@ -84,7 +80,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 结束进程
+        /// 结束进程。
         /// </summary>
         /// <param name="processName">进程名称</param>
         /// <returns>是否成功终止进程</returns>
@@ -121,42 +117,28 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 同步等待进程初始化完成
+        /// 同步等待进程初始化完成。
         /// </summary>
-        public static void WaitForProcessReady(this Process process, int timeout = 5000)
+        public static void WaitForProcessReady(this Process process, int timeout = 5000, int sleepIntervalMs = 100)
         {
             try
             {
                 if (process == null || process.HasExited) return;
-
                 if (!process.StartInfo.UseShellExecute && process.StartInfo.CreateNoWindow)
                 {
                     int waited = 0;
                     while (!process.HasExited && process.MainWindowHandle == IntPtr.Zero && waited < timeout)
                     {
-                        Thread.Sleep(100);
-                        waited += 100;
+                        Thread.Sleep(sleepIntervalMs);
+                        waited += sleepIntervalMs;
                     }
-
-                    if (process.MainWindowHandle != IntPtr.Zero)
-                    {
-                        WriteLog($"进程 {process.ProcessName} 已准备就绪。", LogLevel.Info);
-                    }
-                    else
-                    {
-                        WriteLog($"等待进程 {process.ProcessName} 准备超时。", LogLevel.Warning);
-                    }
+                    if (process.MainWindowHandle != IntPtr.Zero) WriteLog($"进程 {process.ProcessName} 已准备就绪。", LogLevel.Info);
+                    else WriteLog($"等待进程 {process.ProcessName} 准备超时。", LogLevel.Warning);
                 }
                 else
                 {
-                    if (!process.WaitForInputIdle(timeout))
-                    {
-                        WriteLog($"进程 {process.ProcessName} 未进入空闲状态，可能是控制台程序。", LogLevel.Warning);
-                    }
-                    else
-                    {
-                        WriteLog($"进程 {process.ProcessName} 已进入空闲状态。", LogLevel.Info);
-                    }
+                    if (!process.WaitForInputIdle(timeout)) WriteLog($"进程 {process.ProcessName} 未进入空闲状态，可能是控制台程序。", LogLevel.Warning);
+                    else WriteLog($"进程 {process.ProcessName} 已进入空闲状态。", LogLevel.Info);
                 }
             }
             catch (Exception ex)
@@ -165,9 +147,9 @@ namespace SNIBypassGUI.Utils
             }
         }
 
-        public static Task<bool> WaitForExitAsync(this Process process, int timeout)
-        {
-            return Task.Run(() => process.WaitForExit(timeout));
-        }
+        /// <summary>
+        /// 异步等待进程退出。
+        /// </summary>
+        public static Task<bool> WaitForExitAsync(this Process process, int timeout) => Task.Run(() => process.WaitForExit(timeout));
     }
 }

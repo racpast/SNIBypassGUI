@@ -7,7 +7,7 @@ namespace SNIBypassGUI.Utils
     public static class StringUtils
     {
         /// <summary>
-        /// 交换哈希值的位置
+        /// 交换哈希值的位置。
         /// </summary>
         public static string SwapHashPositions(string hashString, string hashA, string hashB)
         {
@@ -26,7 +26,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 添加哈希值
+        /// 添加哈希值。
         /// </summary>
         public static string AppendHash(string hashString, string hash)
         {
@@ -36,23 +36,17 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 移除哈希值
+        /// 移除哈希值。
         /// </summary>
-        public static string RemoveHash(string hashString, string hash)
-        {
-            return string.Join(",", hashString.Split([','], StringSplitOptions.RemoveEmptyEntries).Where(_hash => _hash != hash));
-        }
+        public static string RemoveHash(string hashString, string hash) => string.Join(",", hashString.Split([','], StringSplitOptions.RemoveEmptyEntries).Where(_hash => _hash != hash));
 
         /// <summary>
-        /// 替换哈希值
+        /// 替换哈希值。
         /// </summary>
-        public static string ReplaceHash(string hashString, string originHash, string newHash)
-        {
-            return string.Join(",", hashString.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(hash => hash == originHash ? newHash : hash));
-        }
+        public static string ReplaceHash(string hashString, string originHash, string newHash) => string.Join(",", hashString.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(hash => hash == originHash ? newHash : hash));
 
         /// <summary>
-        /// 验证邮箱格式
+        /// 验证邮箱格式。
         /// </summary>
         public static bool IsValidEmail(string email)
         {
@@ -68,15 +62,12 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 合并并返回一个字符串
+        /// 合并并返回一个字符串。
         /// </summary>
-        public static string MergeStrings(string separator, params string[] args)
-        {
-            return string.Join(separator, args.Where(arg => !string.IsNullOrEmpty(arg)));
-        }
+        public static string MergeStrings(string separator, params string[] args) => string.Join(separator, args.Where(arg => !string.IsNullOrEmpty(arg)));
 
         /// <summary>
-        /// 将字符串分割为列表
+        /// 将字符串分割为列表。
         /// </summary>
         public static string[] SplitStrings(string args, params string[] separator)
         {

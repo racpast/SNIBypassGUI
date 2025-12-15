@@ -10,7 +10,7 @@ namespace SNIBypassGUI.Utils
     {
         /*
         /// <summary>
-        /// 执行指定的 PowerShell 命令
+        /// 执行指定的 PowerShell 命令。
         /// </summary>
         /// <param name="command">PowerShell命令</param>
         public static async Task RunPowerShell(string command)
@@ -38,7 +38,7 @@ namespace SNIBypassGUI.Utils
         */
 
         /// <summary>
-        /// 执行指定的 CMD 命令
+        /// 执行指定的 CMD 命令。
         /// </summary>
         /// <param name="command">CMD 命令</param>
         /// <param name="workingDirectory">工作目录</param>

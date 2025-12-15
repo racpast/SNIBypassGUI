@@ -1,29 +1,20 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using static SNIBypassGUI.Utils.LogManager;
+using static SNIBypassGUI.Utils.WinApiUtils;
 
 namespace SNIBypassGUI.Utils
 {
     public static class IniFileUtils
     {
-        [DllImport("kernel32", CharSet = CharSet.Unicode)]
-        private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
-
-        [DllImport("kernel32", CharSet = CharSet.Unicode)]
-        private static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
-
-        [DllImport("kernel32", CharSet = CharSet.Unicode)]
-        private static extern uint GetPrivateProfileSection(string lpAppName, byte[] lpReturnedString, uint nSize, string lpFileName);
-
         /// <summary>
-        /// 写入配置文件
+        /// 写入配置文件。
         /// </summary>
         public static void INIWrite(string section, string key, string value, string path) => WritePrivateProfileString(section, key, value, path);
 
         /// <summary>
-        /// 读取配置文件
+        /// 读取配置文件。
         /// </summary>
         public static string INIRead(string section, string key, string path)
         {
@@ -46,7 +37,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 获取指定部分的所有键名
+        /// 获取指定部分的所有键名。
         /// </summary>
         public static List<string> GetKeys(string section, string path)
         {
@@ -88,7 +79,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 删除配置文件
+        /// 删除配置文件。
         /// </summary>
         public static void INIDelete(string filePath)
         {

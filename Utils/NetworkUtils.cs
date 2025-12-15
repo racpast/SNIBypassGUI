@@ -19,12 +19,12 @@ namespace SNIBypassGUI.Utils
     public class NetworkUtils
     {
         /// <summary>
-        /// 刷新 DNS 缓存
+        /// 刷新 DNS 缓存。
         /// </summary>
         public static UInt32 FlushDNSCache() => DnsFlushResolverCache();
 
         /// <summary>
-        /// 通用 DNS 解析方法
+        /// 通用 DNS 解析方法。
         /// </summary>
         /// <param name="domain">域名</param>
         /// <param name="queryType">记录类型</param>
@@ -49,11 +49,6 @@ namespace SNIBypassGUI.Utils
                     .Select(ParseDnsRecord)
                     .Where(record => record != null)];
             }
-            catch (SocketException ex)
-            {
-                WriteLog($"解析域名时遇到网络错误。", LogLevel.Error, ex);
-                return [];
-            }
             catch (Exception ex)
             {
                 WriteLog($"解析域名时遇到异常。", LogLevel.Error, ex);
@@ -61,7 +56,9 @@ namespace SNIBypassGUI.Utils
             }
         }
 
-        // 解析 A 记录（IPv4）
+        /// <summary>
+        /// 解析 A 记录（IPv4）。
+        /// </summary>
         public static async Task<List<IPAddress>> ResolveAAsync(string domain, string dnsServer = DefaultDNS)
         {
             var records = await ResolveDnsAsync(domain, DnsQueryType.A, dnsServer);
@@ -70,7 +67,9 @@ namespace SNIBypassGUI.Utils
                 .Select(r => (IPAddress)r.Value)];
         }
 
-        // 解析 AAAA 记录（IPv6）
+        /// <summary>
+        /// 解析 AAAA 记录（IPv6）。
+        /// </summary>
         public static async Task<List<IPAddress>> ResolveAaaaAsync(string domain, string dnsServer = DefaultDNS)
         {
             var records = await ResolveDnsAsync(domain, DnsQueryType.AAAA, dnsServer);
@@ -79,7 +78,11 @@ namespace SNIBypassGUI.Utils
                 .Select(r => (IPAddress)r.Value)];
         }
 
-        // 辅助方法：解析 DNS 记录到结构化数据
+        /// <summary>
+        /// 解析 DNS 记录到结构化数据。
+        /// </summary>
+        /// <param name="record"></param>
+        /// <returns></returns>
         private static DnsRecordResult ParseDnsRecord(DnsResourceRecord record)
         {
             return record switch
@@ -178,7 +181,9 @@ namespace SNIBypassGUI.Utils
             };
         }
 
-        // 创建 LookupClient 实例
+        /// <summary>
+        /// 创建 LookupClient 实例。
+        /// </summary>
         private static LookupClient GetLookupClient(string dnsServer, int timeoutMs)
         {
             if (string.IsNullOrEmpty(dnsServer))
@@ -195,7 +200,9 @@ namespace SNIBypassGUI.Utils
             });
         }
 
-        // 映射查询类型
+        /// <summary>
+        /// 映射查询类型。
+        /// </summary>
         private static QueryType MapQueryType(DnsQueryType queryType) => queryType switch
         {
             DnsQueryType.A => QueryType.A,
@@ -213,7 +220,7 @@ namespace SNIBypassGUI.Utils
         };
 
         /// <summary>
-        /// 检查主机是否可达
+        /// 检查主机是否可达。
         /// </summary>
         /// <param name="host">指定的主机</param>
         public static bool IsReachable(string host)
@@ -232,7 +239,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 查找最快的 IP 地址
+        /// 查找最快的 IP 地址。
         /// </summary>
         /// <param name="IP">包含 IP 地址的字符串数组</param>
         public static IPAddress FindFastestIP(IPAddress[] IP)
@@ -257,25 +264,25 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 检查 IP 地址是否有效
+        /// 检查 IP 地址是否有效。
         /// </summary>
         /// <param name="ipAddress">IP 地址</param>
         public static bool IsValidIPAddress(string ipAddress) => IsValidIPv4(ipAddress) || IsValidIPv6(ipAddress);
 
         /// <summary>
-        /// 检查 IPv4 地址是否有效
+        /// 检查 IPv4 地址是否有效。
         /// </summary>
         /// <param name="ipAddress">IP 地址</param>
-        public static bool IsValidIPv4(string ipAddress) => IPAddress.TryParse(ipAddress, out IPAddress address) && address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork;
+        public static bool IsValidIPv4(string ipAddress) => IPAddress.TryParse(ipAddress, out IPAddress address) && address.AddressFamily == AddressFamily.InterNetwork;
 
         /// <summary>
-        /// 检查 IPv6 地址是否有效
+        /// 检查 IPv6 地址是否有效。
         /// </summary>
         /// <param name="ipAddress">IP 地址</param>
-        public static bool IsValidIPv6(string ipAddress) => IPAddress.TryParse(ipAddress, out IPAddress address) && address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6;
+        public static bool IsValidIPv6(string ipAddress) => IPAddress.TryParse(ipAddress, out IPAddress address) && address.AddressFamily == AddressFamily.InterNetworkV6;
 
         /// <summary>
-        /// 检查端口是否被占用
+        /// 检查端口是否被占用。
         /// </summary>
         /// <param name="port">指定的端口</param>
         /// <param name="checkUdp">是否检查 UDP 端口</param>
@@ -302,7 +309,7 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 异步发送 GET 请求
+        /// 异步发送 GET 请求。
         /// </summary>
         public static async Task<string> GetAsync(string url, double timeOut = 10, string userAgent = "Mozilla/5.0")
         {
@@ -330,22 +337,38 @@ namespace SNIBypassGUI.Utils
         }
 
         /// <summary>
-        /// 尝试下载文件并返回是否成功
+        /// 尝试下载文件并返回是否成功。
         /// </summary>
+        /// <param name="url">文件下载的 URL。</param>
+        /// <param name="savePath">文件保存的本地路径。</param>
+        /// <param name="updateProgress">用于更新下载进度的回调Action。</param>
+        /// <param name="timeOut">
+        /// <para>本次请求的超时时间（秒）。</para>
+        /// <para>
+        /// 重要警告： 由于 .NET 4.7.2 框架的限制，为了实现按请求设置不同的超时，
+        /// 本方法在调用时会为每个请求创建一个新的 HttpClient 实例。
+        /// *这可能导致套接字耗尽问题 (Socket Exhaustion)，特别是在下载任务非常频繁或并发量高的场景下。
+        /// </para>
+        /// <para>
+        /// 如果您在这些场景下使用本方法并遇到连接错误，请考虑：
+        /// 1. 调整操作系统 TCP/IP 参数 (如 TcpTimedWaitDelay, MaxUserPort)。
+        /// 2. 避免在高频/高并发场景下调用本方法。
+        /// 3. 将项目升级到 .NET 5+ 或更高版本，以便使用更安全、高效的 HttpClient 管理方式 (如 HttpRequestMessage.Options 或 IHttpClientFactory)。
+        /// </para>
+        /// </param>
+        /// <param name="userAgent">本次请求使用的 User-Agent 字符串。</param>
+        /// <returns>如果下载成功返回 true，否则返回 false。</returns>
         public static async Task<bool> TryDownloadFile(string url, string savePath, Action<double> updateProgress, double timeOut = 60, string userAgent = "Mozilla/5.0")
         {
-            HttpClient _httpClient = new()
-            {
-                Timeout = TimeSpan.FromSeconds(timeOut),
-            };
+            HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(timeOut) };
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
             using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
             if (!response.IsSuccessStatusCode)
             {
-                Exception ex = new($"文件 {url} 下载失败！响应码：{response.StatusCode}");
-                WriteLog("下载文件时遇到异常。", LogLevel.Error, ex);
-                throw ex;
+                WriteLog($"下载文件 {url} 时遇到异常，响应码：{response.StatusCode}。", LogLevel.Error);
+                return false;
             }
+
             using var stream = await response.Content.ReadAsStreamAsync();
             long totalBytes = response.Content.Headers.ContentLength ?? 0;
             long bytesDownloaded = 0;
@@ -361,22 +384,6 @@ namespace SNIBypassGUI.Utils
                 updateProgress(progress);
             }
             return true;
-        }
-
-        /// <summary>
-        /// 尝试下载文件并显示进度
-        /// </summary>
-        public static async Task DownloadFileWithProgress(string Url, string savePath, Action<double> updateProgress, double timeOut = 60, string userAgent = "Mozilla/5.0")
-        {
-            try
-            {
-                await TryDownloadFile(Url, savePath, updateProgress, timeOut, userAgent);
-            }
-            catch (Exception ex)
-            {
-                WriteLog("从服务器下载文件遇到异常。", LogLevel.Error, ex);
-                throw;
-            }
         }
     }
 }
