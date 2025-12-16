@@ -2,13 +2,13 @@
 {
     public static class LinksConsts
     {
-        public const string MainServer = "https://snibypassgui.netlib.re/";
+        public const string MainServer = "https://snib.racpast.com/";
         public const string VerifyLink = MainServer + "verify.php";
         public const string FeedbackLink = MainServer + "feedback.php";
         public const string MainLatest = MainServer + "latest.json";
         public const string GitHubRepo = "https://raw.githubusercontent.com/racpast/SNIBypassGUIUpdate/main/";
         public const string GitHubLatest = GitHubRepo + "latest.json";
-        public const string DefaultProxy = "gh.rpnet.dpdns.org";
+        public const string DefaultProxy = "ghproxy.racpast.com";
         public const string 如何使用自定义背景功能 = "https://github.com/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#如何使用自定义背景功能";
         public const string 当您无法确定当前正在使用的适配器时 = "https://github.com/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#当您无法确定当前正在使用的适配器时";
         public const string 当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时 = "https://github.com/racpast/SNIBypassGUI/wiki/❓%EF%B8%8F-使用时遇到问题#当您找不到当前正在使用的适配器，或启动时遇到适配器设置失败时";

@@ -287,7 +287,8 @@ namespace SNIBypassGUI.Views
             long logs = GetDirectorySize(LogDirectory);
             long nginx = GetFileSize(nginxAccessLogPath) + GetFileSize(nginxErrorLogPath);
             long dns = GetFileSize(AcrylicCacheFilePath);
-            CleanBtn.Content = $"清理临时文件 ({ConvertBetweenUnits(logs + nginx + dns, SizeUnit.B, SizeUnit.MB):0.00}MB)";
+            long cache = GetDirectorySize(nginxCacheDirectory);
+            CleanBtn.Content = $"清理临时文件 ({ConvertBetweenUnits(logs + nginx + dns + cache, SizeUnit.B, SizeUnit.MB):0.00}MB)";
         }
 
         /// <summary>
@@ -547,15 +548,6 @@ namespace SNIBypassGUI.Views
         public async Task UpdateHostsFromConfig()
         {
             WriteLog("进入 UpdateHostsFromConfig。", LogLevel.Debug);
-
-            // 根据域名解析模式判断要更新的文件
-            bool IsDnsService = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode;
-            string FileShouldUpdate = IsDnsService ? AcrylicHostsPath : SystemHosts;
-
-            // 根据域名解析模式获取应该添加的条目数据
-            string CorrespondingHosts = IsDnsService ? AcrylicHostsAll : SystemHostsAll;
-
-            WriteLog($"当前域名解析方法是否为DNS服务： {BoolToYesNo(IsDnsService)}，将更新的文件为 {FileShouldUpdate}。", LogLevel.Info);
             try
             {
                 await Task.Run(async() =>
@@ -572,15 +564,10 @@ namespace SNIBypassGUI.Views
                             WriteLog($"{pair.SectionName} 的代理开关为开启，将添加记录。", LogLevel.Info);
 
                             // 添加该条目部分
-                            AppendToFile(FileShouldUpdate, GetSection(CorrespondingHosts, pair.SectionName));
+                            AppendToFile(AcrylicHostsPath, GetSection(AcrylicHostsAll, pair.SectionName));
                         }
                     }
                 });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                WriteLog("对系统hosts的访问被拒绝！", LogLevel.Error, ex);
-                if (MessageBox.Show($"对系统hosts的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) Process.Start(new ProcessStartInfo(当您遇到对系统hosts的访问被拒绝的提示时) { UseShellExecute = true });
             }
             catch (Exception ex)
             {
@@ -596,26 +583,15 @@ namespace SNIBypassGUI.Views
         public async Task RemoveHostsRecords()
         {
             WriteLog("进入RemoveHostsRecords。", LogLevel.Debug);
-
-            // 根据域名解析模式判断要更新的文件
-            bool IsDnsService = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode;
-            string FileShouldUpdate = IsDnsService ? AcrylicHostsPath : SystemHosts;
-
-            WriteLog($"当前域名解析方法是否为 DNS 服务： {BoolToYesNo(IsDnsService)}，将更新的文件为 {FileShouldUpdate}。", LogLevel.Info);
             try
             {
                 await Task.Run(async() =>
                 {
                     List<string> sections = [];
                     foreach (SwitchItem pair in Switchs) sections.Add(pair.SectionName);
-                    RemoveSection(FileShouldUpdate, [.. sections]);
+                    RemoveSection(AcrylicHostsPath, [.. sections]);
                     await RestoreOriginalPixivDNS();
                 });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                WriteLog("对系统 Hosts 的访问被拒绝！", LogLevel.Error, ex);
-                if (MessageBox.Show($"对系统 Hosts 的访问被拒绝。\r\n{ex}\r\n点击“是”将为您展示有关帮助。", "错误", MessageBoxButton.YesNo, MessageBoxImage.Error) == MessageBoxResult.Yes) StartProcess(当您遇到对系统hosts的访问被拒绝的提示时, useShellExecute: true);
             }
             catch (Exception ex)
             {
@@ -682,11 +658,10 @@ namespace SNIBypassGUI.Views
                 await StopTailProcesses(nginxErrorLogPath);
                 ClearFolder(TempDirectory);
             }
-            SwitchDomainNameResolutionMethodBtn.Content = INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode ? "域名解析：\nDNS服务" : "域名解析：\n系统hosts";
             PixivIPPreferenceBtn.Content = StringToBool(INIRead(ProgramSettings, PixivIPPreference, INIPath)) ? "Pixiv IP 优选：开" : "Pixiv IP 优选：关";
 
             // 根据调试模式是否开启决定有关按钮是否启用
-            SwitchDomainNameResolutionMethodBtn.IsEnabled = AcrylicDebugBtn.IsEnabled = GUIDebugBtn.IsEnabled = NginxLogTracingBtn.IsEnabled = isDebugModeOn;
+            AcrylicDebugBtn.IsEnabled = GUIDebugBtn.IsEnabled = NginxLogTracingBtn.IsEnabled = isDebugModeOn;
 
             // 更新适配器列表及选中的适配器
             await UpdateAdaptersCombo();
@@ -886,69 +861,55 @@ namespace SNIBypassGUI.Views
         {
             WriteLog("进入 StartService。", LogLevel.Debug);
 
-            if (INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode)
+            if (!IsProcessRunning(NginxProcessName))
             {
-                // 域名解析模式是 DNS 服务的情况，需要启动主服务、 DNS 服务与设置适配器
+                WriteLog("主服务未运行，将启动主服务。", LogLevel.Info);
+                await StartNginx();
+            }
 
-                if (!IsProcessRunning(NginxProcessName))
+            if (!IsAcrylicServiceRunning())
+            {
+                WriteLog("DNS 服务未运行，将启动 DNS 服务。", LogLevel.Info);
+                ServiceStatusText.Text = "DNS服务启动中";
+                ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
+                try
                 {
-                    WriteLog("主服务未运行，将启动主服务。", LogLevel.Info);
-                    await StartNginx();
-                }
-
-                if (!IsAcrylicServiceRunning())
-                {
-                    WriteLog("DNS 服务未运行，将启动 DNS 服务。", LogLevel.Info);
-                    ServiceStatusText.Text = "DNS服务启动中";
-                    ServiceStatusText.Foreground = new SolidColorBrush(Colors.DarkOrange);
-                    try
+                    if (IsAcrylicServiceHitLogEnabled())
                     {
-                        if (IsAcrylicServiceHitLogEnabled())
-                        {
-                            EnableAcrylicServiceHitLog();
-                            TailFile(AcrylicServiceUtils.GetLogPath(), "HitLog");
-                        }
-                        await StartAcrylicService();
+                        EnableAcrylicServiceHitLog();
+                        TailFile(AcrylicServiceUtils.GetLogPath(), "HitLog");
                     }
-                    catch (Exception ex)
-                    {
-                        WriteLog("尝试启动 DNS 服务时遇到异常。", LogLevel.Error, ex);
-                        MessageBox.Show($"启动 DNS 服务时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
+                    await StartAcrylicService();
                 }
+                catch (Exception ex)
+                {
+                    WriteLog("尝试启动 DNS 服务时遇到异常。", LogLevel.Error, ex);
+                    MessageBox.Show($"启动 DNS 服务时遇到异常：{ex}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
 
-                // 遍历所有适配器
-                NetworkAdapter activeAdapter = null;
-                foreach (var adapter in await GetNetworkAdaptersAsync(ScopeNeeded.FriendlyNameNotNullOnly))
+            // 遍历所有适配器
+            NetworkAdapter activeAdapter = null;
+            foreach (var adapter in await GetNetworkAdaptersAsync(ScopeNeeded.FriendlyNameNotNullOnly))
+            {
+                if (adapter.FriendlyName == AdaptersCombo.SelectedItem?.ToString())
                 {
-                    if (adapter.FriendlyName == AdaptersCombo.SelectedItem?.ToString())
-                    {
-                        // 如果适配器的名称和下拉框选中的适配器相同，就记录下来备用并退出循环
-                        activeAdapter = adapter;
-                        break;
-                    }
+                    // 如果适配器的名称和下拉框选中的适配器相同，就记录下来备用并退出循环
+                    activeAdapter = adapter;
+                    break;
                 }
+            }
 
-                if (activeAdapter != null)
-                {
-                    WriteLog($"指定网络适配器为： {activeAdapter.FriendlyName}", LogLevel.Info);
-                    await SetLoopbackDNS(activeAdapter);
-                    FlushDNSCache();
-                }
-                else
-                {
-                    WriteLog("没有找到指定的网络适配器！", LogLevel.Warning);
-                    if (MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时, useShellExecute: true);
-                }
+            if (activeAdapter != null)
+            {
+                WriteLog($"指定网络适配器为： {activeAdapter.FriendlyName}", LogLevel.Info);
+                await SetLoopbackDNS(activeAdapter);
+                FlushDNSCache();
             }
             else
             {
-                // 域名解析模式不是 DNS 服务的情况，仅需要启动主服务
-                if (!IsProcessRunning(NginxProcessName))
-                {
-                    WriteLog("主服务未运行，将启动主服务。", LogLevel.Info);
-                    await StartNginx();
-                }
+                WriteLog("没有找到指定的网络适配器！", LogLevel.Warning);
+                if (MessageBox.Show($"没有找到指定的网络适配器！您可能需要手动设置。\r\n点击“是”将为您展示有关帮助。", "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) StartProcess(当您找不到当前正在使用的适配器或启动时遇到适配器设置失败时, useShellExecute: true);
             }
 
             // 更新服务的状态信息
@@ -1040,9 +1001,8 @@ namespace SNIBypassGUI.Views
 
             if (AdaptersCombo.SelectedItem != null) INIWrite(ProgramSettings, SpecifiedAdapter, AdaptersCombo.SelectedItem.ToString(), INIPath);
 
-            if (INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) == DnsServiceMode && string.IsNullOrEmpty(AdaptersCombo.SelectedItem?.ToString()))
+            if (string.IsNullOrEmpty(AdaptersCombo.SelectedItem?.ToString()))
             {
-                // 域名解析为DNS模式但没有选择网络适配器的情况
                 MessageBox.Show("请先在下拉框中选择当前正在使用的适配器！您可以尝试点击“自动获取”按钮。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 GetActiveAdapterBtn.IsEnabled = AdaptersCombo.IsEnabled = true;
             }
@@ -1249,7 +1209,6 @@ namespace SNIBypassGUI.Views
 
             try
             {
-                /*
                 /// <summary>
                 /// 先从主服务器获取最新版本信息，如果失败则从 GitHub 更新。
                 /// </summary>
@@ -1263,8 +1222,8 @@ namespace SNIBypassGUI.Views
                 catch(Exception ex)
                 {
                     WriteLog("从主服务器获取信息失败，将使用备用服务器。", LogLevel.Error, ex);
-                    fastestProxy = await FindFastestProxy(BackupLatest);
-                    jsonResponse = await GetAsync($"https://{fastestProxy}/{BackupLatest}");
+                    fastestProxy = await FindFastestProxy(GitHubLatest);
+                    jsonResponse = await GetAsync($"https://{fastestProxy}/{GitHubLatest}");
                     needproxy = true;
                 }
 
@@ -1277,7 +1236,6 @@ namespace SNIBypassGUI.Views
                 string exehash = updateData["sha256"].ToString();
 
                 string acrylichostsUrl = files["AcrylicHosts_All.dat"].ToString();
-                string systemhostsUrl = files["SystemHosts_All.dat"].ToString();
                 string switchdataUrl = files["SwitchData.json"].ToString();
                 string crtUrl = files["SNIBypassCrt.crt"].ToString();
                 string nginxconfUrl = files["nginx.conf"].ToString();
@@ -1286,7 +1244,6 @@ namespace SNIBypassGUI.Views
                 if (needproxy)
                 {
                     acrylichostsUrl = $"https://{fastestProxy}/{acrylichostsUrl}";
-                    systemhostsUrl = $"https://{fastestProxy}/{systemhostsUrl}";
                     switchdataUrl = $"https://{fastestProxy}/{switchdataUrl}";
                     crtUrl = $"https://{fastestProxy}/{crtUrl}";
                     nginxconfUrl = $"https://{fastestProxy}/{nginxconfUrl}";
@@ -1294,66 +1251,7 @@ namespace SNIBypassGUI.Views
                 }
 
                 // 下载文件并覆盖
-                await DownloadFileWithProgress(acrylichostsUrl, AcrylicHostsAll, UpdateProgress, 10);
-                await DownloadFileWithProgress(systemhostsUrl, SystemHostsAll, UpdateProgress, 10);
-                await DownloadFileWithProgress(switchdataUrl, SwitchData, UpdateProgress, 10);
-                await DownloadFileWithProgress(crtUrl, CRTFile, UpdateProgress, 10);
-                await DownloadFileWithProgress(nginxconfUrl, nginxConfigFile, UpdateProgress, 10);
-
-                if (version != CurrentVersion)
-                {
-                    UpdateBtn.Content = "更新主程序…";
-                    await DownloadFileWithProgress(exeUrl, NewVersionExe, UpdateProgress, 120);
-                    UpdateBtn.Content = "校验哈希值…";
-                    string realhash = CalculateFileHash(NewVersionExe);
-                    if (realhash == exehash)
-                    {
-                        TryDelete(OldVersionExe);
-                        File.Move(CurrentExe, OldVersionExe);
-                        File.SetAttributes(OldVersionExe, File.GetAttributes(OldVersionExe) | FileAttributes.Hidden);
-                        File.Copy(NewVersionExe, CurrentExe);
-                        UpdateBtn.Content = "更新完成";
-                    }
-                    else
-                    {
-                        TryDelete(NewVersionExe);
-                        WriteLog($"主程序更新失败，哈希值校验未通过！预期：{exehash}，现有：{realhash}", LogLevel.Error);
-                        MessageBox.Show($"主程序更新失败，哈希值校验未通过！\r\n预期：{exehash}\r\n现有：{realhash}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                }
-
-                MessageBox.Show($"数据更新完成，将会为您重启主程序。", "更新", MessageBoxButton.OK, MessageBoxImage.Information);
-                StartProcess(CurrentExe, MergeStrings(" ", [WaitForParentArgument, Process.GetCurrentProcess().Id.ToString()]));
-                ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                */
-
-                /// <summary>
-                /// 从 GitHub 更新。
-                /// </summary>
-                string jsonResponse;
-                string fastestProxy = DefaultProxy;
-
-                fastestProxy = await FindFastestProxy(GitHubLatest);
-                jsonResponse = await GetAsync($"https://{fastestProxy}/{GitHubLatest}");
-
-                // 解析返回的 JSON 字符串
-                JObject updateData = JObject.Parse(jsonResponse);
-                JObject files = (JObject)updateData["files"];
-
-                // 从解析后的 JSON 中获取最后一次发布的信息
-                string version = updateData["version"].ToString();
-                string exehash = updateData["sha256"].ToString();
-
-                string acrylichostsUrl = $"https://{fastestProxy}/{files["AcrylicHosts_All.dat"]}";
-                string systemhostsUrl = $"https://{fastestProxy}/{files["SystemHosts_All.dat"]}";
-                string switchdataUrl = $"https://{fastestProxy}/{files["SwitchData.json"]}";
-                string crtUrl = $"https://{fastestProxy}/{files["SNIBypassCrt.crt"]}";
-                string nginxconfUrl = $"https://{fastestProxy}/{files["nginx.conf"]}";
-                string exeUrl = $"https://{fastestProxy}/{files["SNIBypassGUI.exe"]}";
-
-                // 下载文件并覆盖
                 await TryDownloadFile(acrylichostsUrl, AcrylicHostsAll, UpdateProgress, 10);
-                await TryDownloadFile(systemhostsUrl, SystemHostsAll, UpdateProgress, 10);
                 await TryDownloadFile(switchdataUrl, SwitchData, UpdateProgress, 10);
                 await TryDownloadFile(crtUrl, CRTFile, UpdateProgress, 10);
                 await TryDownloadFile(nginxconfUrl, nginxConfigFile, UpdateProgress, 10);
@@ -1362,7 +1260,6 @@ namespace SNIBypassGUI.Views
                 {
                     UpdateBtn.Content = "更新主程序…";
                     await TryDownloadFile(exeUrl, NewVersionExe, UpdateProgress, 120);
-
                     UpdateBtn.Content = "校验哈希值…";
                     string realhash = CalculateFileHash(NewVersionExe);
                     if (realhash == exehash)
@@ -1380,6 +1277,7 @@ namespace SNIBypassGUI.Views
                         MessageBox.Show($"主程序更新失败，哈希值校验未通过！\r\n预期：{exehash}\r\n现有：{realhash}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
+
                 MessageBox.Show($"数据更新完成，将会为您重启主程序。", "更新", MessageBoxButton.OK, MessageBoxImage.Information);
                 StartProcess(CurrentExe, MergeStrings(" ", [WaitForParentArgument, Process.GetCurrentProcess().Id.ToString()]));
                 ExitBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -2004,23 +1902,10 @@ namespace SNIBypassGUI.Views
                 DisableLog();
                 INIWrite(AdvancedSettings, DebugMode, "false", INIPath);
                 INIWrite(AdvancedSettings, GUIDebug, "false", INIPath);
-                INIWrite(AdvancedSettings, DomainNameResolutionMethod, DnsServiceMode, INIPath);
                 INIWrite(AdvancedSettings, AcrylicDebug, "false", INIPath);
             }
             await SyncControlsFromConfig();
             WriteLog("完成 DebugModeBtn_Click。", LogLevel.Debug);
-        }
-
-        /// <summary>
-        /// 域名解析模式按钮点击事件。
-        /// </summary>
-        private async void SwitchDomainNameResolutionMethodBtn_Click(object sender, RoutedEventArgs e)
-        {
-            WriteLog("进入 SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
-            if (INIRead(AdvancedSettings, DomainNameResolutionMethod, INIPath) != SystemHostsMode && MessageBox.Show("在 DNS 服务无法正常启动的情况下，系统 Hosts 可以作为备选方案使用，\r\n但具有一定局限性（例如 pixivFANBOX 的作者页面需要手动向系统 Hosts 添加记录）。\r\n是否切换域名解析模式为系统 Hosts？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) INIWrite(AdvancedSettings, DomainNameResolutionMethod, SystemHostsMode, INIPath);
-            else INIWrite(AdvancedSettings, DomainNameResolutionMethod, DnsServiceMode, INIPath);
-            await SyncControlsFromConfig();
-            WriteLog("完成 SwitchDomainNameResolutionMethodBtn_Click。", LogLevel.Debug);
         }
 
         /// <summary>
@@ -2223,6 +2108,8 @@ namespace SNIBypassGUI.Views
         private void FeedbackBtn_Click(object sender, RoutedEventArgs e)
         {
             WriteLog("进入 FeedbackBtn_Click。", LogLevel.Debug);
+            MessageBox.Show("反馈功能已暂时停用，如果需要反馈请加群 946813204 或发送邮件反馈！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            /*
             FeedbackBtn.IsEnabled = false;
             AnimateWindow(1, 0, () =>
             {
@@ -2233,6 +2120,7 @@ namespace SNIBypassGUI.Views
                 AnimateWindow(0, 1);
                 FeedbackBtn.IsEnabled = true;
             });
+            */
             WriteLog("完成 FeedbackBtn_Click。", LogLevel.Debug);
         }
 
@@ -2297,7 +2185,7 @@ namespace SNIBypassGUI.Views
                     TryDelete(nginxConfigFile);
                     TryDelete(CRTFile);
                     TryDelete(AcrylicHostsAll);
-                    TryDelete(SystemHostsAll);
+                    TryDelete(nginxCacheDirectory);
                     TryDelete(SwitchData);
                     InitializeDirectoriesAndFiles();
                 }

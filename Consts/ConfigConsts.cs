@@ -18,9 +18,6 @@
         public const string AdvancedSettings = "AdvancedSettings";
         public const string DebugMode = "DebugMode";
         public const string GUIDebug = "GUIDebug";
-        public const string DomainNameResolutionMethod = "DomainNameResolutionMethod";
-        public const string DnsServiceMode = "DnsService";
-        public const string SystemHostsMode = "SystemHosts";
         public const string AcrylicDebug = "AcrylicDebug";
         public const string TemporaryData = "TemporaryData";
         public const string PreviousIPv4DNS = "PreviousIPv4DNS";

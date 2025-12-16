@@ -8,7 +8,7 @@
         xmlns:local="clr-namespace:SNIBypassGUI.Views"
         mc:Ignorable="d"
         Loaded="Window_Loaded"
-        Title="SNIBypassGUI" Height="500" Width="800" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" Opacity="0" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
+        Title="SNIBypassGUI" Height="500" Width="800" AllowsTransparency="True" ResizeMode="NoResize" Closing="Window_Closing" Background="Transparent" WindowStartupLocation="CenterScreen" WindowStyle="None" Opacity="0" FontFamily="{StaticResource LXGWWenKai-Regular}">
     <Window.Resources>
         <Style TargetType="RichTextBox">
             <Setter Property="Template">
@@ -58,12 +58,12 @@
                 <tb:TaskbarIcon.TrayToolTip>
                     <Border BorderBrush="#FF46FFD0" Background="White" BorderThickness="1" CornerRadius="8" Width="250" Height="auto">
                         <StackPanel>
-                            <TextBlock Foreground="#FF2BFF00" Text="SNIBypassGUI" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}"/>
-                            <TextBlock x:Name="ReferenceTextBlock" Margin="5,0,5,5" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="14" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}">
+                            <TextBlock Foreground="#FF2BFF00" Text="SNIBypassGUI" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" FontFamily="{StaticResource LXGWWenKai-Regular}"/>
+                            <TextBlock x:Name="ReferenceTextBlock" Margin="5,0,5,5" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="14" FontFamily="{StaticResource LXGWWenKai-Regular}">
 			                <Run Foreground="#FF00FFED" Text="服务状态："/>
 			                <Run x:Name="TaskbarIconServiceST"  Text="主服务和DNS服务未运行" Foreground="Red"/>
                             </TextBlock>
-                            <TextBlock Foreground="DeepPink" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="休对故人思故国，且将新火试新茶。诗酒趁年华。" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}"/>
+                            <TextBlock Foreground="DeepPink" x:Name="TaskbarIconYiyan" Margin="5,0,5,5" TextWrapping="Wrap" Text="休对故人思故国，且将新火试新茶。诗酒趁年华。" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="{StaticResource LXGWWenKai-Regular}"/>
                             <TextBlock Foreground="DarkViolet" x:Name="TaskbarIconYiyanFrom" Margin="5,0,5,5" TextWrapping="Wrap" Text="—— 苏轼「望江南·超然台作」" TextAlignment="Right" VerticalAlignment="Center" FontStyle="Italic"/>
                         </StackPanel>
                     </Border>
@@ -73,7 +73,7 @@
                         <ContextMenu.Background>
                             <ImageBrush Stretch="UniformToFill" ImageSource="/Resources/imgs/MenuBkg.png"/>
                         </ContextMenu.Background>
-                        <MenuItem Foreground="White" x:Name="MenuItem_ShowMainWin" Header="显示主窗口" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ShowMainWin_Click" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}" FontWeight="Bold">
+                        <MenuItem Foreground="White" x:Name="MenuItem_ShowMainWin" Header="显示主窗口" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ShowMainWin_Click" FontFamily="{StaticResource LXGWWenKai-Regular}" FontWeight="Bold">
                             <MenuItem.Icon>
                                 <Viewbox Width="16" Height="16">
                                     <Path Data="{StaticResource HomeGeometry}" Stretch="Uniform" Fill="#00a2ff" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -89,7 +89,7 @@
                                 </Viewbox>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Foreground="White" x:Name="MenuItem_StartService" Header="启动服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StartService_Click" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}" FontWeight="Bold">
+                        <MenuItem Foreground="White" x:Name="MenuItem_StartService" Header="启动服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StartService_Click" FontFamily="{StaticResource LXGWWenKai-Regular}" FontWeight="Bold">
                             <MenuItem.Icon>
                                 <Viewbox Width="16" Height="16">
                                     <Path Data="{StaticResource StartGeometry}" Stretch="Uniform" Fill="#FF2BFF00" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -105,7 +105,7 @@
                                 </Viewbox>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Foreground="White" x:Name="MenuItem_StopService" Header="停止服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StopService_Click" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}" FontWeight="Bold">
+                        <MenuItem Foreground="White" x:Name="MenuItem_StopService" Header="停止服务" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_StopService_Click" FontFamily="{StaticResource LXGWWenKai-Regular}" FontWeight="Bold">
                             <MenuItem.Icon>
                                 <Viewbox Width="16" Height="16">
                                     <Path Data="{StaticResource StopGeometry}" Stretch="Uniform" Fill="Red" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -121,7 +121,7 @@
                                 </Viewbox>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Foreground="White" x:Name="MenuItem_ExitTool" Header="退出工具" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ExitTool_Click" FontFamily="{StaticResource HarmonyOS_Sans_SC_Regular}" FontWeight="Bold">
+                        <MenuItem Foreground="White" x:Name="MenuItem_ExitTool" Header="退出工具" MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave" Click="MenuItem_ExitTool_Click" FontFamily="{StaticResource LXGWWenKai-Regular}" FontWeight="Bold">
                             <MenuItem.Icon>
                                 <Viewbox Width="16" Height="16">
                                     <Path Data="{StaticResource ExitGeometry}" Stretch="Uniform" Fill="#FFFF00C7" Width="138" Height="138" Margin="0,0,0,0" RenderTransformOrigin="0.5,0.5">
@@ -735,10 +735,9 @@
                                             <Grid.RowDefinitions>
                                                 <RowDefinition/>
                                             </Grid.RowDefinitions>
-                                            <Button x:Name="SwitchDomainNameResolutionMethodBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource DomainNameGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" IsEnabled="False" Click="SwitchDomainNameResolutionMethodBtn_Click" Height="50" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="域名解析：&#x000A;DNS服务" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15"  Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
-                                            <Button x:Name="AcrylicDebugBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource DNSGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" Grid.Column="1" IsEnabled="False" Click="AcrylicDebugBtn_Click" Height="50" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="DNS调试：&#x000A;关" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15"  Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
+                                            <Button x:Name="AcrylicDebugBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource DNSGeometry}" hc:IconElement.Height="25" hc:IconElement.Width="25" IsEnabled="False" Click="AcrylicDebugBtn_Click" Height="50" Margin="5,0,10,10" HorizontalAlignment="Stretch" Content="DNS调试：&#x000A;关" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15"  Foreground="#FF04ABD6" BorderBrush="#FF04ABD6" VerticalContentAlignment="Center"/>
+                                            <Button x:Name="NginxLogTracingBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource DomainNameGeometry}" hc:IconElement.Height="25" Grid.Column="1" hc:IconElement.Width="25" IsEnabled="False" Click="NginxLogTracing_Click" Height="50" Margin="10,0,5,10" HorizontalAlignment="Stretch" Content="主服务&#x000A;日志追踪" HorizontalContentAlignment="Center" Background="{DynamicResource BackgroundBrush}" FontSize="15"  Foreground="#408e43" BorderBrush="#408e43" VerticalContentAlignment="Center"/>
                                         </Grid>
-                                        <Button x:Name="NginxLogTracingBtn" hc:BorderElement.CornerRadius="8" hc:IconElement.Geometry="{StaticResource NginxGeometry}" Click="NginxLogTracing_Click" Margin="10,0,10,10" HorizontalAlignment="Stretch" IsEnabled="False" Content="主服务日志追踪"  Background="{DynamicResource BackgroundBrush}" FontSize="15" Padding="4" Foreground="#408e43" BorderBrush="#408e43" VerticalContentAlignment="Center"/>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition/>

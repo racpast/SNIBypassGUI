@@ -118,6 +118,15 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+  <data name="4701" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\4701.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="4702" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\4702.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="4703" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imgs\4703.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="AcrylicConfiguration" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\dns\AcrylicConfiguration.ini;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -148,19 +157,7 @@
   <data name="SwitchData" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\SwitchData.json;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="SystemHosts_All" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\SystemHosts_All.dat;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
   <data name="tail" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\tail.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="_125838182" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\125838182.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="_5go1w8" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\5go1w8.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="_7pv9go" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imgs\7pv9go.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>

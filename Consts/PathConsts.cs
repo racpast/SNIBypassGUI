@@ -22,6 +22,7 @@ namespace SNIBypassGUI.Consts
         public static readonly string nginxAccessLogPath = Path.Combine(nginxLogDirectory, "access.log");
         public static readonly string nginxErrorLogPath = Path.Combine(nginxLogDirectory, "error.log");
         public static readonly string nginxTempDirectory = Path.Combine(NginxDirectory, "temp");
+        public static readonly string nginxCacheDirectory = Path.Combine(NginxDirectory, "cache");
         public static readonly string INIPath = Path.Combine(dataDirectory, "config.ini");
         public static readonly string LogDirectory = Path.Combine(dataDirectory, "logs");
         public static readonly string SystemHosts = "C:\\Windows\\System32\\drivers\\etc\\hosts";
@@ -33,7 +34,6 @@ namespace SNIBypassGUI.Consts
         public static readonly string CustomBackground = Path.Combine(dataDirectory, "CustomBkg.png");
         public static readonly string SwitchData = Path.Combine(dataDirectory, "SwitchData.json");
         public static readonly string AcrylicHostsAll = Path.Combine(dataDirectory, "AcrylicHosts_All.dat");
-        public static readonly string SystemHostsAll = Path.Combine(dataDirectory, "SystemHosts_All.dat");
         public static readonly string TailExePath = Path.Combine(dataDirectory, "tail.exe");
         public static readonly string TempDirectory = Path.Combine(Path.GetTempPath(), "SNIBypassGUI");
         public static readonly string NewVersionExe = Path.Combine(dataDirectory, "SNIBypassGUI.exe");

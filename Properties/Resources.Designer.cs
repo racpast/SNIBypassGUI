@@ -63,9 +63,9 @@ namespace SNIBypassGUI.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static byte[] _125838182 {
+        internal static byte[] _4701 {
             get {
-                object obj = ResourceManager.GetObject("_125838182", resourceCulture);
+                object obj = ResourceManager.GetObject("4701", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -73,9 +73,9 @@ namespace SNIBypassGUI.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static byte[] _5go1w8 {
+        internal static byte[] _4702 {
             get {
-                object obj = ResourceManager.GetObject("_5go1w8", resourceCulture);
+                object obj = ResourceManager.GetObject("4702", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -83,9 +83,9 @@ namespace SNIBypassGUI.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static byte[] _7pv9go {
+        internal static byte[] _4703 {
             get {
-                object obj = ResourceManager.GetObject("_7pv9go", resourceCulture);
+                object obj = ResourceManager.GetObject("4703", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -186,16 +186,6 @@ namespace SNIBypassGUI.Properties {
         internal static byte[] SwitchData {
             get {
                 object obj = ResourceManager.GetObject("SwitchData", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Byte[] 类型的本地化资源。
-        /// </summary>
-        internal static byte[] SystemHosts_All {
-            get {
-                object obj = ResourceManager.GetObject("SystemHosts_All", resourceCulture);
                 return ((byte[])(obj));
             }
         }
