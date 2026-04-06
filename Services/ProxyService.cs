@@ -1,14 +1,18 @@
-﻿using System;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using SNIBypassGUI.Common.IO;
+﻿using SNIBypassGUI.Common.IO;
 using SNIBypassGUI.Common.Network;
 using SNIBypassGUI.Common.System;
 using SNIBypassGUI.Common.Tools;
 using SNIBypassGUI.Consts;
 using SNIBypassGUI.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Documents;
 using static SNIBypassGUI.Common.LogManager;
 
 namespace SNIBypassGUI.Services
@@ -238,6 +242,83 @@ namespace SNIBypassGUI.Services
             }
         }
 
+        #region Fast Fix
+
+        private sealed record ProbeResult(IPAddress IP, bool Success);
+
+        private async Task<ProbeResult> ProbeTcpAsync(IPAddress ip, int port, int timeoutMs)
+        {
+            using var client = new TcpClient();
+
+            try
+            {
+                Task connectTask = client.ConnectAsync(ip, port);
+                Task timeoutTask = Task.Delay(timeoutMs);
+
+                Task completed = await Task.WhenAny(connectTask, timeoutTask);
+
+                if (completed != connectTask)
+                    return new ProbeResult(ip, false);
+
+                await connectTask;
+
+                return new ProbeResult(ip, true);
+            }
+            catch
+            {
+                return new ProbeResult(ip, false);
+            }
+        }
+
+        private async Task<string?> ResolveBestIpv4ForHostAsync(string host)
+        {
+            try
+            {
+                IPAddress[] addresses = await Dns.GetHostAddressesAsync(host);
+                IPAddress[] ipv4Addresses = [.. addresses
+                    .Where(x => x.AddressFamily == AddressFamily.InterNetwork)
+                    .Distinct()];
+
+                if (ipv4Addresses.Length == 0)
+                {
+                    WriteLog($"No IPv4 address resolved for host: {host}", LogLevel.Warning);
+                    return null;
+                }
+
+                if (ipv4Addresses.Length == 1)
+                {
+                    return ipv4Addresses[0].ToString();
+                }
+
+                var probeTasks = ipv4Addresses
+                    .Select(ip => ProbeTcpAsync(ip, 443, 1500))
+                    .ToList();
+
+                while (probeTasks.Count > 0)
+                {
+                    Task<ProbeResult> finished = await Task.WhenAny(probeTasks);
+                    probeTasks.Remove(finished);
+
+                    ProbeResult result = await finished;
+                    if (result.Success)
+                    {
+                        WriteLog($"Selected fastest IP for {host}: {result.IP}", LogLevel.Info);
+                        return result.IP.ToString();
+                    }
+                }
+
+                WriteLog($"All IPv4 probe attempts failed for host: {host}", LogLevel.Warning);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"Failed to resolve/probe host: {host}", LogLevel.Error, ex);
+                return null;
+            }
+        }
+
+        #endregion
+
         public async Task UpdateHostsFromConfigAsync()
         {
             try
@@ -248,6 +329,7 @@ namespace SNIBypassGUI.Services
                 hostsBuilder.AppendLine();
 
                 var proxySettings = ConfigManager.Instance.Settings.ProxySettings;
+                List<string> echDomains = [];
 
                 foreach (var item in CollectionConsts.Switches)
                 {
@@ -271,10 +353,57 @@ namespace SNIBypassGUI.Services
                                 WriteLog($"Error decoding hosts for {item.Id}.", LogLevel.Error, ex);
                             }
                         }
+                        if (item.Status == ItemBadgeStatus.Cloudflare) echDomains.AddRange(item.EchDomains);
                     }
                 }
 
                 await FileUtils.WriteAllTextAsync(PathConsts.AcrylicHosts, hostsBuilder.ToString());
+                await Task.Run(() =>
+                {
+                    string normalDomains = string.Join(";", echDomains);
+                    string prefixedDomains = string.Join(";", echDomains.Select(d => "^" + d)) + ";*";
+                    IniUtils.WriteString(AcrylicConsts.GlobalSection, AcrylicConsts.DenaryServerDomainNameAffinityMask, normalDomains, PathConsts.AcrylicConfig);
+
+                    string[] otherMasks =
+                    [
+                        AcrylicConsts.PrimaryServerDomainNameAffinityMask,
+                        AcrylicConsts.SecondaryServerDomainNameAffinityMask,
+                        AcrylicConsts.TertiaryServerDomainNameAffinityMask,
+                        AcrylicConsts.QuaternaryServerDomainNameAffinityMask,
+                        AcrylicConsts.QuinaryServerDomainNameAffinityMask,
+                        AcrylicConsts.SenaryServerDomainNameAffinityMask,
+                        AcrylicConsts.SeptenaryServerDomainNameAffinityMask,
+                        AcrylicConsts.OctonaryServerDomainNameAffinityMask,
+                        AcrylicConsts.NonaryServerDomainNameAffinityMask
+                    ];
+
+                    foreach (var mask in otherMasks)
+                        IniUtils.WriteString("GlobalSection", mask, prefixedDomains, PathConsts.AcrylicConfig);
+
+                    string dohHost = IniUtils.ReadString(
+                        AcrylicConsts.GlobalSection,
+                        AcrylicConsts.DenaryServerDoHProtocolHost,
+                        PathConsts.AcrylicConfig,
+                        string.Empty
+                    )?.Trim();
+
+                    if (!string.IsNullOrWhiteSpace(dohHost))
+                    {
+                        string? bestIp = ResolveBestIpv4ForHostAsync(dohHost).GetAwaiter().GetResult();
+                        if (!string.IsNullOrWhiteSpace(bestIp))
+                        {
+                            IniUtils.WriteString(
+                                AcrylicConsts.GlobalSection,
+                                AcrylicConsts.DenaryServerAddress,
+                                bestIp,
+                                PathConsts.AcrylicConfig
+                            );
+                        }
+                    }
+
+                    // 祖传手艺：The system keeps a cached version of the most recent registry file mapping to improve performance. If all parameters are NULL, the function flushes the cache.
+                    IniUtils.WriteString(null, null, null, PathConsts.AcrylicConfig);
+                });
             }
             catch (Exception ex)
             {

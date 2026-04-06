@@ -66,7 +66,6 @@
   <PropertyGroup>
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
-  
   <ItemGroup>
     <Reference Include="Costura, Version=6.0.0.0, Culture=neutral, PublicKeyToken=9919ef960d84173d, processorArchitecture=MSIL">
       <HintPath>packages\Costura.Fody.6.0.0\lib\netstandard2.0\Costura.dll</HintPath>
@@ -107,14 +106,12 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
-
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
   </ItemGroup>
-
   <ItemGroup>
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
@@ -122,6 +119,7 @@
     </Compile>
     <Compile Include="Behaviors\ToggleButtonAttach.cs" />
     <Compile Include="Common\Commands\AsyncCommand.cs" />
+    <Compile Include="Common\Compat\System\Runtime\CompilerServices\IsExternalInit.cs" />
     <Compile Include="Common\Extensions\BooleanExtensions.cs" />
     <Compile Include="Common\Extensions\LongExtensions.cs" />
     <Compile Include="Common\Extensions\ProcessExtensions.cs" />
@@ -147,6 +145,7 @@
     <Compile Include="Common\Tools\TailUtils.cs" />
     <Compile Include="Common\UI\ImageUtils.cs" />
     <Compile Include="Common\UI\TrayIconUtils.cs" />
+    <Compile Include="Consts\AcrylicConsts.cs" />
     <Compile Include="Consts\AppConsts.cs" />
     <Compile Include="Consts\CollectionConsts.cs" />
     <Compile Include="Consts\ConfigConsts.cs" />
@@ -182,7 +181,6 @@
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
-
   <ItemGroup>
     <Page Include="Views\CustomBackgroundWindow.xaml">
       <SubType>Designer</SubType>
@@ -193,7 +191,6 @@
       <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
-
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -218,7 +215,7 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-    <None Include="Resources\Acrylic\AcrylicConfiguration.ini" />
+    <None Include="Resources\Acrylic\AcrylicConfiguration.Template.ini" />
     <None Include="Resources\Acrylic\AcrylicService.exe" />
     <None Include="Resources\ca.cer" />
     <None Include="Resources\ProxyRules.json" />
@@ -229,7 +226,6 @@
   <ItemGroup>
     <Content Include="Libraries\ImageCropper.dll" />
   </ItemGroup>
-
   <Target Name="SetFodyWeavers" BeforeTargets="BeforeBuild">
     <ItemGroup Condition=" '$(Configuration)' == 'Release' ">
       <FodyWeaversContent Include="&#xD;&#xA;    &lt;Weavers xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xsi:noNamespaceSchemaLocation=&quot;FodyWeavers.xsd&quot;&gt;&#xD;&#xA;      &lt;Costura /&gt;&#xD;&#xA;    &lt;/Weavers&gt;" />
@@ -239,11 +235,9 @@
     </ItemGroup>
     <WriteLinesToFile File="FodyWeavers.xml" Lines="@(FodyWeaversContent)" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
-
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="powershell -Command &quot;(Get-FileHash '$(TargetPath)' -Algorithm SHA256).Hash.ToLower().Trim() | Out-File -Encoding ASCII -NoNewline '$(TargetDir)sha256.txt'&quot;" />
   </Target>
-  
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

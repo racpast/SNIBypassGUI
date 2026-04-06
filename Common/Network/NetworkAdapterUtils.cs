@@ -318,7 +318,6 @@ namespace SNIBypassGUI.Common.Network
                 }
             }
 
-            // ✨ Standardized FlushDNS call
             NetworkUtils.FlushDNS();
             return true;
         }

@@ -9,7 +9,7 @@ namespace SNIBypassGUI.Consts
 
         public const string CertificateThumbprint = "263961dd1800f3513b1e7818881683889c92aa1a";
 
-        public const string CurrentVersion = "V4.7";
+        public const string CurrentVersion = "V4.7.2";
 
         public readonly static string[] LogHead =
         [

@@ -130,22 +130,22 @@ namespace SNIBypassGUI.Common.Network
         public static void EnableAcrylicServiceHitLog()
         {
             // Log everything
-            IniUtils.WriteString("GlobalSection", "HitLogFileWhat", "XHCFRU", PathConsts.AcrylicConfig);
+            IniUtils.WriteString(AcrylicConsts.GlobalSection, AcrylicConsts.HitLogFileWhat, "XHCFRU", PathConsts.AcrylicConfig);
 
             // Log full dump of the response
-            IniUtils.WriteString("GlobalSection", "HitLogFullDump", "Yes", PathConsts.AcrylicConfig);
+            IniUtils.WriteString(AcrylicConsts.GlobalSection, AcrylicConsts.HitLogFullDump, "Yes", PathConsts.AcrylicConfig);
 
             // Disable log buffering
-            IniUtils.WriteString("GlobalSection", "HitLogMaxPendingHits", "0", PathConsts.AcrylicConfig);
+            IniUtils.WriteString(AcrylicConsts.GlobalSection, AcrylicConsts.HitLogMaxPendingHits, "0", PathConsts.AcrylicConfig);
 
             // Set the log file path
-            IniUtils.WriteString("GlobalSection", "HitLogFileName", GetLogPath(), PathConsts.AcrylicConfig);
+            IniUtils.WriteString(AcrylicConsts.GlobalSection, AcrylicConsts.HitLogFileName, GetLogPath(), PathConsts.AcrylicConfig);
         }
 
         /// <summary>
         /// Disables the hit log for the Acrylic DNS Proxy service.
         /// </summary>
         public static void DisableAcrylicServiceHitLog() =>
-            IniUtils.WriteString("GlobalSection", "HitLogFileName", string.Empty, PathConsts.AcrylicConfig);
+            IniUtils.WriteString(AcrylicConsts.GlobalSection, AcrylicConsts.HitLogFileName, string.Empty, PathConsts.AcrylicConfig);
     }
 }

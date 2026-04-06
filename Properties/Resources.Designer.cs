@@ -93,9 +93,9 @@ namespace SNIBypassGUI.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static byte[] AcrylicConfiguration {
+        internal static byte[] AcrylicConfigurationTemplate {
             get {
-                object obj = ResourceManager.GetObject("AcrylicConfiguration", resourceCulture);
+                object obj = ResourceManager.GetObject("AcrylicConfigurationTemplate", resourceCulture);
                 return ((byte[])(obj));
             }
         }

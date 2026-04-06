@@ -127,8 +127,8 @@
   <data name="4703" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Images\4703.jpg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="AcrylicConfiguration" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Acrylic\AcrylicConfiguration.ini;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="AcrylicConfigurationTemplate" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Acrylic\AcrylicConfiguration.Template.ini;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="AcrylicService" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Acrylic\AcrylicService.exe;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>

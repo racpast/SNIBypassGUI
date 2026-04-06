@@ -55,6 +55,7 @@ namespace SNIBypassGUI.Consts
         public static readonly string AcrylicCache = Path.Combine(DnsDirectory, "AcrylicCache.dat");
         public static readonly string AcrylicHosts = Path.Combine(DnsDirectory, "AcrylicHosts.txt");
         public static readonly string AcrylicConfig = Path.Combine(DnsDirectory, "AcrylicConfiguration.ini");
+        public static readonly string AcrylicConfigTemplate = Path.Combine(DnsDirectory, "AcrylicConfiguration.Template.ini");
 
         #endregion
 

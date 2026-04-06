@@ -222,6 +222,22 @@ namespace SNIBypassGUI.Views
                     return false;
                 }
                 if (!await CheckAndHandlePortConflicts(silent)) return false;
+
+                try
+                {
+                    await Task.Run(() =>
+                    {
+                        File.Copy(PathConsts.AcrylicConfigTemplate, PathConsts.AcrylicConfig, true);
+                    });
+                    WriteLog("Successfully overwritten AcrylicConfig with Template.", LogLevel.Info);
+                }
+                catch (Exception ex)
+                {
+                    WriteLog($"Failed to overwrite config with template: {ex.Message}", LogLevel.Error, ex);
+                    if (!silent) MessageBox.Show($"还原配置模板失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return false;
+                }
+
                 await _proxyService.UpdateHostsFromConfigAsync();
                 await _proxyService.StartAsync(status =>
                 {
@@ -813,6 +829,13 @@ namespace SNIBypassGUI.Views
                         badgeBorder.ToolTip = "此站点适配尚存已知问题";
                         badgeText.Text = "已知问题";
                         badgeText.Foreground = Brushes.OrangeRed;
+                        break;
+
+                    case ItemBadgeStatus.Cloudflare:
+                        badgeBorder.BorderBrush = Brushes.MediumPurple;
+                        badgeBorder.ToolTip = "此站点托管于 Cloudflare 并启用 ECH";
+                        badgeText.Text = "Cloudflare";
+                        badgeText.Foreground = Brushes.MediumPurple;
                         break;
                 }
 

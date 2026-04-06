@@ -22,7 +22,7 @@ namespace SNIBypassGUI.Consts
             { SNIBypassCrt, Properties.Resources.SNIBypassCrt },
             { SNIBypassKey, Properties.Resources.SNIBypassKey },
             { AcrylicServiceExe, Properties.Resources.AcrylicService },
-            { AcrylicConfig, Properties.Resources.AcrylicConfiguration },
+            { AcrylicConfigTemplate, Properties.Resources.AcrylicConfigurationTemplate },
             { ProxyRules, Properties.Resources.ProxyRules }
         });
 

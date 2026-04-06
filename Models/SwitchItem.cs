@@ -8,7 +8,8 @@ namespace SNIBypassGUI.Models
     {
         None,
         IPv6,
-        KnownIssue
+        KnownIssue,
+        Cloudflare
     }
 
     public class SwitchItem
@@ -17,6 +18,7 @@ namespace SNIBypassGUI.Models
         public string DisplayName { get; set; }
         public ItemBadgeStatus Status { get; set; } = ItemBadgeStatus.None;
         public List<string> Links { get; set; } = [];
+        public List<string> EchDomains { get; set; } = [];
         public string Favicon { get; set; }
         public string Hosts { get; set; }
 
