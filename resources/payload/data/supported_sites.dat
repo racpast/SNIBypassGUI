@@ -16,7 +16,9 @@
 # See the LICENSE file in the project root for full terms and conditions.
 
 IF ZH
-TEXT "以下按字母顺序分组列出了本程序支持的全部站点。"
+TEXT "以下按字母顺序分组列出了本程序支持的大部分站点。"
+TEXT "此外，本程序还会对部分可正常访问但速度较慢的站点尝试进行"
+TEXT "加速，这类站点未在下方列出。"
 TEXT "站点名称后可能出现上标，用于说明连接特性及程序行为。若未"
 TEXT "出现任何上标，则该站点仅通过本地 Nginx 代理，或其 DNS"
 TEXT "解析在部分运营商网络中存在异常，此时程序会直接连接该站点。"
@@ -29,7 +31,9 @@ TEXT "时段以及程序所使用的优选域名质量等因素影响，无法�
 TEXT "如需正常使用标注 “R” 的站点，须本地网络支持公共 IPv6 访问。"
 LINK "测试 IPv6 连通性" "https://test-ipv6.com"
 ELSE
-TEXT "The following is an alphabetical list of all supported sites in this program."
+TEXT "The following is an alphabetical grouped list of most sites supported by this"
+TEXT "program. In addition, the program attempts to accelerate certain sites that are"
+TEXT "otherwise accessible but slow; these sites are not listed below."
 TEXT "Superscripts may appear after site names to indicate connection characteristics"
 TEXT "and program behavior. If no superscript is present, the site is accessed solely via"
 TEXT "a local Nginx proxy, or its DNS resolution is abnormal on certain Internet Service"
@@ -54,6 +58,7 @@ LINK "APKMirror" "https://apkmirror.com"
 LINK "Archive of Our Own" "https://archiveofourown.org"
 LINK "Arena AI ᴿ" "https://arena.ai"
 LINK "ASMR Online ᴱ" "https://asmr.one"
+LINK "ASMR 基佬中心 ᴱ" "https://www.asmrgay.com"
 SEP
 
 TEXT "B"
@@ -87,6 +92,7 @@ SEP
 TEXT "F"
 LINK "F-Droid" "https://f-droid.org"
 LINK "Fandom ᴱ" "https://www.fandom.com"
+LINK "FapForFun" "https://fapforfun.net"
 LINK "Flickr" "https://flickr.com"
 SEP
 
@@ -139,11 +145,13 @@ LINK "OnlyFans ᴱ" "https://onlyfans.com"
 SEP
 
 TEXT "P"
+LINK "Patreon ᴱ" "https://patreon.com"
 LINK "Pinterest" "https://pinterest.com"
 LINK "Pixiv ᴱ" "https://pixiv.net"
 LINK "Poe ᴱᴿ" "https://poe.com"
 LINK "Pornhub" "https://pornhub.com"
 LINK "Prismic" "https://images.prismic.io"
+LINK "Proton" "https://proton.me"
 SEP
 
 TEXT "Q"
@@ -194,4 +202,5 @@ SEP
 
 TEXT "#"
 LINK "巴哈姆特 ᴱ" "https://www.gamer.com.tw"
+LINK "琉璃神社 ᴱ" "https://hacg.me"
 LINK "紳士漫畫 ᴱ" "https://wnacg.com"

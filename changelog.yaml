@@ -31,6 +31,15 @@
 # --- newest first; CI reads the topmost entry ---
 
 - version: "5.1.2"
+  date: "2026-09-16"
+  en: |
+    • Added support for ASMRGAY, Patreon, Proton, and other sites.
+    • Updated sni-gate to v2.4.1 and leveraged its new capabilities to improve connection speeds for most supported sites.
+  zh-CN: |
+    • 新增对 ASMR 基佬中心、Patreon、Proton 等站点的支持。
+    • 更新 sni-gate 组件至 v2.4.1，并利用其新特性优化了大部分站点的连接速度。
+
+- version: "5.1.2"
   date: "2026-08-27"
   en: |
     • Component processes are now continuously supervised throughout their lifecycle. If any component terminates unexpectedly, all remaining components and DNS redirection are halted immediately to prevent silent connection failures across supported sites. Supervision of DNS redirection covers both its local DNS service and DNS policy rules: missing rules are automatically restored, and if they cannot be maintained, all components are stopped with an explicit reason provided.

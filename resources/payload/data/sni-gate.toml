@@ -36,10 +36,42 @@ bootstrap = "@dnspod-doh"
 
   [resolvers.cloudflare-doh.ech]
   mode = "doh-with-fallback"
-  config = "AEX+DQBBSQAgACCroazjlZoPusoav985mbUuVIPv3RYBlmlh0o2FPT/vCgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
+  config = "AEX+DQBBvwAgACDrp5X/pCmzqIhkACMdR+Y0FYZpenzk3HnO529rcaMafwAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
   require_ech = true
   ech_refresh = "1h"
   ech_domain = "cloudflare-ech.com"
+
+
+# ==============================================================================
+# Upstream Pools
+# ==============================================================================
+[pools.cloudflare]
+targets = [
+  "cf.090227.xyz",
+  "saas.sin.fan",
+  "bestcf.top",
+  "cf.0sm.com",
+  "cf.3666888.xyz",
+  "cloudflare.182682.xyz",
+  "dnew.cc",
+  "www.visa.cn",
+  "mfa.gov.ua",
+  "www.shopify.com",
+  "store.ubi.com",
+  "cf1s.cf.3666888.xyz",
+  "172.64.229.0/24[256]",
+]
+fallback = 0
+resolver = "@dnspod-doh"
+
+  [pools.cloudflare.probe]
+  mode = "http"
+  url = "https://cdn.rpnet.cc/cdn-cgi/trace"
+  expect_status = [200]
+  timeout = "5s"
+  interval = "3m"
+  degraded_interval = "30s"
+  fail_threshold = 2
 
 
 # ==============================================================================
@@ -47,9 +79,8 @@ bootstrap = "@dnspod-doh"
 # ==============================================================================
 
 [templates.cf-optimize]
-upstream = "cf.090227.xyz"
-address_family = "ipv4"
-resolver = "@dnspod-doh"
+upstream = "@cloudflare"
+select = ["ipv4"]
 
 [templates.nat64-proxy]
 nat64_prefix = "2a01:4f8:c2c:123f:64:5::"
@@ -117,38 +148,25 @@ addr = 443
 
   [listener.ech]
   mode = "doh-with-fallback"
-  config = "AEX+DQBBSQAgACCroazjlZoPusoav985mbUuVIPv3RYBlmlh0o2FPT/vCgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
+  config = "AEX+DQBBvwAgACDrp5X/pCmzqIhkACMdR+Y0FYZpenzk3HnO529rcaMafwAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
   ech_domain = "cloudflare-ech.com"
   require_ech = true
 
 
   # ------------------------------------------------------------------------------
-  # Cloudflare
-  # ------------------------------------------------------------------------------
-
-  [[listener.route]]
-  use = "cf-optimize"
-  type = "tls"
-  match_sni = [
-    # Cloudflare
-    ".cloudflare.com", ".pages.dev",
-
-    # GameBanana
-    ".gamebanana.com",
-
-    # 紳士漫畫
-    ".qy0.ru", ".wcdn.date",
-  ]
-
-
-  # ------------------------------------------------------------------------------
-  # ECH
+  # Cloudflare ECH
   # ------------------------------------------------------------------------------
 
   [[listener.route]]
   match_sni = [
+    # Anime-Sharing Community
+    ".anime-sharing.com",
+
     # ASMR Online
     ".asmr.one", ".asmr-100.com", ".asmr-200.com", ".asmr-300.com",
+
+    # ASMR 基佬中心
+    ".asmrgay.com", ".asmrgay.org", ".asmrgay.net", ".asmr.pw", ".asmr.uno", "asmr.121231234.xyz",
 
     # Bangumi 番组计划
     ".bgm.tv", ".chii.in",
@@ -156,11 +174,14 @@ addr = 443
     # Bluesky
     "live-events.workers.bsky.app", "ip.bsky.app", "communities.bsky.app", "anycast.bsky.app", "app-config.workers.bsky.app", "staging.bsky.app", "endpoints.bsky.app",
 
+    # GameBanana
+    ".gamebanana.com",
+
     # Civitai
     ".civitai.com",
 
     # Cloudflare
-    ".workers.dev", "dns.cloudflare.com", ".cloudflare-dns.com",
+    ".workers.dev", ".pages.dev", ".cloudflare.com", ".cloudflare-dns.com",
 
     # Fandom
     ".fandom.com",
@@ -192,6 +213,9 @@ addr = 443
     # Medium
     ".medium.com",
 
+    # MyFigureCollection.net
+    ".myfigurecollection.net",
+
     # nicozon
     ".nicozon.net",
 
@@ -200,6 +224,9 @@ addr = 443
 
     # OnlyFans
     "onlyfans.com", "blog.onlyfans.com", "media.onlyfans.com", "store.onlyfans.com", "www.onlyfans.com", "welcome.onlyfans.com", "zendesk1.onlyfans.com", "id2.onlyfans.com", "zendesk3.onlyfans.com", "zendesk2.onlyfans.com", "merch.onlyfans.com", "zendesk4.onlyfans.com",
+
+    # Patreon
+    "patreon.com", "blog.patreon.com", "support.patreon.com", "privacy.patreon.com", "docs.patreon.com", "events.patreon.com", "c5.patreon.com", "c6.patreon.com", "creatorhub.patreon.com", "next.patreon.com", "news.patreon.com", "email.mailgun.patreon.com", "c7.patreon.com", "c8.patreon.com", "c1.patreon.com", "c13.patreon.com", "partners.patreon.com", "learn.patreon.com", "cdn6.patreon.com", "c10.patreon.com", "zendesk2.patreon.com", "staging.patreon.com", "webhooks.patreon.com", "learnmore.patreon.com", "share.patreon.com", "pref.patreon.com", "www.patreon.com", "static-secure.patreon.com", "jobs.patreon.com", "pullup.patreon.com", "cdn1.patreon.com", "open.patreon.com", "c16.patreon.com", "c14.patreon.com", "cdn2.patreon.com", "track.patreon.com", "admin.patreon.com", "zendesk3.patreon.com", "comingsoon.patreon.com", "links.patreon.com", "pm-bounces.c.patreon.com", "creatorfest.patreon.com", "staging-jordan.patreon.com", "zendesk4.patreon.com", "c11.patreon.com", "secure.patreon.com", "c4.patreon.com", "pm-bounces.patreon.com", "email.email.patreon.com", "go.patreon.com", "api.patreon.com", "cast-static.patreon.com", "zendesk1.patreon.com", "cdn5.patreon.com", "payments.patreon.com", "hooks.patreon.com", "backstage.patreon.com", ".patreonusercontent.com",
 
     # Pixiv
     ".pixiv.net", ".pximg.net",
@@ -216,10 +243,13 @@ addr = 443
     # Rumble
     "static.rumble.com",
 
+    # Ryuugames
+    ".ryuugames.com",
+
     # Substack
     ".substack.com",
 
-    # # Urban Dictionary
+    # Urban Dictionary
     "hb.urbandictionary.com",
 
     # wallhaven.cc
@@ -231,8 +261,11 @@ addr = 443
     # 巴哈姆特
     ".gamer.com.tw",
 
+    # 琉璃神社
+    ".hacg.me",
+
     # 紳士漫畫
-    ".wnacg.com", ".wnacg.ru",
+    ".wnacg.com", ".wnacg.ru", ".qy0.ru", ".wcdn.date",
   ]
   type = "ech"
   use = "cf-optimize"
@@ -317,6 +350,9 @@ addr = 443
 
     # Deviantart
     "deviantart.net", "@deviantart-non-cloudfront",
+
+    # FapForFun
+    ".fapforfun.net",
 
     # OnlyFans
     "ws2.onlyfans.com",

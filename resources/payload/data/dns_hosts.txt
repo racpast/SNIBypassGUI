@@ -15,6 +15,9 @@
 #
 # See the LICENSE file in the project root for full terms and conditions.
 
+# Anime-Sharing Community
+127.0.0.1 .anime-sharing.com
+
 # APKMirror
 127.0.0.1 .apkmirror.com
 
@@ -26,6 +29,15 @@
 
 # ASMR Online
 127.0.0.1 .asmr.one .asmr-100.com .asmr-200.com .asmr-300.com
+
+# ASMR 基佬中心
+127.0.0.1 .asmrgay.com
+127.0.0.1 .asmrgay.org
+127.0.0.1 .asmrgay.net
+127.0.0.1 .asmr.pw
+127.0.0.1 .asmr.uno
+127.0.0.1 asmr.121231234.xyz
+# 127.0.0.1 .asmrd.com
 
 # Bangumi 番组计划
 127.0.0.1 .bangumi.tv .bgm.tv .chii.in
@@ -48,7 +60,7 @@
 127.0.0.1 .claude.ai
 
 # Cloudflare
-127.0.0.1 .workers.dev .pages.dev dns.cloudflare.com dash.cloudflare.com .cloudflare-dns.com
+127.0.0.1 .workers.dev .pages.dev dns.cloudflare.com dash.cloudflare.com challenges.cloudflare.com .cloudflare-dns.com
 
 # Deviantart
 127.0.0.1 .deviantart.com .deviantart.net
@@ -73,6 +85,9 @@
 
 # Fandom
 127.0.0.1 .fandom.com
+
+# FapForFun
+127.0.0.1 .fapforfun.net
 
 # F-Droid
 127.0.0.1 .f-droid.org
@@ -128,6 +143,9 @@
 # Microsoft OneDrive
 127.0.0.1 .onedrive.live.com
 
+# MyFigureCollection.net
+127.0.0.1 .myfigurecollection.net
+
 # nicozon
 127.0.0.1 .nicozon.net
 
@@ -139,6 +157,10 @@
 
 # OnlyFans
 127.0.0.1 .onlyfans.com
+
+# Patreon
+127.0.0.1 .patreon.com
+127.0.0.1 .patreonusercontent.com
 
 # Pinterest
 127.0.0.1 .pinterest.com .pinimg.com
@@ -158,6 +180,9 @@
 # Prismic
 127.0.0.1 images.prismic.io
 
+# Proton
+127.0.0.1 .proton.me
+
 # Quora
 127.0.0.1 .quora.com
 
@@ -172,6 +197,9 @@
 
 # RUTUBE
 127.0.0.1 .rutube.ru
+
+# Ryuugames
+127.0.0.1 ryuugames.com host.ryuugames.com www.ryuugames.com cpanel.ryuugames.com cloud.ryuugames.com asmr.ryuugames.com ftp.ryuugames.com drive.ryuugames.com download.ryuugames.com
 
 # Sankaku Complex
 127.0.0.1 .sankakucomplex.com
@@ -215,6 +243,9 @@
 # 巴哈姆特
 127.0.0.1 .gamer.com.tw
 
+# 琉璃神社
+127.0.0.1 .hacg.me
+
 # 紳士漫畫
 127.0.0.1 .wnacg.com .wnacg.ru .qy0.ru .wcdn.date
 
@@ -222,7 +253,10 @@
 127.0.0.1 v2.hysteria.network
 
 # INTERNAL
-127.0.0.1 .snib snib.test
+127.0.0.1 snib.test
 
 # NXDOMAIN
 NX .adtng.com .juicyads.com .juicyads.me
+
+# Heroku App
+# 127.0.0.1 .herokuapp.com
