@@ -77,6 +77,7 @@ LINK "Cloudflare Workers ᴱ" "https://welcome.developers.workers.dev"
 SEP
 
 TEXT "D"
+LINK "Danbooru ᴱ" "https://danbooru.donmai.us"
 LINK "Deviantart" "https://deviantart.com"
 LINK "Discord" "https://discord.com"
 LINK "DLsite" "https://dlsite.com"
@@ -146,6 +147,7 @@ SEP
 
 TEXT "P"
 LINK "Patreon ᴱ" "https://patreon.com"
+LINK "Perplexity ᴱ" "https://perplexity.ai"
 LINK "Pinterest" "https://pinterest.com"
 LINK "Pixiv ᴱ" "https://pixiv.net"
 LINK "Poe ᴱᴿ" "https://poe.com"
@@ -203,4 +205,5 @@ SEP
 TEXT "#"
 LINK "巴哈姆特 ᴱ" "https://www.gamer.com.tw"
 LINK "琉璃神社 ᴱ" "https://hacg.me"
+LINK "南+ South Plus ᴱ" "https://south-plus.org"
 LINK "紳士漫畫 ᴱ" "https://wnacg.com"

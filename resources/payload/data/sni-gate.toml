@@ -183,6 +183,9 @@ addr = 443
     # Cloudflare
     ".workers.dev", ".pages.dev", ".cloudflare.com", ".cloudflare-dns.com",
 
+    # Danbooru
+    "danbooru.donmai.us", "cdn.donmai.us", "safebooru.donmai.us", "raikou2.donmai.us", "donmai.us", "raikou1.donmai.us", "testbooru.donmai.us", "saitou.donmai.us", "hijiribe.donmai.us", "sonohara.donmai.us", "raikou3.donmai.us", "www.danbooru.donmai.us", "isshiki.donmai.us", "autotagger.donmai.us", "cdn1.donmai.us", "raikou4.donmai.us", "betabooru.donmai.us", "testbooru-cdn.donmai.us", "shima.donmai.us", "kagamihara.donmai.us", "signoz.donmai.us", "cdn0.donmai.us", "www.donmai.us",
+
     # Fandom
     ".fandom.com",
 
@@ -228,6 +231,9 @@ addr = 443
     # Patreon
     "patreon.com", "blog.patreon.com", "support.patreon.com", "privacy.patreon.com", "docs.patreon.com", "events.patreon.com", "c5.patreon.com", "c6.patreon.com", "creatorhub.patreon.com", "next.patreon.com", "news.patreon.com", "email.mailgun.patreon.com", "c7.patreon.com", "c8.patreon.com", "c1.patreon.com", "c13.patreon.com", "partners.patreon.com", "learn.patreon.com", "cdn6.patreon.com", "c10.patreon.com", "zendesk2.patreon.com", "staging.patreon.com", "webhooks.patreon.com", "learnmore.patreon.com", "share.patreon.com", "pref.patreon.com", "www.patreon.com", "static-secure.patreon.com", "jobs.patreon.com", "pullup.patreon.com", "cdn1.patreon.com", "open.patreon.com", "c16.patreon.com", "c14.patreon.com", "cdn2.patreon.com", "track.patreon.com", "admin.patreon.com", "zendesk3.patreon.com", "comingsoon.patreon.com", "links.patreon.com", "pm-bounces.c.patreon.com", "creatorfest.patreon.com", "staging-jordan.patreon.com", "zendesk4.patreon.com", "c11.patreon.com", "secure.patreon.com", "c4.patreon.com", "pm-bounces.patreon.com", "email.email.patreon.com", "go.patreon.com", "api.patreon.com", "cast-static.patreon.com", "zendesk1.patreon.com", "cdn5.patreon.com", "payments.patreon.com", "hooks.patreon.com", "backstage.patreon.com", ".patreonusercontent.com",
 
+    # Perplexity
+    ".perplexity.ai",
+
     # Pixiv
     ".pixiv.net", ".pximg.net",
 
@@ -263,6 +269,9 @@ addr = 443
 
     # 琉璃神社
     ".hacg.me",
+
+    # 南+ South Plus
+    "bbs.imoutolove.me", "east-plus.net", "bbs.east-plus.net", "www.east-plus.net", "south-plus.net", "www.south-plus.net", "bbs.south-plus.net", "north-plus.net", "www.north-plus.net", "bbs.north-plus.net", "spring-plus.net", "www.spring-plus.net", "bbs.spring-plus.net", "summer-plus.net", "www.summer-plus.net", "bbs.summer-plus.net", "snow-plus.net", "www.snow-plus.net", "bbs.snow-plus.net", "white-plus.net", "www.white-plus.net", "bbs.white-plus.net", "level-plus.net", "www.level-plus.net", "bbs.level-plus.net", "south-plus.org", "www.south-plus.org", "bbs.south-plus.org", "assets.south-plus.org",
 
     # 紳士漫畫
     ".wnacg.com", ".wnacg.ru", ".qy0.ru", ".wcdn.date",

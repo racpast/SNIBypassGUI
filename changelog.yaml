@@ -33,6 +33,13 @@
 - version: "5.1.2"
   date: "2026-09-16"
   en: |
+    • Added support for Danbooru, Perplexity, and South Plus.
+  zh-CN: |
+    • 新增对 Danbooru、Perplexity、南+ South Plus 的支持。
+
+- version: "5.1.2"
+  date: "2026-09-16"
+  en: |
     • Added support for ASMRGAY, Patreon, Proton, and other sites.
     • Updated sni-gate to v2.4.1 and leveraged its new capabilities to improve connection speeds for most supported sites.
   zh-CN: |

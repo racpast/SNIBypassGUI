@@ -62,6 +62,9 @@
 # Cloudflare
 127.0.0.1 .workers.dev .pages.dev dns.cloudflare.com dash.cloudflare.com challenges.cloudflare.com .cloudflare-dns.com
 
+# Danbooru
+127.0.0.1 danbooru.donmai.us cdn.donmai.us safebooru.donmai.us raikou2.donmai.us donmai.us raikou1.donmai.us testbooru.donmai.us saitou.donmai.us hijiribe.donmai.us sonohara.donmai.us raikou3.donmai.us www.danbooru.donmai.us isshiki.donmai.us autotagger.donmai.us cdn1.donmai.us raikou4.donmai.us betabooru.donmai.us testbooru-cdn.donmai.us shima.donmai.us kagamihara.donmai.us signoz.donmai.us cdn0.donmai.us www.donmai.us
+
 # Deviantart
 127.0.0.1 .deviantart.com .deviantart.net
 
@@ -162,6 +165,9 @@
 127.0.0.1 .patreon.com
 127.0.0.1 .patreonusercontent.com
 
+# Perplexity
+127.0.0.1 .perplexity.ai
+
 # Pinterest
 127.0.0.1 .pinterest.com .pinimg.com
 
@@ -245,6 +251,9 @@
 
 # 琉璃神社
 127.0.0.1 .hacg.me
+
+# 南+ South Plus
+127.0.0.1 bbs.imoutolove.me east-plus.net bbs.east-plus.net www.east-plus.net south-plus.net www.south-plus.net bbs.south-plus.net north-plus.net www.north-plus.net bbs.north-plus.net spring-plus.net www.spring-plus.net bbs.spring-plus.net summer-plus.net www.summer-plus.net bbs.summer-plus.net snow-plus.net www.snow-plus.net bbs.snow-plus.net white-plus.net www.white-plus.net bbs.white-plus.net level-plus.net www.level-plus.net bbs.level-plus.net south-plus.org www.south-plus.org bbs.south-plus.org assets.south-plus.org
 
 # 紳士漫畫
 127.0.0.1 .wnacg.com .wnacg.ru .qy0.ru .wcdn.date
