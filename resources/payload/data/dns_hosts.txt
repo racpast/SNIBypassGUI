@@ -72,7 +72,7 @@
 127.0.0.1 .discord.com .discord.gg .discordapp.com .discordapp.net
 
 # DLsite
-127.0.0.1 .dlsite.com
+127.0.0.1 .dlsite.com img.dlsite.jp
 
 # Docker
 127.0.0.1 .docker.io .hub.docker.com production.cloudflare.docker.com .dockerstatus.com
@@ -97,6 +97,9 @@
 
 # Flickr
 127.0.0.1 .flickr.com
+
+# GameBanana
+127.0.0.1 .gamebanana.com
 
 # Gelbooru
 127.0.0.1 .gelbooru.com
@@ -134,11 +137,17 @@
 # LINUX DO
 127.0.0.1 .linux.do
 
+# Livedoor
+127.0.0.1 .blog.jp .doorblog.jp .ldblog.jp .dreamlog.jp .publog.jp .livedoor.biz .diary.to .weblog.to .bloggeek.jp .blogism.jp .blogo.jp .blogstation.jp .blogto.jp .gger.jp .golog.jp .liblo.jp .myjournal.jp .mynikki.jp .xxxblog.jp .youblog.jp .2chblog.jp .teamblog.jp .corpblog.jp .officeblog.jp .storeblog.jp .cafeblog.jp .officialblog.jp .techblog.jp .livedoor.blog .livedoor.jp .blogsys.jp .blogimg.jp
+
 # MakerWorld
 127.0.0.1 .makerworld.com
 
 # Medium
 127.0.0.1 .medium.com
+
+# MEGA
+127.0.0.1 .mega.nz .mega.io .mega.co.nz
 
 # Microsoft Copilot
 127.0.0.1 copilot.microsoft.com
@@ -154,6 +163,9 @@
 
 # NodeSeek
 127.0.0.1 .nodeseek.com
+
+# Note.ms
+127.0.0.1 .note.ms
 
 # Nyaa
 127.0.0.1 .nyaa.si
@@ -175,7 +187,7 @@
 127.0.0.1 .pixiv.net .pximg.net .pixiv.org
 
 # pixivFANBOX
-127.0.0.1 api.fanbox.cc
+127.0.0.1 .fanbox.cc
 
 # Poe
 127.0.0.1 .poe.com
@@ -257,6 +269,9 @@
 
 # 紳士漫畫
 127.0.0.1 .wnacg.com .wnacg.ru .qy0.ru .wcdn.date
+
+# 同人ゲーム セーブデータ
+127.0.0.1 wp517500.wpx.jp
 
 # Hysteria 2
 127.0.0.1 v2.hysteria.network

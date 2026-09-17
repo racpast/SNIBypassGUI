@@ -31,6 +31,13 @@
 # --- newest first; CI reads the topmost entry ---
 
 - version: "5.1.2"
+  date: "2026-09-18"
+  en: |
+    • Added support for MEGA, Note.ms, pixivFANBOX, and other sites.
+  zh-CN: |
+    • 新增对 MEGA、Note.ms、pixivFANBOX 等站点的支持。
+
+- version: "5.1.2"
   date: "2026-09-16"
   en: |
     • Added support for Danbooru, Perplexity, and South Plus.

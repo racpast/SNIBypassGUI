@@ -36,7 +36,7 @@ bootstrap = "@dnspod-doh"
 
   [resolvers.cloudflare-doh.ech]
   mode = "doh-with-fallback"
-  config = "AEX+DQBBvwAgACDrp5X/pCmzqIhkACMdR+Y0FYZpenzk3HnO529rcaMafwAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
+  config = "AEX+DQBB1AAgACCuuUsJXnatSGdOb+4U4agDcGIoe7CEgnEQuWfwsbO2JAAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
   require_ech = true
   ech_refresh = "1h"
   ech_domain = "cloudflare-ech.com"
@@ -148,7 +148,7 @@ addr = 443
 
   [listener.ech]
   mode = "doh-with-fallback"
-  config = "AEX+DQBBvwAgACDrp5X/pCmzqIhkACMdR+Y0FYZpenzk3HnO529rcaMafwAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
+  config = "AEX+DQBB1AAgACCuuUsJXnatSGdOb+4U4agDcGIoe7CEgnEQuWfwsbO2JAAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
   ech_domain = "cloudflare-ech.com"
   require_ech = true
 
@@ -174,9 +174,6 @@ addr = 443
     # Bluesky
     "live-events.workers.bsky.app", "ip.bsky.app", "communities.bsky.app", "anycast.bsky.app", "app-config.workers.bsky.app", "staging.bsky.app", "endpoints.bsky.app",
 
-    # GameBanana
-    ".gamebanana.com",
-
     # Civitai
     ".civitai.com",
 
@@ -186,8 +183,14 @@ addr = 443
     # Danbooru
     "danbooru.donmai.us", "cdn.donmai.us", "safebooru.donmai.us", "raikou2.donmai.us", "donmai.us", "raikou1.donmai.us", "testbooru.donmai.us", "saitou.donmai.us", "hijiribe.donmai.us", "sonohara.donmai.us", "raikou3.donmai.us", "www.danbooru.donmai.us", "isshiki.donmai.us", "autotagger.donmai.us", "cdn1.donmai.us", "raikou4.donmai.us", "betabooru.donmai.us", "testbooru-cdn.donmai.us", "shima.donmai.us", "kagamihara.donmai.us", "signoz.donmai.us", "cdn0.donmai.us", "www.donmai.us",
 
+    # DLsite
+    "img.dlsite.jp",
+
     # Fandom
     ".fandom.com",
+
+    # GameBanana
+    ".gamebanana.com",
 
     # Greasy Fork
     ".greasyfork.org",
@@ -225,6 +228,9 @@ addr = 443
     # NodeSeek
     ".nodeseek.com",
 
+    # Note.ms
+    ".note.ms",
+
     # OnlyFans
     "onlyfans.com", "blog.onlyfans.com", "media.onlyfans.com", "store.onlyfans.com", "www.onlyfans.com", "welcome.onlyfans.com", "zendesk1.onlyfans.com", "id2.onlyfans.com", "zendesk3.onlyfans.com", "zendesk2.onlyfans.com", "merch.onlyfans.com", "zendesk4.onlyfans.com",
 
@@ -238,7 +244,7 @@ addr = 443
     ".pixiv.net", ".pximg.net",
 
     # pixivFANBOX
-    "api.fanbox.cc",
+    ".fanbox.cc",
 
     # Pornhub
     "mux-cf.phncdn.com", "hv-h.phncdn.com", "hm-h.phncdn.com", "hv2-h.phncdn.com", "hm-c.phncdn.com", "hm2-h.phncdn.com", "clips-cf.phncdn.com",
@@ -345,15 +351,11 @@ addr = 443
   # No SNI
   # ------------------------------------------------------------------------------
 
-  # Bangumi 番组计划
-  # [[listener.route]]
-  # match_sni = [".bangumi.tv"]
-  # upstream = "178.79.181.137"
-  # type = "tls"
-  # override_sni = ""
-
   [[listener.route]]
   match_sni = [
+    # Bangumi 番组计划
+    # ".bangumi.tv",
+
     # Bluesky
     "bsky.app", "api.bsky.app", "go.bsky.app", "mod-de.bsky.app", "account.bsky.app", "mm-bounce.bsky.app", "mod-in.bsky.app", "mod.bsky.app", "bsync.bsky.app", "dev.bsky.app", "embed.bsky.app", "events.bsky.app", "cardyb.bsky.app", "gifs.bsky.app", "ogcard.bsky.app", "mod-br.bsky.app", "mod-ru.bsky.app", "evt.bsky.app", "video-origin.bsky.app", "forms.bsky.app", "mod-tr.bsky.app", "api.pop2.bsky.app", "dashy.bsky.app", "api.evt.bsky.app", "invite.bsky.app",
 
@@ -363,15 +365,25 @@ addr = 443
     # FapForFun
     ".fapforfun.net",
 
+    # MEGA
+    ".mega.nz", "mega.io", ".mega.co.nz",
+
     # OnlyFans
     "ws2.onlyfans.com",
 
     # Reddit
     "gql-realtime.reddit.com",
+
+    # 同人ゲーム セーブデータ
+    "wp517500.wpx.jp",
   ]
   type = "tls"
   override_sni = ""
   resolver = "@cloudflare-doh"
+  address_family = "ipv4"
+
+      [listener.route.verify]
+      mode = "chain"
 
 
   # ------------------------------------------------------------------------------
