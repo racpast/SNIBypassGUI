@@ -31,6 +31,15 @@
 # --- newest first; CI reads the topmost entry ---
 
 - version: "5.1.2"
+  date: "2026-09-19"
+  en: |
+    • Added support for character.ai, Pixeldrain, yande.re, and other sites.
+    • Fixed an issue where thumbnails and videos failed to load for China Mobile users on Hanime1.me.
+  zh-CN: |
+    • 新增对 character.ai、Pixeldrain、yande.re 等站点的支持。
+    • 修复了中国移动用户使用 Hanime1.me 时缩略图和视频无法加载的问题。
+
+- version: "5.1.2"
   date: "2026-09-18"
   en: |
     • Added support for MEGA, Note.ms, pixivFANBOX, and other sites.

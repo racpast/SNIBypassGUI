@@ -50,6 +50,9 @@
 # Bluesky
 127.0.0.1 .bsky.app
 
+# character.ai
+127.0.0.1 .character.ai
+
 # ChatGPT
 127.0.0.1 .chatgpt.com
 
@@ -121,6 +124,7 @@
 
 # Hanime1.me
 127.0.0.1 .hanime1.me
+127.0.0.1 vdownload.hembed.com
 
 # Imgur
 127.0.0.1 .imgur.com
@@ -183,6 +187,9 @@
 # Pinterest
 127.0.0.1 .pinterest.com .pinimg.com
 
+# Pixeldrain
+127.0.0.1 .pixeldrain.com
+
 # Pixiv
 127.0.0.1 .pixiv.net .pximg.net .pixiv.org
 
@@ -237,6 +244,9 @@
 # Truth Social
 127.0.0.1 .truthsocial.com
 
+# Typora
+127.0.0.1 .typora.io
+
 # Urban Dictionary
 127.0.0.1 .urbandictionary.com
 
@@ -258,6 +268,9 @@
 # XVIDEOS.COM
 127.0.0.1 .xvideos.com
 
+# yande.re
+127.0.0.1 .yande.re
+
 # 巴哈姆特
 127.0.0.1 .gamer.com.tw
 
@@ -272,6 +285,9 @@
 
 # 同人ゲーム セーブデータ
 127.0.0.1 wp517500.wpx.jp
+
+# 伊莉討論區
+127.0.0.1 .eyny.com
 
 # Hysteria 2
 127.0.0.1 v2.hysteria.network

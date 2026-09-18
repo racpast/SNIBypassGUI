@@ -69,6 +69,7 @@ LINK "Bluesky" "https://bsky.app"
 SEP
 
 TEXT "C"
+LINK "character.ai ᴱ" "https://character.ai"
 LINK "ChatGPT ᴱᴿ" "https://chatgpt.com"
 LINK "Civitai ᴱ" "https://civitai.com"
 LINK "Claude ᴿ" "https://claude.ai"
@@ -151,6 +152,7 @@ TEXT "P"
 LINK "Patreon ᴱ" "https://patreon.com"
 LINK "Perplexity ᴱ" "https://perplexity.ai"
 LINK "Pinterest" "https://pinterest.com"
+LINK "Pixeldrain" "https://pixeldrain.com"
 LINK "Pixiv ᴱ" "https://pixiv.net"
 LINK "pixivFANBOX ᴱ" "https://fanbox.cc"
 LINK "Poe ᴱᴿ" "https://poe.com"
@@ -180,6 +182,7 @@ TEXT "T"
 LINK "Telegram" "https://web.telegram.org"
 LINK "TheTVDB" "https://thetvdb.com"
 LINK "Truth Social ᴱᴿ" "https://truthsocial.com"
+LINK "Typora ᴱ" "https://typora.io"
 SEP
 
 TEXT "U"
@@ -202,6 +205,7 @@ LINK "XVIDEOS.COM" "https://xvideos.com"
 SEP
 
 TEXT "Y"
+LINK "yande.re" "https://yande.re"
 LINK "Youtube ᴿ" "https://youtube.com"
 SEP
 
@@ -211,3 +215,4 @@ LINK "琉璃神社 ᴱ" "https://hacg.me"
 LINK "南+ South Plus ᴱ" "https://south-plus.org"
 LINK "紳士漫畫 ᴱ" "https://wnacg.com"
 LINK "同人ゲーム セーブデータ" "https://doujin-savedata.blog.jp"
+LINK "伊莉討論區" "https://eyny.com"
