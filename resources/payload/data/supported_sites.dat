@@ -88,12 +88,13 @@ SEP
 
 TEXT "E"
 LINK "E-Hentai" "https://e-hentai.org"
+LINK "Ecosia ᴿ" "https://ecosia.org"
 LINK "Etsy" "https://etsy.com"
 SEP
 
 TEXT "F"
 LINK "F-Droid" "https://f-droid.org"
-LINK "Fandom ᴱ" "https://www.fandom.com"
+LINK "Fandom ᴱ" "https://fandom.com"
 LINK "FapForFun" "https://fapforfun.net"
 LINK "Flickr" "https://flickr.com"
 SEP
@@ -139,7 +140,7 @@ SEP
 
 TEXT "N"
 LINK "nicozon ᴱ" "https://nicozon.net"
-LINK "NodeSeek ᴱ" "https://www.nodeseek.com"
+LINK "NodeSeek ᴱ" "https://nodeseek.com"
 LINK "Note.ms ᴱ" "https://note.ms"
 LINK "Nyaa" "https://nyaa.si"
 SEP
@@ -182,6 +183,7 @@ TEXT "T"
 LINK "Telegram" "https://web.telegram.org"
 LINK "TheTVDB" "https://thetvdb.com"
 LINK "Truth Social ᴱᴿ" "https://truthsocial.com"
+LINK "Tumblr" "https://tumblr.com"
 LINK "Typora ᴱ" "https://typora.io"
 SEP
 
@@ -196,6 +198,7 @@ SEP
 
 TEXT "W"
 LINK "wallhaven.cc ᴱ" "https://wallhaven.cc"
+LINK "Wikipedia" "https://wikipedia.org"
 SEP
 
 TEXT "X"
@@ -210,7 +213,7 @@ LINK "Youtube ᴿ" "https://youtube.com"
 SEP
 
 TEXT "#"
-LINK "巴哈姆特 ᴱ" "https://www.gamer.com.tw"
+LINK "巴哈姆特 ᴱ" "https://gamer.com.tw"
 LINK "琉璃神社 ᴱ" "https://hacg.me"
 LINK "南+ South Plus ᴱ" "https://south-plus.org"
 LINK "紳士漫畫 ᴱ" "https://wnacg.com"

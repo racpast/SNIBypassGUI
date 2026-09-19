@@ -45,6 +45,7 @@ bootstrap = "@dnspod-doh"
 # ==============================================================================
 # Upstream Pools
 # ==============================================================================
+
 [pools.cloudflare]
 targets = [
   "cf.090227.xyz",
@@ -304,6 +305,9 @@ addr = 443
 
     # 紳士漫畫
     ".wnacg.com", ".wnacg.ru", ".qy0.ru", ".wcdn.date",
+
+    # Reserved
+    "update.rpnet.cc",
   ]
   type = "ech"
   use = "cf-optimize"
@@ -353,6 +357,9 @@ addr = 443
     # Claude
     ".claude.ai",
 
+    # Ecosia
+    ".ecosia.org",
+
     # MakerWorld
     ".makerworld.com",
 
@@ -396,6 +403,9 @@ addr = 443
 
     # Reddit
     "gql-realtime.reddit.com",
+
+    # Tumblr
+    ".tumblr.com",
 
     # 同人ゲーム セーブデータ
     "wp517500.wpx.jp",

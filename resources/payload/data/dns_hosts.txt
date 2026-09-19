@@ -86,6 +86,9 @@
 # E-Hentai
 127.0.0.1 .e-hentai.org .exhentai.org .ehgt.org
 
+# Ecosia
+127.0.0.1 .ecosia.org
+
 # Etsy
 127.0.0.1 .etsy.com
 
@@ -125,6 +128,12 @@
 # Hanime1.me
 127.0.0.1 .hanime1.me
 127.0.0.1 vdownload.hembed.com
+
+# Heroku App
+# 127.0.0.1 .herokuapp.com
+
+# Hysteria 2
+127.0.0.1 v2.hysteria.network
 
 # Imgur
 127.0.0.1 .imgur.com
@@ -244,6 +253,9 @@
 # Truth Social
 127.0.0.1 .truthsocial.com
 
+# Tumblr
+127.0.0.1 .tumblr.com
+
 # Typora
 127.0.0.1 .typora.io
 
@@ -258,6 +270,9 @@
 
 # wallhaven.cc
 127.0.0.1 .wallhaven.cc
+
+# Wikimedia
+127.0.0.1 .wikipedia.org .wiktionary.org .wikiquote.org .wikibooks.org .wikisource.org .wikinews.org .wikiversity.org .wikivoyage.org .wikidata.org .wikifunctions.org .mediawiki.org .wikimediafoundation.org .wikimedia.org
 
 # X (Twitter)
 127.0.0.1 .x.com .twimg.com .twitter.com .t.co
@@ -289,14 +304,8 @@
 # 伊莉討論區
 127.0.0.1 .eyny.com
 
-# Hysteria 2
-127.0.0.1 v2.hysteria.network
-
-# INTERNAL
-127.0.0.1 snib.test
+# Reserved
+127.0.0.1 snib.test update.rpnet.cc
 
 # NXDOMAIN
 NX .adtng.com .juicyads.com .juicyads.me
-
-# Heroku App
-# 127.0.0.1 .herokuapp.com

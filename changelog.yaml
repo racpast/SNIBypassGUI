@@ -31,6 +31,15 @@
 # --- newest first; CI reads the topmost entry ---
 
 - version: "5.1.2"
+  date: "2026-09-20"
+  en: |
+    • Added support for Ecosia, Tumblr, Wikipedia, and other sites.
+    • Updated sni-gate to v2.5.1, resolved an issue where IPv6-first strategy left A records unutilized, and implemented IPv4/IPv6 dual-stack racing.
+  zh-CN: |
+    • 新增对 Ecosia、Tumblr、Wikipedia 等站点的支持。
+    • 更新 sni-gate 组件至 v2.5.1，修复了 IPv6 优先策略导致 A 记录未被利用的问题，改为 IPv4/IPv6 并发竞速。
+
+- version: "5.1.2"
   date: "2026-09-19"
   en: |
     • Added support for character.ai, Pixeldrain, yande.re, and other sites.
