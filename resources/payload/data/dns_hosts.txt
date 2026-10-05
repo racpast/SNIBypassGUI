@@ -129,11 +129,17 @@
 127.0.0.1 .hanime1.me
 127.0.0.1 vdownload.hembed.com
 
-# Heroku App
-# 127.0.0.1 .herokuapp.com
+# Heroku Apps
+127.0.0.1 .herokuapp.com
+
+# Hugging Face
+127.0.0.1 .huggingface.co
 
 # Hysteria 2
 127.0.0.1 v2.hysteria.network
+
+# H 萌娘
+127.0.0.1 .hmoegirl.com .hmoegirl.net
 
 # Imgur
 127.0.0.1 .imgur.com
@@ -170,6 +176,9 @@
 
 # MyFigureCollection.net
 127.0.0.1 .myfigurecollection.net
+
+# nhentai
+127.0.0.1 .nhentai.net
 
 # nicozon
 127.0.0.1 .nicozon.net
@@ -225,6 +234,9 @@
 
 # RFI
 127.0.0.1 .rfi.fr
+
+# RipperStore
+127.0.0.1 forum.ripper.store
 
 # Rumble
 127.0.0.1 .rumble.com
@@ -289,6 +301,9 @@
 # 巴哈姆特
 127.0.0.1 .gamer.com.tw
 
+# 禁漫天堂
+127.0.0.1 .18comic.vip .18comic.ink
+
 # 琉璃神社
 127.0.0.1 .hacg.me
 
@@ -297,6 +312,9 @@
 
 # 紳士漫畫
 127.0.0.1 .wnacg.com .wnacg.ru .qy0.ru .wcdn.date
+
+# 松鼠症仓库
+127.0.0.1 .ahri8.com .ahri8.monster
 
 # 同人ゲーム セーブデータ
 127.0.0.1 wp517500.wpx.jp

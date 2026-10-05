@@ -22,21 +22,29 @@
 [resolvers.googledns-plain]
 endpoint = "8.8.8.8"
 
-[resolvers.dnspod-doh]
-endpoint = "https://doh.pub/dns-query"
-bootstrap = "@googledns-plain"
-
 [resolvers.cloudflare-dot]
 endpoint = "tls://1.1.1.1"
 
+[resolvers.dnspod-doh]
+endpoint = "https://doh.pub/dns-query"
+upstream = "1.12.12.12"
+
+[resolvers.alidns-doh]
+endpoint = "https://dns.alidns.com/dns-query"
+upstream = "223.5.5.5"
+
+[resolvers.onedns-doh]
+endpoint = "https://doh.onedns.net/dns-query"
+upstream = "52.80.248.44"
+
 [resolvers.cloudflare-doh]
 endpoint = "https://dns.cloudflare.com/dns-query"
-upstream = "saas.sin.fan"
-bootstrap = "@dnspod-doh"
+upstream = "cf.3666888.xyz"
+bootstrap = "@alidns-doh"
 
   [resolvers.cloudflare-doh.ech]
   mode = "doh-with-fallback"
-  config = "AEX+DQBB1AAgACCuuUsJXnatSGdOb+4U4agDcGIoe7CEgnEQuWfwsbO2JAAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
+  config = "AEX+DQBBIQAgACBGUw71PF2Y8+J/YDxFlHSihgkaTCeUOm6C8+gzu3URDgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
   require_ech = true
   ech_refresh = "1h"
   ech_domain = "cloudflare-ech.com"
@@ -50,20 +58,17 @@ bootstrap = "@dnspod-doh"
 targets = [
   "cf.090227.xyz",
   "saas.sin.fan",
-  "bestcf.top",
   "cf.0sm.com",
   "cf.3666888.xyz",
   "cloudflare.182682.xyz",
   "dnew.cc",
-  "www.visa.cn",
   "mfa.gov.ua",
   "www.shopify.com",
   "store.ubi.com",
-  "cf1s.cf.3666888.xyz",
   "172.64.229.0/24[256]",
 ]
 fallback = 0
-resolver = "@dnspod-doh"
+resolver = "@onedns-doh"
 
   [pools.cloudflare.probe]
   mode = "http"
@@ -126,7 +131,7 @@ scope_suffix = ["*.deviantart.net"]
 [global]
 log = "info"
 connect_timeout = "5s"
-resolver = "@dnspod-doh"
+resolver = "@onedns-doh"
 ech_refresh = "1h"
 unmatched = "close"
 
@@ -166,7 +171,7 @@ addr = 443
 
   [listener.ech]
   mode = "doh-with-fallback"
-  config = "AEX+DQBB1AAgACCuuUsJXnatSGdOb+4U4agDcGIoe7CEgnEQuWfwsbO2JAAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
+  config = "AEX+DQBBIQAgACBGUw71PF2Y8+J/YDxFlHSihgkaTCeUOm6C8+gzu3URDgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
   ech_domain = "cloudflare-ech.com"
   require_ech = true
 
@@ -221,9 +226,15 @@ addr = 443
 
     # Hanime1.me
     ".hanime1.me",
-    
+
+    # Hugging Face
+    ".cdn-test.huggingface.co",
+
     # Hysteria 2
     "v2.hysteria.network",
+
+    # H 萌娘
+    ".hmoegirl.com", ".hmoegirl.net",
 
     # itch.io
     ".itch.io",
@@ -242,6 +253,9 @@ addr = 443
 
     # MyFigureCollection.net
     ".myfigurecollection.net",
+
+    # nhentai
+    ".nhentai.net",
 
     # nicozon
     ".nicozon.net",
@@ -262,7 +276,7 @@ addr = 443
     ".perplexity.ai",
 
     # Pixiv
-    ".pixiv.net", ".pximg.net",
+    ".pixiv.net",
 
     # pixivFANBOX
     ".fanbox.cc",
@@ -272,6 +286,9 @@ addr = 443
 
     # Reddit
     "pi.reddit.com", "w3-reporting.reddit.com",
+
+    # RipperStore
+    "forum.ripper.store",
 
     # Rumble
     "static.rumble.com",
@@ -297,6 +314,9 @@ addr = 443
     # 巴哈姆特
     ".gamer.com.tw",
 
+    # 禁漫天堂
+    ".18comic.vip", ".18comic.ink",
+
     # 琉璃神社
     ".hacg.me",
 
@@ -305,6 +325,9 @@ addr = 443
 
     # 紳士漫畫
     ".wnacg.com", ".wnacg.ru", ".qy0.ru", ".wcdn.date",
+
+    # 松鼠症仓库
+    ".ahri8.com", ".ahri8.monster",
 
     # Reserved
     "update.rpnet.cc",
@@ -394,6 +417,9 @@ addr = 443
 
     # FapForFun
     ".fapforfun.net",
+
+    # Heroku Apps
+    ".herokuapp.com",
 
     # MEGA
     ".mega.nz", "mega.io", ".mega.co.nz",

@@ -31,6 +31,13 @@
 # --- newest first; CI reads the topmost entry ---
 
 - version: "5.2.0"
+  date: "2026-10-06"
+  en: |
+    • Added support for Hugging Face, Hmoegirl, nhentai, and other sites.
+  zh-CN: |
+    • 新增对 Hugging Face、H 萌娘、nhentai 等站点的支持。
+
+- version: "5.2.0"
   date: "2026-10-05"
   en: |
     • Introduced a multi-protocol DNS proxy supporting DNSCrypt, DoH, DoT, and more, alongside upgrading Nginx to an extended build to lay the groundwork for expanding site support.

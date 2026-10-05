@@ -114,6 +114,9 @@ SEP
 
 TEXT "H"
 LINK "Hanime1.me ᴱ" "https://hanime1.me"
+LINK "Heroku Apps" "https://herokuapp.com"
+LINK "Hugging Face" "https://huggingface.co"
+LINK "H 萌娘 ᴱ" "https://hmoegirl.com"
 SEP
 
 TEXT "I"
@@ -139,6 +142,7 @@ LINK "Microsoft OneDrive" "https://onedrive.live.com"
 SEP
 
 TEXT "N"
+LINK "nhentai ᴱ" "https://nhentai.net"
 LINK "nicozon ᴱ" "https://nicozon.net"
 LINK "NodeSeek ᴱ" "https://nodeseek.com"
 LINK "Note.ms ᴱ" "https://note.ms"
