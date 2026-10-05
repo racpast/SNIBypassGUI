@@ -1,6 +1,6 @@
 # SNIBypassGUI Proprietary License
 
-**Version 3.0 — Effective Date: August 26, 2026**
+**Version 4.0 — Effective Date: October 5, 2026**
 
 Copyright © 2026 Racpast. All rights reserved.
 
@@ -55,9 +55,8 @@ The Author expressly reserves all rights not granted in this License.
 **2.1 "Software"** means the SNIBypassGUI application and all material in the
 Author's SNIBypassGUI repository and Binary Releases, including the Source Code,
 the Payload Data, the user interface, build tooling, and documentation. "Software"
-**excludes** the Third-Party Components identified in Section 3 and everything
-located in the `third_party/` directory, which are governed solely by their own
-licenses.
+**excludes** the Third-Party Components identified in Section 3, which are governed
+solely by their own licenses.
 
 **2.2 "Source Code"** means the human-readable source files authored by the
 Author, together with build scripts, configuration templates, and resources used
@@ -126,15 +125,26 @@ of Section 6 or of the end-user agreement. The Author provides no support for, a
 makes no warranty regarding, an installation running a replaced Third-Party
 Component.
 
-**3.2 nginx.** Binary Releases include a build of nginx compiled by the Author
-from modified nginx source code. nginx is copyright © Igor Sysoev and Nginx, Inc.,
-and is licensed under the 2-clause BSD license, which permits modification and
-redistribution. The nginx license is reproduced at
-`resources/payload/licenses/nginx/LICENSE` in the repository and at
-`licenses/nginx/` in every Binary Release. The binary is statically linked against
-OpenSSL (Apache License 2.0) and PCRE2 (BSD). The Author's modifications to nginx
-are governed by this License; the original nginx code, OpenSSL, and PCRE2 remain
-under their respective licenses.
+**3.2 nginx.** Binary Releases include a custom build of nginx compiled by the
+Author with Lua scripting support and internal modifications. nginx is copyright
+© Igor Sysoev and Nginx, Inc., and is licensed under the BSD 2-Clause License,
+which permits modification and redistribution.
+
+The nginx binary is statically linked against OpenSSL (Apache License 2.0),
+PCRE2 (PCRE2 Licence), zlib (zlib License), and OpenResty LuaJIT 2 (MIT License),
+and includes compiled nginx modules: ngx_devel_kit (BSD 3-Clause License),
+lua-nginx-module with Author modifications (BSD 2-Clause License), and
+headers-more-nginx-module (BSD 2-Clause License).
+
+The distribution also includes Lua libraries distributed as source files:
+lua-resty-core, lua-resty-lrucache, lua-resty-dns, lua-resty-http, and
+lua-resty-string, each under the BSD 2-Clause License.
+
+The Author's modifications to nginx and lua-nginx-module are governed by this
+License; all original third-party code remains under its respective license.
+All third-party licenses, including nginx's, are reproduced in
+`resources/payload/THIRD_PARTY_LICENSES.txt` in the repository and at
+`THIRD_PARTY_LICENSES.txt` in every Binary Release.
 
 **3.3 sni-gate.** `data/sni-gate.exe` is a separate work of the Author, published
 independently under the MIT License and the Apache License 2.0 at the recipient's
@@ -142,13 +152,22 @@ option. Nothing in this License narrows the rights you hold in that binary or it
 source under either of those licenses. Its presence in a Binary Release neither
 extends this License to it nor extends its licenses to anything else.
 
-**3.4 Other components.** Any additional third-party material distributed with the
-Software carries its own license text at `licenses/` in the Binary Release. Where
+**3.4 libsodium.** The Software statically links against libsodium, a
+cryptographic library copyright © Frank Denis, licensed under the ISC License.
+libsodium is used for cryptographic operations in the DNSCrypt client
+implementation. The build fetches libsodium from its official MinGW prebuilt
+distribution at configure time and verifies it against a committed SHA-256 hash.
+The libsodium license is reproduced in `resources/payload/THIRD_PARTY_LICENSES.txt`
+in the repository and at `THIRD_PARTY_LICENSES.txt` in every Binary Release.
+
+**3.5 Other components.** Any additional third-party material distributed with the
+Software carries its own license text in `resources/payload/THIRD_PARTY_LICENSES.txt`
+in the repository and at `THIRD_PARTY_LICENSES.txt` in every Binary Release. Where
 a component is present but its license is not reproduced, the omission is
 inadvertent, that component remains under its own license, and the Author will
 correct the omission on notice.
 
-**3.5 Redistributor obligations.** In any case where a Third-Party Component's
+**3.6 Redistributor obligations.** In any case where a Third-Party Component's
 license permits you to redistribute it, you must carry forward the license text,
 copyright notices, and any required attribution or source-availability notices for
 that component. This obligation exists under those licenses independently of this
@@ -445,8 +464,8 @@ exclusion attaches to the person or persons operating it:
 controls, or operates either;
 
 (b) any GitHub account that has at any time used the username **coolapijust**,
-**mechrevo**, **dongzheyu**, **lzpls**, **snishaper**, or **JetCPP-dongle**, and any
-person who created, controls, or operates such an account;
+**mechrevo**, **dongzheyu**, **lzpls**, **snishaper**, **JetCPP-dongle**, or
+**Calvin1-tech**, and any person who created, controls, or operates such an account;
 
 (c) the repository **snishaper**, its forks, and its successors under any name, and
 any person who created, maintains, or has at any time maintained any of them;
@@ -748,7 +767,7 @@ including liability for infringement. The Author's remedies for your breach are
 cumulative and are not waived by termination.
 
 **13.3 Survival.** The following survive termination: Sections 1 (Preamble), 2
-(Definitions), 3.5 (Redistributor Obligations), 6 (Restrictions), 7 (Ownership), 8
+(Definitions), 3.6 (Redistributor Obligations), 6 (Restrictions), 7 (Ownership), 8
 (Restricted Parties), 9 (Enforcement), 10 (Choice of Law), 11 (Disclaimer), 12
 (Limitation of Liability), 13.2 and 13.3 (Effect of Termination and Survival), and
 14 (General Provisions).

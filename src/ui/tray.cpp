@@ -4,42 +4,45 @@
 //
 // NOTICE: All information contained herein is, and remains the property of
 // Racpast. The intellectual and technical concepts contained herein are
-// proprietary to Racpast and are protected by copyright law and international
-// treaties. Dissemination of this information or reproduction of this material
-// is strictly forbidden unless prior written permission is obtained from Racpast.
+// proprietary to Racpast. All rights reserved.
 //
 // Unauthorized copying, modification, distribution, or use of this file,
 // via any medium, is strictly prohibited.
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full license terms.
 
 #include "ui/tray.h"
 
 #include <shellapi.h>
 
-#include <atomic>
+#include <cstdint>
 #include <cwchar>
 #include <iterator>
 #include <string>
-#include <thread>
 #include <vector>
 
+#include "app/controller.h"
 #include "app/i18n.h"
 #include "app/logging.h"
-#include "app/paths.h"
 #include "app/services.h"
 #include "app/settings.h"
 #include "app/text.h"
 #include "app/version.h"
 #include "platform/autostart.h"
+#include "platform/dialogs.h"
 #include "platform/process.h"
 #include "platform/shell.h"
-#include "platform/shortcut.h"
 #include "ui/eula.h"
+#include "ui/progress_window.h"
 #include "ui/supported_sites.h"
-#include "update/client.h"
+
+// What this module owns is the tray icon, its menu, and the mapping from a menu
+// command to an application operation. What an operation DOES — starting the stack,
+// applying an update, uninstalling — belongs to Controller (src/app/controller.h),
+// which is also where the gates that serialize those operations live. Nothing here
+// reads a service gate or decides service policy.
 
 namespace Tray {
 namespace {
@@ -48,32 +51,33 @@ constexpr UINT kTrayMessage = WM_APP + 1;
 constexpr UINT kTrayIconId = 1;
 constexpr wchar_t kWindowClass[] = L"SNIBypassGUI_TrayWnd";
 
-enum MenuId : UINT {
+enum MenuId : std::uint16_t {
     kIdStatusDns = 2000,
-    kIdStatusNginx,
-    kIdStatusRoute,
-    kIdVersion,
-    kIdStart,
-    kIdStop,
-    kIdToggleAutostart,
-    kIdCheckUpdate,
-    kIdToggleAutoUpdate,
-    kIdEditHosts,
-    kIdCleanCache,
-    kIdToggleLog,
-    kIdLangEnglish,
-    kIdLangChinese,
-    kIdExit,
-    kIdUninstall,
-    kIdAboutApp,
-    kIdAboutCopyright,
-    kIdAboutQq1,
-    kIdAboutQq2,
-    kIdAboutTelegram,
-    kIdAboutEmail,
-    kIdAboutStar,
-    kIdAboutSponsor,
-    kIdViewEula,
+    kIdStatusProxy = 2001,
+    kIdStatusNginx = 2002,
+    kIdStatusRoute = 2003,
+    kIdVersion = 2004,
+    kIdStart = 2005,
+    kIdStop = 2006,
+    kIdToggleAutostart = 2007,
+    kIdCheckUpdate = 2008,
+    kIdToggleAutoUpdate = 2009,
+    kIdEditHosts = 2010,
+    kIdCleanCache = 2011,
+    kIdToggleLog = 2012,
+    kIdLangEnglish = 2013,
+    kIdLangChinese = 2014,
+    kIdExit = 2015,
+    kIdUninstall = 2016,
+    kIdAboutApp = 2017,
+    kIdAboutCopyright = 2018,
+    kIdAboutQq1 = 2019,
+    kIdAboutQq2 = 2020,
+    kIdAboutTelegram = 2021,
+    kIdAboutEmail = 2022,
+    kIdAboutStar = 2023,
+    kIdAboutSponsor = 2024,
+    kIdViewEula = 2025,
     kIdSupportedSitesFirst = 5000,
 };
 
@@ -89,31 +93,36 @@ constexpr wchar_t kUrlQq2[] =
 constexpr wchar_t kUrlTelegram[] = L"https://t.me/snibypassgui";
 constexpr wchar_t kUrlSponsor[] = L"https://ifdian.net/a/racpast";
 constexpr wchar_t kEmail[] = L"snibypassgui@gmail.com";
-constexpr wchar_t kHostsFile[] = L"C:\\Windows\\System32\\drivers\\etc\\hosts";
 
 HWND g_window = nullptr;
 HICON g_icon = nullptr;
 UINT g_taskbarCreated = 0;
 std::vector<std::wstring> g_supportedSiteLinks;
 
-// Set for the whole lifetime of an update check (fetch, confirm, download, apply).
-// While it is set the tray disables "Check for Updates" and Start/Stop, so a second
-// check cannot be launched and — critically — the user cannot start the services back
-// up in the window where PerformUpdate has stopped them to replace a locked binary.
-std::atomic<bool> g_updateBusy{false};
+// The system's own directory, resolved rather than assumed.
+//
+// The paths below used to be the literals "C:\Windows\System32\..." — which is only
+// where Windows lives until someone installs it somewhere else, and then the Hosts
+// menu item launches a process that does not exist. What the user sees is a menu
+// entry that does nothing, on exactly the machine where the guess was wrong.
+const std::wstring& WindowsDir() {
+    static const std::wstring dir = [] {
+        wchar_t buf[MAX_PATH] = {};
+        const UINT n = GetWindowsDirectoryW(buf, static_cast<UINT>(std::size(buf)));
+        if (n == 0 || n >= std::size(buf)) return std::wstring();
+        std::wstring s(buf, n);
+        if (!s.empty() && s.back() == L'\\') s.pop_back();
+        return s;
+    }();
+    return dir;
+}
 
-// Set during cache cleanup to prevent Start/Stop operations that would interfere.
-std::atomic<bool> g_cleanupBusy{false};
-
-// Clears g_updateBusy when the worker thread unwinds, on every path.
-struct BusyGuard {
-    ~BusyGuard() { g_updateBusy.store(false); }
-};
-
-// Clears g_cleanupBusy when the worker thread unwinds, on every path.
-struct CleanupBusyGuard {
-    ~CleanupBusyGuard() { g_cleanupBusy.store(false); }
-};
+// "<Windows>\System32\<relative>", or empty when the directory could not be resolved.
+std::wstring SystemFile(const wchar_t* relative) {
+    const std::wstring& dir = WindowsDir();
+    if (dir.empty()) return L"";
+    return dir + L"\\System32\\" + relative;
+}
 
 std::wstring BuildTrayTooltip() {
     return std::wstring(APP_NAME) + L" " + GetVersionDisplayStr();
@@ -169,6 +178,37 @@ void AddIcon() {
     Shell_NotifyIconW(NIM_ADD, &data);
 }
 
+// Ask the program to exit. Posted rather than torn down here: this is called from a
+// worker thread, and DestroyWindow belongs on the thread that owns the window.
+void RequestQuit() {
+    PostMessageW(g_window, WM_CLOSE, 0, 0);
+}
+
+// ---- The update progress window ----
+//
+// The controller drives these; the window itself lives in ui/progress_window.cpp and
+// everything it needs about this thread is handled there. These four are just the
+// pass-through that keeps the Controller from having to know about a window handle.
+
+std::shared_ptr<ProgressWindow::State> ProgressBegin(uint64_t totalBytes, size_t totalFiles,
+                                                     std::function<void()> onCancel) {
+    return ProgressWindow::Begin(g_window, totalBytes, totalFiles, std::move(onCancel));
+}
+
+void ProgressReport(const std::shared_ptr<ProgressWindow::State>& state,
+                    const std::wstring& path, uint64_t bytesOverall, size_t doneFiles,
+                    size_t totalFiles) {
+    ProgressWindow::Report(state, path, bytesOverall, doneFiles, totalFiles);
+}
+
+void ProgressApplying(const std::shared_ptr<ProgressWindow::State>& state) {
+    ProgressWindow::EnterApply(state);
+}
+
+void ProgressEnd(const std::shared_ptr<ProgressWindow::State>& state) {
+    ProgressWindow::End(state);
+}
+
 std::wstring StatusLabel(const wchar_t* nameKey, bool running) {
     return std::wstring(T(nameKey)) + T(L"punct.colon") +
            (running ? std::wstring(L"● ") + T(L"status.running")
@@ -201,17 +241,19 @@ HMENU BuildAboutMenu() {
 
 void ShowContextMenu() {
     const bool dns = Services::DnsRedirectRunning();
+    const bool proxy = Services::DnsProxyRunning();
     const bool nginx = Services::NginxRunning();
     const bool sniGate = Services::SniGateRunning();
-    // An update or cleanup in flight owns the service state, so disable the items that would
-    // race it (Start/Stop) or launch a second update/cleanup.
-    const bool updateBusy = g_updateBusy.load();
-    const bool cleanupBusy = g_cleanupBusy.load();
-    const bool busy = updateBusy || cleanupBusy;
+    // An update or cleanup in flight owns the service state, so disable the items that
+    // would race it (Start/Stop) or launch a second update/cleanup. The controller owns
+    // that answer; this only asks.
+    const bool busy = Controller::Busy();
 
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING | MF_GRAYED, kIdStatusDns,
                 StatusLabel(L"status.dns", dns).c_str());
+    AppendMenuW(menu, MF_STRING | MF_GRAYED, kIdStatusProxy,
+                StatusLabel(L"status.proxy", proxy).c_str());
     AppendMenuW(menu, MF_STRING | MF_GRAYED, kIdStatusNginx,
                 StatusLabel(L"status.nginx", nginx).c_str());
     AppendMenuW(menu, MF_STRING | MF_GRAYED, kIdStatusRoute,
@@ -221,7 +263,7 @@ void ShowContextMenu() {
     // Offer only one of Start/Stop: if anything is running, only "Stop" — which
     // prevents clicking "Start" when the ports are already held by our own services.
     const UINT startStopFlags = MF_STRING | (busy ? MF_GRAYED : 0);
-    if (dns || nginx || sniGate)
+    if (dns || proxy || nginx || sniGate)
         AppendMenuW(menu, startStopFlags, kIdStop, T(L"menu.stop"));
     else
         AppendMenuW(menu, startStopFlags, kIdStart, T(L"menu.start"));
@@ -241,7 +283,7 @@ void ShowContextMenu() {
 
     // While busy the item becomes a grayed indicator; the live step is carried by the
     // tray tooltip, which can repaint while the menu is held open.
-    if (updateBusy)
+    if (busy)
         AppendMenuW(menu, MF_STRING | MF_GRAYED, kIdCheckUpdate, T(L"menu.updating"));
     else
         AppendMenuW(menu, MF_STRING, kIdCheckUpdate, T(L"menu.checkUpdate"));
@@ -262,7 +304,7 @@ void ShowContextMenu() {
                 T(L"menu.logging"));
     AppendMenuW(miscMenu, MF_STRING, kIdEditHosts, T(L"menu.editHosts"));
     // Show "Cleaning..." when cleanup is in progress.
-    if (cleanupBusy)
+    if (busy)
         AppendMenuW(miscMenu, MF_STRING | MF_GRAYED, kIdCleanCache, T(L"msg.cleaningCache"));
     else
         AppendMenuW(miscMenu, MF_STRING, kIdCleanCache, T(L"menu.cleanCache"));
@@ -282,179 +324,12 @@ void ShowContextMenu() {
     SetForegroundWindow(g_window);  // so the menu dismisses correctly
     TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN, cursor.x, cursor.y, 0, g_window,
                    nullptr);
+    // TrackPopupMenu leaves the window with capture and the menu in the queue, so
+    // without this the next click goes to the stale menu instead of dismissing it —
+    // the classic "tray menu will not close". The documented follow-up is a null
+    // post to the owner.
+    PostMessageW(g_window, WM_NULL, 0, 0);
     DestroyMenu(menu);
-}
-
-// ---- Command handlers (heavy work runs off the UI thread) -------------------
-
-void DoStart() {
-    if (g_updateBusy.load() || g_cleanupBusy.load())
-        return;  // an update or cleanup owns the service state
-    std::thread([] {
-        if (Services::Start(true)) ShowBalloon(APP_NAME, T(L"msg.started"));
-    }).detach();
-}
-
-void DoStop() {
-    if (g_updateBusy.load() || g_cleanupBusy.load()) return;
-    std::thread([] {
-        Services::Stop();
-        ShowBalloon(APP_NAME, T(L"msg.stopped"));
-    }).detach();
-}
-
-void DoToggleAutostart() {
-    std::thread([] {
-        if (Autostart::IsEnabled()) {
-            if (Autostart::Disable())
-                ShowBalloon(APP_NAME, T(L"msg.autoOff"));
-            else
-                MessageBoxW(nullptr, T(L"msg.autoFail"), APP_NAME, MB_ICONERROR);
-        } else if (Autostart::Enable()) {
-            ShowBalloon(APP_NAME, T(L"msg.autoOn"));
-        } else {
-            MessageBoxW(nullptr, T(L"msg.autoFail"), APP_NAME, MB_ICONERROR);
-        }
-    }).detach();
-}
-
-void DoSetLang(Lang lang) {
-    if (GetLang() == lang) return;
-    SetLang(lang);
-    // Update the tray icon tooltip to reflect the new language.
-    ResetTip();
-    // A .lnk stores its description as a literal string, so the shortcut we own would
-    // otherwise keep the previous language's text forever. Rewrite it.
-    if (GetShortcutPref() == ShortcutPref::Wanted &&
-        Shortcut::Inspect() == Shortcut::State::Ours)
-        Shortcut::Create();
-    ShowBalloon(APP_NAME, T(L"msg.langChanged"));
-}
-
-// Prompt for and apply an already-fetched update. Assumes info.ok and that an update
-// is available; runs on a worker thread. Shared by the manual check and the silent
-// startup one.
-void PromptAndApply(const Update::Info& info, const std::wstring& summary) {
-    const int cmp = Update::CompareVersions(info.version, APP_VERSION_NUM);
-    const bool exeChanges = (cmp != 0);
-    const bool isDowngrade = (cmp < 0);
-
-    // Pick the right message based on what's changing.
-    const wchar_t* titleKey =
-        exeChanges ? (isDowngrade ? L"msg.updDowngrade" : L"msg.updAvail") : L"msg.updDataOnly";
-    const wchar_t* confirmKey =
-        exeChanges ? (isDowngrade ? L"msg.updConfirmDowngrade" : L"msg.updConfirm")
-                   : L"msg.updConfirmData";
-
-    std::wstring message = std::wstring(T(titleKey)) + L" (" + info.version + L")" +
-                           T(L"punct.colonEol") + L"\n\n" + summary;
-    if (!info.notes.empty())
-        message += std::wstring(L"\n") + T(L"msg.updNotes") + L"\n" + info.notes + L"\n";
-    message += std::wstring(L"\n") + T(confirmKey);
-    if (MessageBoxW(nullptr, message.c_str(), APP_NAME, MB_ICONQUESTION | MB_YESNO) != IDYES)
-        return;
-
-    const bool wasRunning = Services::AnyRunning();
-
-    // The download does not touch the live install, so the services stay up for its
-    // whole duration and are stopped only in onBeforeApply, right before the apply. If
-    // the download fails, onBeforeApply never fires and the services are undisturbed.
-    Update::Progress progress;
-    progress.onFile = [](size_t done, size_t total, const std::wstring&) {
-        SetTip(std::wstring(APP_NAME) + T(L"punct.colon") + T(L"msg.updDownloading") + L" (" +
-               std::to_wstring(done) + L"/" + std::to_wstring(total) + L")");
-    };
-    progress.onBeforeApply = [wasRunning] {
-        SetTip(std::wstring(APP_NAME) + T(L"punct.colon") + T(L"msg.updApplying"));
-        if (wasRunning) Services::Stop();
-    };
-
-    if (Update::PerformUpdate(info, progress)) {
-        // An executable swap was scheduled, so exit and let the helper replace us.
-        PostMessageW(g_window, WM_CLOSE, 0, 0);
-        return;
-    }
-
-    ResetTip();
-    ShowBalloon(APP_NAME, T(L"msg.updDone"));
-    // Restart only if we were running AND the apply actually stopped us: a download
-    // that failed before onBeforeApply leaves the services up, and starting an
-    // already-running stack would double-start it.
-    if (wasRunning && !Services::AnyRunning()) {
-        if (!Services::Start(false)) {
-            LOGE(L"Update: FAILED to restart services after data-only update.");
-            MessageBoxW(nullptr, T(L"msg.restartFailed"), APP_NAME, MB_ICONERROR);
-        }
-    }
-}
-
-void DoCheckUpdate() {
-    // Refuse a second check while one is running. Setting the flag here, before the
-    // thread starts, closes the double-click race.
-    bool expected = false;
-    if (!g_updateBusy.compare_exchange_strong(expected, true)) return;
-    std::thread([] {
-        BusyGuard guard;
-        const Update::Info info = Update::FetchManifest();
-        if (!info.ok) {
-            // FetchManifest sets a specific reason (signature, schema, policy,
-            // network); show that rather than a generic failure.
-            const std::wstring why =
-                info.error.empty() ? std::wstring(T(L"msg.updFail")) : info.error;
-            MessageBoxW(nullptr, why.c_str(), APP_NAME,
-                        info.reinstallRequired ? MB_ICONWARNING : MB_ICONERROR);
-            return;
-        }
-        std::wstring summary;
-        if (!Update::UpdateAvailable(info, summary)) {
-            MessageBoxW(nullptr, T(L"msg.upToDate"), APP_NAME, MB_ICONINFORMATION);
-            return;
-        }
-        PromptAndApply(info, summary);
-    }).detach();
-}
-
-void DoUninstall() {
-    // The confirmation stays on the UI thread — it is a modal question and nothing
-    // else may happen until it is answered. An uninstall that lands while an update
-    // is applying, or a cleanup is mid-restart, would delete the tree out from under
-    // it, so the same flags that gate Start and Stop gate this too.
-    if (g_updateBusy.load() || g_cleanupBusy.load()) return;
-    if (MessageBoxW(nullptr, T(L"msg.uninstallConfirm"), APP_NAME, MB_ICONWARNING | MB_YESNO) !=
-        IDYES)
-        return;
-
-    // The work itself runs off the UI thread. It stops the stack, which waits on the
-    // same lock every tray command uses, and a Start already under way holds that
-    // lock for as long as a child takes to bind its port — up to ten seconds of a
-    // frozen tray if this ran here.
-    std::thread([] {
-        Services::Uninstall();
-        // WM_CLOSE, not PostQuitMessage: the quit message has to be posted by the
-        // thread that owns the message loop, and this is not it. The window's own
-        // handler takes it from here, and wWinMain tears the tray icon down.
-        PostMessageW(g_window, WM_CLOSE, 0, 0);
-    }).detach();
-}
-
-void DoCleanCache() {
-    // Refuse a second cleanup while one is running.
-    bool expected = false;
-    if (!g_cleanupBusy.compare_exchange_strong(expected, true)) return;
-
-    std::thread([] {
-        CleanupBusyGuard guard;
-        SetTip(std::wstring(APP_NAME) + T(L"punct.colon") + T(L"msg.cleaningCache"));
-        const Services::CacheCleanResult result = Services::CleanCache();
-        ResetTip();
-        if (!result.ok) {
-            MessageBoxW(nullptr, T(L"msg.restartFailed"), APP_NAME, MB_ICONERROR);
-            return;
-        }
-        std::wstring message = T(L"msg.cacheClean");
-        message += L"\n" + std::to_wstring(result.deleted) + L" " + T(L"msg.itemsDeleted");
-        ShowBalloon(APP_NAME, message);
-    }).detach();
 }
 
 void HandleCommand(int id) {
@@ -466,15 +341,15 @@ void HandleCommand(int id) {
     }
 
     switch (id) {
-        case kIdStart: DoStart(); break;
-        case kIdStop: DoStop(); break;
-        case kIdToggleAutostart: DoToggleAutostart(); break;
-        case kIdCheckUpdate: DoCheckUpdate(); break;
+        case kIdStart: Controller::Start(); break;
+        case kIdStop: Controller::Stop(); break;
+        case kIdToggleAutostart: Controller::ToggleAutostart(); break;
+        case kIdCheckUpdate: Controller::CheckForUpdates(); break;
         case kIdToggleAutoUpdate: SetAutoUpdateEnabled(!AutoUpdateEnabled()); break;
         case kIdToggleLog: LogSetEnabled(!LogEnabled()); break;
-        case kIdCleanCache: DoCleanCache(); break;
-        case kIdLangEnglish: DoSetLang(Lang::English); break;
-        case kIdLangChinese: DoSetLang(Lang::Chinese); break;
+        case kIdCleanCache: Controller::CleanCache(); break;
+        case kIdLangEnglish: Controller::SetLanguage(Lang::English); break;
+        case kIdLangChinese: Controller::SetLanguage(Lang::Chinese); break;
         case kIdAboutApp: Shell::OpenUrl(kUrlApp); break;
         case kIdAboutCopyright: Shell::OpenUrl(kUrlCopyright); break;
         case kIdAboutQq1: Shell::OpenUrl(kUrlQq1); break;
@@ -483,19 +358,29 @@ void HandleCommand(int id) {
         case kIdAboutStar: Shell::OpenUrl(APP_HOMEPAGE); break;
         case kIdAboutSponsor: Shell::OpenUrl(kUrlSponsor); break;
         case kIdViewEula: Eula::ShowForReading(GetModuleHandleW(nullptr)); break;
-        case kIdUninstall: DoUninstall(); break;
+        case kIdUninstall: Controller::Uninstall(); break;
         case kIdAboutEmail:
             Shell::CopyToClipboard(kEmail);
             ShowBalloon(APP_NAME, T(L"msg.copied"));
             break;
-        case kIdEditHosts:
+        case kIdEditHosts: {
+            const std::wstring hosts = SystemFile(L"drivers\\etc\\hosts");
+            const std::wstring notepad = SystemFile(L"notepad.exe");
+            if (hosts.empty() || notepad.empty()) {
+                // No resolved Windows directory means no path to hand an editor.
+                // Saying so beats launching a process that is not there, which looks
+                // like a dead menu item.
+                LOGE(L"Edit hosts: the Windows directory could not be resolved.");
+                Dialogs::Show(T(L"msg.editHostsFail"), MB_ICONERROR);
+                break;
+            }
             // We already run elevated, so notepad inherits that. It is launched
-            // detached on purpose: an editor the user is typing in must not be
-            // taken down when the tray exits.
-            Process::LaunchDetached(L"C:\\Windows\\System32\\notepad.exe",
-                                    std::wstring(L"\"") + kHostsFile + L"\"", L"", false);
+            // detached on purpose: an editor the user is typing in must not be taken
+            // down when the tray exits.
+            Process::LaunchDetached(notepad, std::wstring(L"\"") + hosts + L"\"", L"", false);
             break;
-        case kIdExit: PostMessageW(g_window, WM_CLOSE, 0, 0); break;
+        }
+        case kIdExit: RequestQuit(); break;
         default: break;
     }
 }
@@ -504,6 +389,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     // Explorer re-registers this message when it restarts, so re-add the icon.
     if (msg == g_taskbarCreated) {
         AddIcon();
+        return 0;
+    }
+
+    // A dialog requested from a worker thread. Handled here so it is modal to this
+    // window and runs on the thread that owns it; the requester is blocked until the
+    // answer is ready.
+    if (Dialogs::IsShowMessage(msg)) {
+        Dialogs::HandleShowMessage(hwnd, lp);
+        return 0;
+    }
+
+    // A request to open the update progress window. Created here, on the thread that
+    // owns windows, so every later touch of its handle is already on the right thread.
+    if (ProgressWindow::IsBeginMessage(msg)) {
+        ProgressWindow::HandleBeginMessage(hwnd, lp);
         return 0;
     }
 
@@ -548,11 +448,28 @@ bool Create(HINSTANCE instance) {
         LoadImageW(instance, MAKEINTRESOURCEW(1), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
     if (!g_icon) g_icon = LoadIconW(nullptr, IDI_APPLICATION);
 
+    // From here on every dialog raised from a worker thread is marshalled to this
+    // window and owned by it. Armed only once the window exists, so the startup
+    // dialogs in main() — which run before it — stay inline.
+    Dialogs::Init(g_window);
+
+    // The controller's only route to the user. Every callback runs on the thread that
+    // raised it — a worker, never this one — which is what the notify-icon helpers
+    // (each building its own NOTIFYICONDATAW) and the posted close are written for.
+    Controller::Attach({ShowBalloon, SetTip, ResetTip, RequestQuit, ProgressBegin,
+                        ProgressReport, ProgressApplying, ProgressEnd});
+
     AddIcon();
     return true;
 }
 
 void Destroy() {
+    // Disarm first: a detached worker still unwinding must not reach a window that is
+    // about to be destroyed, and after this it cannot. The controller is disarmed
+    // before the dialogs for the same reason — it holds the callbacks that post here.
+    Controller::Detach();
+    Dialogs::Shutdown();
+
     NOTIFYICONDATAW data = IconIdentity();
     Shell_NotifyIconW(NIM_DELETE, &data);
 }
@@ -566,27 +483,8 @@ int RunMessageLoop() {
     return static_cast<int>(msg.wParam);
 }
 
-// Any failure — network, signature, policy — is swallowed to a log line: an automatic
-// check must never nag with an error dialog. If an update is available, the same
-// prompt/confirm/apply path as the manual check is reused.
 void StartSilentUpdateCheck() {
-    bool expected = false;
-    if (!g_updateBusy.compare_exchange_strong(expected, true)) return;
-    std::thread([] {
-        BusyGuard guard;
-        const Update::Info info = Update::FetchManifest();
-        if (!info.ok) {
-            LOGW(L"Auto-update check failed: " +
-                 (info.error.empty() ? std::wstring(L"unknown error") : info.error));
-            return;
-        }
-        std::wstring summary;
-        if (!Update::UpdateAvailable(info, summary)) {
-            LOGI(L"Auto-update check: already up to date (" + info.version + L").");
-            return;
-        }
-        PromptAndApply(info, summary);
-    }).detach();
+    Controller::StartSilentUpdateCheck();
 }
 
 }  // namespace Tray

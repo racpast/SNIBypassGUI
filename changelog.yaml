@@ -30,6 +30,19 @@
 
 # --- newest first; CI reads the topmost entry ---
 
+- version: "5.2.0"
+  date: "2026-10-05"
+  en: |
+    • Introduced a multi-protocol DNS proxy supporting DNSCrypt, DoH, DoT, and more, alongside upgrading Nginx to an extended build to lay the groundwork for expanding site support.
+    • Decoupled the updater into a standalone component, significantly improving fault tolerance during update procedures.
+    • Added a visual update progress window, replacing the silent background update mechanism.
+    • Various stability, reliability, and compatibility improvements.
+  zh-CN: |
+    • 引入多协议 DNS 代理，支持 DNSCrypt、DoH、DoT 等，同时将 Nginx 升级至扩展构建版本，为后续支持更多站点奠定基础。
+    • 重构更新器为独立组件，提升更新过程的容错能力。
+    • 新增可视化更新进度窗口，取代静默后台更新方式。
+    • 其他若干稳定性、可靠性与兼容性改进。
+
 - version: "5.1.2"
   date: "2026-09-20"
   en: |

@@ -13,7 +13,7 @@
 #
 # For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 #
-# See the LICENSE file in the project root for full terms and conditions.
+# See the LICENSE.md file in the project root for full terms and conditions.
 
 name: CI & Release
 
@@ -33,7 +33,7 @@ permissions:
 
 # Required repository configuration:
 #   secrets.SNIB_SIGNING_KEY   PEM contents of signing_key.pem (the ECDSA P-256
-#                              private key from `snibrelease.py keygen`).
+#                              private key from `release.py keygen`).
 #   secrets.PAGES_DEPLOY_TOKEN A PAT (or deploy key) that can push to the
 #                              Cloudflare Pages content repository.
 #   vars.PAGES_REPO            "owner/repo" of that Pages repository.
@@ -59,6 +59,15 @@ jobs:
           if (-not (Test-Path (Join-Path $bin 'gcc.exe'))) { throw "MinGW-w64 not found at $bin" }
           $bin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
           & (Join-Path $bin 'gcc.exe') --version
+
+      # CMake and Ninja ship with the windows-latest image, and nothing in this
+      # build needs MSYS2 any more: libsodium is downloaded as a prebuilt MinGW
+      # archive by FetchContent, so there is no configure/make step to run. The
+      # previous MSYS2 setup existed only to provide those two tools.
+      - name: Verify CMake and Ninja
+        run: |
+          cmake --version
+          ninja --version
 
       # ---- CI: Format gate (runs before the build, so a style failure is
       #      reported on its own rather than buried under compiler output) ----
@@ -97,6 +106,47 @@ jobs:
       # ---- CI: Build + Test (always runs) ----
       - name: Configure (with tests)
         run: cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_RC_COMPILER=windres -DSNIB_BUILD_TESTS=ON
+
+      # Runs after configure, because it consumes the compile_commands.json that
+      # configure produces — the same file .clang-tidy's settings are written against,
+      # so what is analyzed is the build that ships rather than a guess at its flags.
+      #
+      # The database is first rewritten for clang: this build is GCC/MinGW, and
+      # clang-tidy refuses flags it does not implement (-fwide-exec-charset), which
+      # would make every run fail to compile its input. tools/clangdb.py removes only
+      # those, and explains which and why.
+      #
+      # The checks are the ones in .clang-tidy, chosen for the failure modes this
+      # codebase is actually exposed to (concurrency and bugprone especially; see that
+      # file for the reasoning and for what is deliberately left off).
+      #
+      # --target is required: clang-tidy discards the compiler the database names and
+      # drives the flags through its own front end, which with no --target targets the
+      # host default (x86_64-pc-windows-msvc) and pulls the Windows SDK headers instead
+      # of MinGW's. Those headers need typedefs only MinGW's windows.h provides, so the
+      # include chain collapses. --extra-arg rather than a CMake flag because GCC does
+      # not accept --target, so it cannot live in compile_commands.json.
+      - name: Static analysis (clang-tidy)
+        shell: pwsh
+        run: |
+          $clangTidy = Get-Command clang-tidy -ErrorAction SilentlyContinue
+          if (-not $clangTidy) {
+              $fallback = 'C:\Program Files\LLVM\bin\clang-tidy.exe'
+              if (-not (Test-Path $fallback)) { throw "clang-tidy not found on this runner." }
+              $clangTidy = $fallback
+          }
+          & $clangTidy --version
+
+          python tools/clangdb.py --build build
+
+          # Only the project's translation units: the analysis is driven by the
+          # database, which also lists the generated resource scripts.
+          $sources = git ls-files 'src/*.cpp' 'tests/*.cpp'
+          & $clangTidy -p build/clang-db --warnings-as-errors='*' `
+              --extra-arg=--target=x86_64-w64-windows-gnu $sources
+          if ($LASTEXITCODE -ne 0) {
+              throw "clang-tidy reported findings. See .clang-tidy for the enabled checks."
+          }
 
       - name: Build
         run: cmake --build build
@@ -195,7 +245,7 @@ jobs:
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         shell: bash
         run: |
-          python tools/snibrelease.py pack \
+          python tools/release.py pack \
             --exe build/SNIBypassGUI.exe \
             --version "${{ steps.ver.outputs.version }}" \
             --notes-file changelog.yaml \
@@ -204,7 +254,7 @@ jobs:
 
       - name: Verify dist (client-side check)
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-        run: python tools/snibrelease.py verify --dist dist --header src/update/public_key.h
+        run: python tools/release.py verify --dist dist --header src/update/public_key.h
 
       - name: Remove signing key
         if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
@@ -243,10 +293,20 @@ jobs:
 
       - name: Stage + zip extract-and-run tree
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && steps.decide.outputs.mode != 'equal'
-        shell: bash
+        shell: pwsh
         run: |
           cmake --install build --prefix stage
-          ( cd stage && 7z a -tzip "../SNIBypassGUI-v${{ steps.ver.outputs.version }}.zip" . )
+          # Compress-Archive rather than 7z: this workflow never declared a 7-Zip
+          # dependency, so the old step relied on a detail of the runner image
+          # (which happens to ship 7z.exe on PATH) rather than on a contract. The
+          # platform's own archiver is always present and needs no install step.
+          Compress-Archive -Path stage/* -DestinationPath "SNIBypassGUI-v${{ steps.ver.outputs.version }}.zip" -Force
+          # Fail loudly if the archive did not materialise, since the release step
+          # below consumes it by name and would otherwise fail with a less obvious
+          # error.
+          if (-not (Test-Path "SNIBypassGUI-v${{ steps.ver.outputs.version }}.zip")) {
+            throw "zip was not created"
+          }
 
       # ---- Every mode publishes the update tree. ----
       - name: Publish update tree to the Pages repository

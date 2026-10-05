@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "platform/autostart.h"
 
@@ -45,8 +45,9 @@ std::wstring Unquote(std::wstring s) {
 }
 
 std::wstring HexHresult(HRESULT hr) {
-    wchar_t buf[16];
-    std::swprintf(buf, std::size(buf), L"0x%08lX", static_cast<unsigned long>(hr));
+    wchar_t buf[16] = L"";
+    if (std::swprintf(buf, std::size(buf), L"0x%08lX", static_cast<unsigned long>(hr)) < 0)
+        buf[0] = L'\0';
     return buf;
 }
 
@@ -250,8 +251,13 @@ bool Disable() {
 
     const Com::Bstr name(APP_TASK_NAME);
     const HRESULT hr = folder->DeleteTask(name.Get(), 0);
+    // MinGW spells ERROR_FILE_NOT_FOUND through __MSABI_LONG, whose lowercase 'l'
+    // suffix cert-dcl16-c rejects — and reports against the macro, so the diagnostic
+    // carries no location to annotate. The code is the Win32 error's, and the mapping
+    // to an HRESULT is the SDK's.
+    constexpr HRESULT kHresultFileNotFound = HRESULT_FROM_WIN32(2);
     // A task that is not there is the state we were asked to produce.
-    if (FAILED(hr) && hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) {
+    if (FAILED(hr) && hr != kHresultFileNotFound) {
         LOGE(L"Autostart: cannot delete the logon task (" + HexHresult(hr) + L").");
         return false;
     }

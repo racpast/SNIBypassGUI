@@ -13,10 +13,12 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 #include <windows.h>
+
+#include <shellapi.h>
 
 #include <string>
 
@@ -28,29 +30,52 @@ namespace Command {
 int RunHidden(const std::wstring& cmdline, std::wstring* out = nullptr,
               DWORD timeoutMs = 30000);
 
-// Write a batch script into the user's temp directory and launch it detached, to
-// run after this program is gone.
+// Whether `flag` appears as a complete argument on `fullCommandLine`.
 //
-// Three things here are load-bearing and easy to get wrong, which is why they live
-// in one place rather than at each call site:
+// `fullCommandLine` is the whole line, program name included, which is what
+// GetCommandLineW returns. Tokenized with CommandLineToArgvW and compared exactly,
+// never searched for as a substring: a substring test turns a path, a quoted
+// argument, or the tail of a longer flag (`-notautostart`) into a match, which is how
+// a launch that was not a logon launch ends up suppressing UI and splitting into a
+// different mode.
 //
-//   * The script is written as UTF-8 and its preamble — added here, so no caller can
-//     omit it — runs `chcp 65001`. cmd.exe decodes a batch file with the code page
-//     in force as it reads, so without that line an install path containing
-//     non-ASCII characters is decoded in the machine's OEM code page and every path
-//     the script then touches is a different, nonexistent one.
-//   * The helper must OUTLIVE this program, since waiting for us to exit is its
-//     entire job, so it is launched with no job object attached.
-//   * Both the script and cmd's working directory are in the temp directory, never
-//     under the program directory. A process's current directory cannot be deleted
-//     while it exists, so a helper running from inside the install tree would pin
-//     that folder for as long as it — or anything it starts, which inherits the
-//     directory — is alive. The self-update helper starts the new executable, so
-//     that inheritance lasts the whole next session.
+// Every argument is examined INCLUDING argv[0], which the tokenizer makes the program
+// name. So this is the right entry point for a line that still carries one, and the
+// wrong one for the lpCmdLine a wWinMain receives — that string has the program name
+// already removed, so its first argument sits at argv[0]. Use
+// CommandLineHasFlagInArgs for it.
 //
-// `scriptName` is a bare file name. `body` holds the commands; @echo off and the
-// code-page line are supplied here. Returns false if the script could not be
-// written or cmd.exe could not be started.
-bool RunDetachedScript(const std::wstring& scriptName, const std::wstring& body);
+// The distinction is not cosmetic. This function used to be documented as accepting
+// either form and skipped argv[0] unconditionally, which silently made it unable to
+// find a flag that was the first argument of a stripped line — precisely the shape a
+// scheduled `-autostart` launch arrives in, so logon launches were never recognised.
+bool CommandLineHasFlag(const std::wstring& fullCommandLine, const std::wstring& flag);
+
+// Whether `flag` appears as a complete argument on a command line that has ALREADY
+// had its program name removed — the `lpCmdLine` a wWinMain is handed.
+//
+// Separate from the function above rather than a flag on it, because the two strings
+// differ in whether they carry a program name and guessing from the content would be
+// a heuristic: a program name can be anything, including something that looks like the
+// flag being searched for. Which form a caller holds is known at the call site, so it
+// is stated there.
+bool CommandLineHasFlagInArgs(const std::wstring& argsOnly, const std::wstring& flag);
+
+// Whether this process was started as a logon launch.
+//
+// The single place that answers the question, so the program and the update helper
+// cannot disagree about it. It reads GetCommandLineW() itself rather than taking a
+// string, because that is the only form the answer is defined for and passing the
+// wrong one in is the mistake this exists to make impossible.
+bool IsAutostartLaunch();
+
+// There is deliberately no "run a generated script" helper here.
+//
+// The self-update and self-removal helpers used to be batch scripts written into
+// %TEMP% and started through cmd.exe, which meant every path handed to them was
+// re-parsed as command language by an already-elevated shell. Both now go through the
+// updater instead (src/updater/), which reads a work order and performs the moves with
+// Win32 calls. Anything that would reintroduce a shell on a path assembled from
+// runtime data belongs there too, not here.
 
 }  // namespace Command

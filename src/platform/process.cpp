@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "platform/process.h"
 
@@ -270,25 +270,6 @@ Handle LaunchDetached(const std::wstring& exePath, const std::wstring& args,
     Started started = StartProcess(exePath, args, workDir, hidden, 0);
     if (started.thread) CloseHandle(started.thread);
     return std::move(started.process);
-}
-
-std::wstring OwnCommandLineArgs() {
-    const wchar_t* line = GetCommandLineW();
-    if (!line) return {};
-
-    // argv[0] is either quoted in full or runs to the first whitespace. Skipping
-    // exactly that much is what leaves the arguments as the shell wrote them,
-    // quoting intact, rather than a re-quoted approximation of them.
-    const wchar_t* p = line;
-    if (*p == L'"') {
-        ++p;
-        while (*p && *p != L'"') ++p;
-        if (*p == L'"') ++p;
-    } else {
-        while (*p && *p != L' ' && *p != L'\t') ++p;
-    }
-    while (*p == L' ' || *p == L'\t') ++p;
-    return p;
 }
 
 bool TryImagePath(DWORD pid, std::wstring& out) {

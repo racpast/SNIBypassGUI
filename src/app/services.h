@@ -13,15 +13,15 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 #include <cstddef>
 #include <memory>
 #include <string>
 
-// High-level orchestration of the local proxy stack: DNS redirection plus the two
-// loopback services (nginx, sni-gate) that redirected names resolve to.
+// High-level orchestration of the local proxy stack: DNS redirection, encrypted
+// DNS forwarding, and the two loopback services redirected names resolve to.
 namespace Services {
 
 // Deterministic lifetime for everything the stack owns.
@@ -88,6 +88,7 @@ std::wstring SupportedSitesFile();
 // would offer to Start a stack whose ports are already taken. Stop terminates those
 // copies as well, so the answer these give is always one a command can act on.
 bool DnsRedirectRunning();
+bool DnsProxyRunning();
 bool NginxRunning();
 bool SniGateRunning();
 bool AnyRunning();
@@ -102,15 +103,13 @@ bool AnyRunning();
 //
 // Nothing here waits for a service to be "ready" on a clock, and nothing polls it for
 // readiness afterwards. A child counts as started once its process has been created;
-// from that point until the next Stop all three components are watched through kernel
-// objects in a single wait — the children through their process handles, DNS
-// redirection through an event it signals when it has stopped in a way it could not
-// repair — and any one of them going down without being asked to takes the rest of
-// the stack down with it and says so. A component that fails during the start itself
-// is covered by the same watch, not by a separate check. That is what keeps the
-// machine out of the state this program can do the most damage in: DNS still pointing
-// every listed name at a loopback port with nothing behind it, while everything
-// reports as running.
+// from that point until the next Stop all four components are watched through kernel
+// objects in a single wait — the children through their process handles and both DNS
+// components through their stop events — and any one of them going down without being
+// asked takes the rest of the stack down with it and says so. A component that fails
+// during the start itself is covered by the same watch, not by a separate check. That
+// keeps the machine out of the state this program can do the most damage in: DNS still
+// pointing names at a loopback service that is no longer there.
 bool Start(bool interactive);
 
 // Stop the whole stack and wait until the child ports are actually free again —

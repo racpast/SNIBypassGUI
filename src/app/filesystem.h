@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 #include <functional>
@@ -101,7 +101,14 @@ void DeleteTree(const std::wstring& dir);
 
 // Delete the file or directory at `path`. If it's a directory, recursively deletes
 // its contents. Reparse points are unlinked without following.
-void Delete(const std::wstring& path);
+//
+// True when the path is gone afterwards. False is not "nothing was there" — an
+// already-absent path is a success, since that is the state being asked for — but a
+// deletion that did not happen: a file held open by another process, a directory
+// that could not be removed, a permissions problem. Callers that report a count to
+// the user need that distinction, because "deleted 12 items" is a claim about the
+// machine and a locked file makes it false.
+bool Delete(const std::wstring& path);
 
 // Find all paths under `baseDir` matching `pattern` and delete them. The pattern is
 // relative to `baseDir`. If `filter` is provided, it is called before each deletion
@@ -112,13 +119,14 @@ void Delete(const std::wstring& path);
 //   DeleteByPattern(ExeDir(), "logs\*")          - empty logs directory
 //   DeleteByPattern(ExeDir(), "data\**\*.tmp")   - delete all .tmp under data
 //
-// Returns the count of items deleted.
+// Returns the count of items actually removed. An item the filter vetoed, or one
+// that could not be deleted, is not counted.
 size_t DeleteByPattern(const std::wstring& baseDir, const std::wstring& pattern,
                        const DeletionFilter& filter = nullptr);
 
 // Delete multiple patterns under `baseDir`. Equivalent to calling DeleteByPattern
 // for each, but more efficient when patterns overlap (a file is deleted at most once).
-// Returns the total count of items deleted.
+// Returns the total count of items actually removed.
 size_t DeleteByPatterns(const std::wstring& baseDir, const std::vector<std::wstring>& patterns,
                         const DeletionFilter& filter = nullptr);
 

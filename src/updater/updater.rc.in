@@ -1,0 +1,67 @@
+// Copyright © 2026 Racpast. All Rights Reserved.
+//
+// This file is part of SNIBypassGUI, a proprietary software project.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Racpast. The intellectual and technical concepts contained herein are
+// proprietary to Racpast and are protected by copyright law and international
+// treaties. Dissemination of this information or reproduction of this material
+// is strictly forbidden unless prior written permission is obtained from Racpast.
+//
+// Unauthorized copying, modification, distribution, or use of this file,
+// via any medium, is strictly prohibited.
+//
+// For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
+//
+// See the LICENSE.md file in the project root for full license terms.
+
+// GENERATED FROM updater.rc.in by CMake -- do not edit the copy in the build tree.
+//
+// This is the resource script for a module that is NOT a distributed executable: it
+// is embedded inside SNIBypassGUI.exe and written out only at the moment it is needed.
+// Two consequences follow, and they are why this file is so short.
+//
+//   * No manifest. A manifest states the privileges a binary wants when something
+//     launches it. Nothing ever launches this one directly: it is started by the
+//     application with CreateProcessW, so it inherits the application's elevated token
+//     exactly as any child does. It carries no manifest for the same reason the
+//     updater's own code never calls ShellExecute — there is no path by which Windows
+//     would consult one, and an embedded resource is not a file on disk to consult it
+//     from anyway.
+//
+//   * No icon. It never appears on screen, in a taskbar, or in an Explorer window.
+//
+// Only the version resource remains, and it is read by the build to derive the name
+// the module is extracted under, so that several extracted copies can be told apart.
+
+#include <winver.h>
+#include <winuser.h>
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION     @UPDATER_VER_A@,@UPDATER_VER_B@,@UPDATER_VER_C@,@UPDATER_VER_D@
+ PRODUCTVERSION  @UPDATER_VER_A@,@UPDATER_VER_B@,@UPDATER_VER_C@,@UPDATER_VER_D@
+ FILEFLAGSMASK   0x3fL
+ FILEFLAGS       0x0L
+ FILEOS          VOS__WINDOWS32
+ FILETYPE        VFT_APP
+ FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName",      "Racpast"
+            VALUE "FileDescription",  "SNIBypassGUI Updater"
+            VALUE "FileVersion",      "@UPDATER_VER_NUMERIC@"
+            VALUE "InternalName",     "Updater"
+            VALUE "LegalCopyright",   "Copyright (c) Racpast. All rights reserved."
+            VALUE "OriginalFilename", "Updater.exe"
+            VALUE "ProductName",      "SNIBypassGUI"
+            VALUE "ProductVersion",   "@UPDATER_VER_NUMERIC@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

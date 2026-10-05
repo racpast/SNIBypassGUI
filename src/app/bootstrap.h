@@ -13,47 +13,33 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 
-// First-run checks that must pass before the tray appears.
+// First-run and payload-presence checks.
 //
-// The extract-and-run payload (paths.ini and data/) is not
-// embedded in the executable; it ships beside it in the archive and is
-// delivered/updated through the signed manifest. So the executable must cope with
-// the payload being absent in three distinct situations:
+// The payload (paths.ini and accompanying data files) ships beside the executable
+// in the distribution archive. The executable copes with it being absent in two
+// distinct situations:
 //
-//   * the user extracted the whole archive       -> present, run offline
+//   * the user extracted the whole archive       -> present, run normally
 //   * the executable was run from inside an
 //     archive viewer                             -> a helpful "extract first"
 //                                                   refusal, never going online
-//   * a real install with data/ deleted          -> re-fetch through the signed
-//                                                   update channel, so there is no
-//                                                   unsigned bootstrap path
+//
+// A real install with files deleted after the fact is handled by
+// Controller::RepairIfNeeded(), which runs after the tray is up.
 namespace Bootstrap {
 
-// True if the canonical payload is laid out beside the executable.
+// True if paths.ini is present beside the executable. paths.ini is the payload's
+// root — everything the application reads is located through it — so its presence
+// is the one stable contract regardless of what else the payload contains.
 bool PayloadPresent();
 
 // True if the executable is running from an archiver's scratch directory rather than
 // a fixed install folder.
 bool RunningFromArchiveTemp();
-
-enum class PayloadStatus {
-    Ready,        // the payload is in place; carry on
-    Restarting,   // the fetch also brought a new executable and a swap is pending,
-                  // so this process must exit and let the helper do it
-    Unavailable,  // it could not be obtained; the user has already been told why
-};
-
-// Ensure the payload is available. Runs after elevation and, for the download path,
-// after the agreement is accepted.
-//
-// The caller is responsible for having already refused the archive-scratch case
-// (see RunningFromArchiveTemp): that has to happen before any prompt, and doing it
-// once, early, is what keeps this function purely about obtaining the payload.
-PayloadStatus EnsurePayload();
 
 // Reconcile the desktop shortcut with the stored preference, prompting on a first
 // run that has never been asked.

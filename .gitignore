@@ -8,6 +8,12 @@
 /dist/
 compile_commands.json
 
+# Python bytecode from tools/release.py. It carries absolute paths and the
+# interpreter version, so it must never be committed — and it appears the first time
+# the release tool is run.
+__pycache__/
+*.pyc
+
 # Private keys — MUST NEVER be committed. The release signing key belongs outside
 # the repo entirely (e.g. %USERPROFILE%\.snib\signing_key.pem); this is a backstop
 # in case one lands here.

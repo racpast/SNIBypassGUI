@@ -13,7 +13,7 @@
 #
 # For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 #
-# See the LICENSE file in the project root for full terms and conditions.
+# See the LICENSE.md file in the project root for full terms and conditions.
 
 # Post-build check: the linked executable must carry exactly one application
 # manifest requesting administrator rights.

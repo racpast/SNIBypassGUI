@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "platform/ports.h"
 
@@ -32,7 +32,7 @@ namespace {
 
 // TCP table ports are big-endian on the wire.
 int HostPort(DWORD tablePort) {
-    return static_cast<int>(((tablePort & 0xFF) << 8) | ((tablePort >> 8) & 0xFF));
+    return static_cast<int>(((tablePort & 0xFFu) << 8u) | ((tablePort >> 8u) & 0xFFu));
 }
 
 template <typename Table>

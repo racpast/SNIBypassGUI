@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "update/json.h"
 
@@ -138,17 +138,17 @@ private:
         if (cp < 0x80) {
             out.push_back(static_cast<char>(cp));
         } else if (cp < 0x800) {
-            out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
-            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+            out.push_back(static_cast<char>(0xC0u | (cp >> 6u)));
+            out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
         } else if (cp < 0x10000) {
-            out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
-            out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+            out.push_back(static_cast<char>(0xE0u | (cp >> 12u)));
+            out.push_back(static_cast<char>(0x80u | ((cp >> 6u) & 0x3Fu)));
+            out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
         } else {
-            out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
-            out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
-            out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+            out.push_back(static_cast<char>(0xF0u | (cp >> 18u)));
+            out.push_back(static_cast<char>(0x80u | ((cp >> 12u) & 0x3Fu)));
+            out.push_back(static_cast<char>(0x80u | ((cp >> 6u) & 0x3Fu)));
+            out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
         }
     }
 
@@ -166,7 +166,7 @@ private:
                 digit = static_cast<unsigned>(c - 'A' + 10);
             else
                 return false;
-            out = (out << 4) | digit;
+            out = (out << 4u) | digit;
         }
         return true;
     }
@@ -206,7 +206,7 @@ private:
                             unsigned low;
                             if (!ParseHex4(low)) return false;
                             cp = (low >= 0xDC00 && low <= 0xDFFF)
-                                     ? 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00)
+                                     ? 0x10000 + ((cp - 0xD800) << 10u) + (low - 0xDC00)
                                      : 0xFFFD;  // unpaired
                         } else {
                             cp = 0xFFFD;

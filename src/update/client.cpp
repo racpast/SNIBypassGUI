@@ -13,12 +13,15 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "update/client.h"
 
 #include <windows.h>
 
+#include <shellapi.h>
+
+#include <cstdint>
 #include <fstream>
 #include <map>
 #include <set>
@@ -32,10 +35,13 @@
 #include "app/text.h"
 #include "app/version.h"
 #include "platform/command.h"
+#include "platform/dialogs.h"
 #include "platform/process.h"
 #include "update/crypto.h"
 #include "update/http.h"
 #include "update/json.h"
+#include "updater/module.h"
+#include "updater/plan.h"
 
 namespace Update {
 namespace {
@@ -58,33 +64,6 @@ std::wstring InstallPath(const File& f) {
     return f.isExe ? ExePath() : PathUnder(f.path);
 }
 
-// Whether a file entry should be (re)downloaded.
-//
-// The executable is decided ONLY by the numeric version, and by INEQUALITY rather
-// than "greater than": the remote build simply differs from what we run. That
-// makes a DOWNGRADE a first-class operation — when the release channel is
-// force-aligned to an older version, every newer client steps DOWN to what the
-// channel currently serves. A too-old install that cannot step forward is gated
-// separately by the min_upgradable_from floor.
-//
-// We deliberately do NOT compare the executable's SHA: data no longer lives inside
-// it, so its hash is a pure function of source and would force spurious
-// re-downloads on byte-different builds. The manifest SHA is still verified AFTER
-// download, so it remains an integrity check; it just never triggers the update.
-//
-// Data assets are decided by content: local SHA differs from the manifest SHA, or
-// the file is missing. Because the comparison is local-versus-manifest, a file the
-// user hand-edited is restored to canonical on the next update even if the remote
-// copy is unchanged — updates fully own the payload tree.
-bool NeedsUpdate(const File& f, const Info& info) {
-    if (f.isExe) return CompareVersions(info.version, APP_VERSION_NUM) != 0;
-
-    const std::wstring full = InstallPath(f);
-    if (!FileExists(full)) return true;
-    const std::wstring local = Sha256File(full);
-    return local.empty() || local != f.sha256;
-}
-
 // Fetch every chunk of `f`, verifying each, and write the reassembled file to
 // `dest`. The whole-file hash is checked before returning success, so a true result
 // means `dest` is byte-for-byte what the signed manifest promised.
@@ -97,9 +76,19 @@ bool NeedsUpdate(const File& f, const Info& info) {
 //   stale == false  a LOCAL problem (cannot create, write or flush the staging
 //                   file, or the hash engine is unavailable). Re-fetching would not
 //                   help; the caller should give up.
+//
+// `request` performs the transfer, so a cancellation arrives from the caller's
+// thread in the middle of a body rather than being noticed only between files.
+// `cancelled` is set instead of `err` when the user stopped it: cancellation is not
+// a failure and must not be reported as one.
+// `priorBytes` is how much of the whole run was already staged before this file
+// started, so the byte callback reports a figure for the job and not for one file.
 bool DownloadFile(const File& f, const std::wstring& base, const std::wstring& dest,
-                  std::wstring& err, bool& stale) {
+                  Http::Request* request, uint64_t priorBytes,
+                  std::function<void(uint64_t)> onBytes, std::wstring& err, bool& stale,
+                  bool& cancelled) {
     stale = false;
+    cancelled = false;
 
     // Ensure the parent directory exists.
     const size_t slash = dest.find_last_of(L"\\/");
@@ -121,11 +110,37 @@ bool DownloadFile(const File& f, const std::wstring& base, const std::wstring& d
             return false;
         }
         size_t index = 0;
+        // Bytes of THIS file already written by earlier chunks. The transfer's own
+        // progress count is per-request, so passing it through unchanged would make
+        // the reported figure reset to near zero at every chunk boundary; the window
+        // would show the bar jumping backwards once per chunk.
+        uint64_t fileDone = 0;
         for (const Chunk& c : f.chunks) {
             ++index;
             const std::wstring url = base + c.name;
             std::string data;
-            if (!Http::Get(url, data)) {
+
+            // The transfer runs through the caller's Request when there is one, so a
+            // cancellation reaches it mid-body. Without one the plain Get is used and
+            // the download simply cannot be interrupted inside a chunk.
+            Http::Result result = Http::Result::Failed;
+            if (request) {
+                request->SetProgress(onBytes
+                                         ? Http::Request::ProgressFn(
+                                               [&onBytes, priorBytes, fileDone](uint64_t n) {
+                                                   onBytes(priorBytes + fileDone + n);
+                                               })
+                                         : Http::Request::ProgressFn{});
+                result = request->Run(url, data);
+            } else {
+                result = Http::Get(url, data) ? Http::Result::Ok : Http::Result::Failed;
+            }
+
+            if (result == Http::Result::Cancelled) {
+                cancelled = true;
+                return false;
+            }
+            if (result != Http::Result::Ok) {
                 LOGE(L"Update: chunk download failed: " + url);
                 err = std::wstring(T(L"msg.updChunkDlFail")) + L"\n" + f.path;
                 stale = true;  // remote content moved, or a transient network fault
@@ -147,6 +162,9 @@ bool DownloadFile(const File& f, const std::wstring& base, const std::wstring& d
                 err = T(L"msg.updWriteFail");
                 return false;
             }
+            // Only after the bytes are staged, so the reported figure never runs
+            // ahead of what has actually been written and verified.
+            fileDone += static_cast<uint64_t>(data.size());
         }
         out.flush();
         if (!out) {
@@ -176,10 +194,11 @@ struct Staged {
 };
 
 // Outcome of one download pass over a manifest.
-enum class DownloadResult {
-    Ok,     // every changed file staged and verified
-    Stale,  // remote disagreed with the manifest — re-fetch and retry
-    Hard,   // local error a retry cannot fix (disk, write, hash engine)
+enum class DownloadResult : std::uint8_t {
+    Ok,         // every changed file staged and verified
+    Stale,      // remote disagreed with the manifest — re-fetch and retry
+    Hard,       // local error a retry cannot fix (disk, write, hash engine)
+    Cancelled,  // the user stopped it; not an error and not retryable
 };
 
 // Download every file `info` says needs changing into <target>.new, verifying each,
@@ -202,6 +221,10 @@ DownloadResult DownloadPhase(const Info& info, std::vector<Staged>& staged,
         if (NeedsUpdate(f, info)) todo.push_back(&f);
 
     size_t done = 0;
+    // Bytes of the whole run already accounted for. Every file in `todo` counts
+    // toward it, whether it is downloaded below or reused from an earlier pass, so
+    // the reported figure never jumps backwards when a file is skipped.
+    uint64_t priorBytes = 0;
     for (const File* fp : todo) {
         const File& f = *fp;
         ++done;
@@ -219,64 +242,83 @@ DownloadResult DownloadPhase(const Info& info, std::vector<Staged>& staged,
         if (it != verified.end() && it->second == f.sha256 && FileExists(s.tmp)) {
             LOGI(L"Update: reusing already-staged " + f.path);
             staged.push_back(std::move(s));
+            priorBytes += f.size;
             continue;
         }
 
+        // The file's name is bound to the callback so the window can show which file
+        // it is; the count is the run's total, computed by DownloadFile from the
+        // offset below, because only the caller side knows every file's size.
+        std::function<void(uint64_t)> onBytes;
+        if (progress.onBytes) {
+            const std::wstring path = f.path;
+            onBytes = [&progress, path](uint64_t n) { progress.onBytes(path, n); };
+        }
+
         bool stale = false;
-        if (!DownloadFile(f, base, s.tmp, err, stale))
+        bool cancelled = false;
+        if (!DownloadFile(f, base, s.tmp, progress.request, priorBytes, onBytes, err, stale,
+                          cancelled)) {
+            if (cancelled) return DownloadResult::Cancelled;
             return stale ? DownloadResult::Stale : DownloadResult::Hard;
+        }
         verified[s.target] = f.sha256;
         staged.push_back(std::move(s));
+        priorBytes += f.size;
     }
     return DownloadResult::Ok;
 }
 
-// The commands of the wait-and-relaunch helper that replaces the running executable
-// after we exit. Crash-safe: the current executable is preserved as .bak first, and
-// if the swap fails the backup is restored, so the install is never left without a
-// working executable.
+// Hand the executable swap to the updater.
 //
-// `args` is what this process was started with, and it is handed back to the copy
-// that replaces us because the relaunch continues this session rather than beginning
-// a new one. A logon start carries -autostart, which is what tells the program to
-// bring the service stack up and to leave the desktop shortcut alone; dropping it
-// would bring the tray back with nothing running and a shortcut prompt in front of
-// someone who only agreed to an update.
-std::wstring BuildSelfUpdateScript(const std::wstring& self, const std::wstring& newExe,
-                                   const std::wstring& bak, const std::wstring& args) {
-    std::wstring s;
-    s += L"set \"SELF=" + self + L"\"\r\n";
-    s += L"set \"NEW=" + newExe + L"\"\r\n";
-    s += L"set \"BAK=" + bak + L"\"\r\n";
-    s += L"set \"ARGS=" + args + L"\"\r\n";
-    s += L"del \"%BAK%\" >nul 2>&1\r\n";
-    s += L"set /a TRIES=0\r\n";
-    s += L":wait\r\n";
-    s += L"ping 127.0.0.1 -n 2 >nul\r\n";
-    // Retry until the old process has exited and released the image.
-    s += L"move /Y \"%SELF%\" \"%BAK%\" >nul 2>&1\r\n";
-    s += L"if not exist \"%SELF%\" goto swap\r\n";
-    s += L"set /a TRIES+=1\r\n";
-    s += L"if %TRIES% LSS 60 goto wait\r\n";
-    // Never took the lock: leave the install exactly as it was.
-    s += L"del \"%NEW%\" >nul 2>&1\r\n";
-    s += L"start \"\" \"%SELF%\" %ARGS%\r\n";
-    s += L"goto done\r\n";
-    s += L":swap\r\n";
-    s += L"move /Y \"%NEW%\" \"%SELF%\" >nul 2>&1\r\n";
-    s += L"if exist \"%SELF%\" (\r\n";
-    s += L"  del \"%BAK%\" >nul 2>&1\r\n";
-    s += L") else (\r\n";
-    s += L"  move /Y \"%BAK%\" \"%SELF%\" >nul 2>&1\r\n";
-    s += L")\r\n";
-    s += L"start \"\" \"%SELF%\" %ARGS%\r\n";
-    s += L":done\r\n";
-    s += L"(goto) 2>nul & del \"%~f0\"\r\n";
-    return s;
+// Nothing here is a shell command. The paths, the parent pid and the autostart bit go
+// into a work order (updater/plan.h) created fresh under %ProgramData%, and the updater
+// module is launched with one fixed flag and that file's path. The previous
+// implementation built a batch script instead, which meant every one of these strings
+// was re-parsed as command language — and by an elevated cmd.exe. A path is a path here,
+// whatever characters it contains.
+//
+// `self` is where the running executable lives, `newExe` the verified replacement
+// already staged beside it, and `bak` where the current one is preserved until the swap
+// is confirmed.
+bool StartUpdater(const std::wstring& self, const std::wstring& newExe, const std::wstring& bak,
+                  bool autostart) {
+    const std::wstring dir = Updater::PlanDirectory();
+    if (dir.empty()) {
+        LOGE(
+            L"Update: the updater's plan directory could not be secured; refusing to "
+            L"schedule the swap.");
+        return false;
+    }
+
+    Updater::Plan plan;
+    plan.op = Updater::Op::Replace;
+    plan.target = self;
+    plan.newFile = newExe;
+    plan.backup = bak;
+    plan.parentPid = GetCurrentProcessId();
+    plan.autostart = autostart;
+
+    const std::wstring planPath = dir + L"\\" + Updater::RandomPlanFileName();
+    if (!Updater::WritePlan(planPath, plan)) {
+        LOGE(L"Update: cannot write the updater plan " + planPath + L" (err " +
+             std::to_wstring(GetLastError()) + L").");
+        return false;
+    }
+
+    // Arguments are a list, never a pre-joined line: the quoting the process API needs
+    // is applied in one place, so nothing here can produce an ambiguous command line by
+    // concatenation.
+    if (!UpdaterModule::Launch({L"--apply-plan", planPath})) {
+        LOGE(L"Update: cannot start the updater module.");
+        Updater::DeletePlanFile(planPath);
+        return false;
+    }
+    return true;
 }
 
 void ReportFailure(const std::wstring& message) {
-    MessageBoxW(nullptr, message.c_str(), APP_NAME, MB_ICONERROR);
+    Dialogs::Show(message, MB_ICONERROR);
 }
 
 }  // namespace
@@ -287,6 +329,46 @@ std::wstring UrlBaseDir(const std::wstring& url) {
     const size_t slash = clean.find_last_of(L'/');
     if (slash == std::wstring::npos) return clean + L"/";
     return clean.substr(0, slash + 1);
+}
+
+// The single place that answers "which direction is the channel relative to us?".
+// NeedsUpdate() and the tray's message selection both call this, so the two can no
+// longer disagree about the same manifest.
+UpdateKind Classify(const Info& info) {
+    const int cmp = CompareVersions(info.version, APP_VERSION_NUM);
+    if (cmp == 0) return UpdateKind::None;
+    return cmp < 0 ? UpdateKind::Downgrade : UpdateKind::Upgrade;
+}
+
+// Whether a file entry should be (re)downloaded.
+//
+// The executable is decided ONLY by the numeric version, and by INEQUALITY rather
+// than "greater than": the remote build simply differs from what we run. That makes a
+// DOWNGRADE a first-class operation — when the release channel is force-aligned to an
+// older version, every newer client steps DOWN to what the channel currently serves. A
+// too-old install that cannot step forward is gated separately by the
+// min_upgradable_from floor.
+//
+// We deliberately do NOT compare the executable's SHA: data no longer lives inside it,
+// so its hash is a pure function of source and would force spurious re-downloads on
+// byte-different builds. The manifest SHA is still verified AFTER download, so it
+// remains an integrity check; it just never triggers the update.
+//
+// Data assets are decided by content: local SHA differs from the manifest SHA, or the
+// file is missing. Because the comparison is local-versus-manifest, a file the user
+// hand-edited is restored to canonical on the next update even if the remote copy is
+// unchanged — updates fully own the payload tree.
+//
+// Public rather than internal: the progress window has to size the job before the
+// download begins, which means asking the same question this asks. Answering it a
+// second time in the caller is how the two answers end up disagreeing.
+bool NeedsUpdate(const File& f, const Info& info) {
+    if (f.isExe) return Classify(info) != UpdateKind::None;
+
+    const std::wstring full = InstallPath(f);
+    if (!FileExists(full)) return true;
+    const std::wstring local = Sha256File(full);
+    return local.empty() || local != f.sha256;
 }
 
 int CompareVersions(const std::wstring& a, const std::wstring& b) {
@@ -362,12 +444,27 @@ Info FetchManifest() {
     }
 
     // Signature first — do not parse anything until the bytes are trusted.
+    //
+    // A signature that does not match and a machine that cannot perform the check are
+    // different verdicts and get different messages. The first is evidence about the
+    // download; the second is a fact about the system, and reporting it as possible
+    // tampering accuses a perfectly good download of something it did not do.
     std::vector<uint8_t> signature;
-    if (!Crypto::Base64Decode(signatureBase64, signature) ||
-        !Crypto::VerifySignature(manifestRaw, signature)) {
-        LOGE(L"Update: manifest signature verification FAILED — refusing to continue.");
+    if (!Crypto::Base64Decode(signatureBase64, signature)) {
+        LOGE(L"Update: the manifest signature is not valid base64 — refusing to continue.");
         info.error = T(L"msg.updSigFail");
         return info;
+    }
+    switch (Crypto::VerifySignature(manifestRaw, signature)) {
+        case Crypto::VerifyResult::Ok: break;
+        case Crypto::VerifyResult::BadSignature:
+            LOGE(L"Update: manifest signature verification FAILED — refusing to continue.");
+            info.error = T(L"msg.updSigFail");
+            return info;
+        case Crypto::VerifyResult::Unavailable:
+            LOGE(L"Update: the signature could not be checked on this system.");
+            info.error = T(L"msg.updVerifyUnavailable");
+            return info;
     }
     LOGI(L"Update: manifest signature verified.");
 
@@ -391,7 +488,6 @@ Info FetchManifest() {
         info.error = T(L"msg.updParseFail");
         return info;
     }
-    info.released = Utf8ToWide(root.GetStr("released"));
 
     if (!root.GetUInt("chunk_size", info.chunkSize) || info.chunkSize == 0) {
         LOGE(L"Update: chunk_size missing or zero.");
@@ -492,18 +588,31 @@ Info FetchManifest() {
 bool UpdateAvailable(const Info& info, std::wstring& summary) {
     summary.clear();
     if (!info.ok) return false;
-    bool any = false;
-    for (const File& f : info.files) {
-        if (NeedsUpdate(f, info)) {
-            summary += L"- " + f.path + L"\n";
-            any = true;
-        }
+
+    std::vector<std::wstring> paths;
+    for (const File& f : info.files)
+        if (NeedsUpdate(f, info)) paths.push_back(f.path);
+
+    if (paths.empty()) return false;
+
+    constexpr int kMaxShown = 8;
+    const int total = static_cast<int>(paths.size());
+    const int shown = total < kMaxShown ? total : kMaxShown;
+    for (int i = 0; i < shown; ++i) summary += L"• " + paths[i] + L"\n";
+
+    const int remaining = total - shown;
+    if (remaining > 0) {
+        wchar_t buf[64];
+        static_cast<void>(swprintf(buf, 64, T(L"msg.updFileMore"), remaining));
+        summary += buf;
+        summary += L'\n';
     }
-    return any;
+    return true;
 }
 
-bool PerformUpdate(const Info& info, const Progress& progress) {
-    if (!info.ok) return false;
+Outcome PerformUpdate(const Info& info, const Progress& progress, bool* exeSwapPending) {
+    if (exeSwapPending) *exeSwapPending = false;
+    if (!info.ok) return Outcome::Failed;
 
     // ---- Phase 1: download and verify everything. Nothing is touched yet. ----
     //
@@ -520,7 +629,11 @@ bool PerformUpdate(const Info& info, const Progress& progress) {
     std::set<std::wstring> allNew;                  // every .new path we created
     std::wstring err;
 
+    // Three outcomes are distinguishable here and the distinction is the point: a
+    // cancelled download is cleaned up exactly like a failed one, but it is NOT
+    // reported as a failure, because the user asked for it.
     bool ok = false;
+    bool cancelled = false;
     for (int attempt = 0; attempt < 2; ++attempt) {
         // The previous attempt's entries point into the previous Info, so rebuild the
         // list against `current`. Staged .new files survive on disk and are reused.
@@ -529,6 +642,10 @@ bool PerformUpdate(const Info& info, const Progress& progress) {
             DownloadPhase(current, staged, verified, allNew, progress, err);
         if (result == DownloadResult::Ok) {
             ok = true;
+            break;
+        }
+        if (result == DownloadResult::Cancelled) {
+            cancelled = true;
             break;
         }
         if (result == DownloadResult::Hard) break;
@@ -544,16 +661,21 @@ bool PerformUpdate(const Info& info, const Progress& progress) {
     }
 
     if (!ok) {
-        // Roll back the staging area only — the install is untouched.
+        // Roll back the staging area only — the install is untouched. This runs for a
+        // cancellation too: the partial .new files must not be left behind.
         for (const std::wstring& path : allNew) DeleteFileW(path.c_str());
+        if (cancelled) {
+            LOGI(L"Update: download cancelled by the user; the install was not touched.");
+            return Outcome::Cancelled;
+        }
         ReportFailure(err);
-        return false;
+        return Outcome::Failed;
     }
 
     if (staged.empty()) {
         LOGI(L"Update: nothing to do.");
         for (const std::wstring& path : allNew) DeleteFileW(path.c_str());
-        return false;
+        return Outcome::UpToDate;
     }
 
     // Drop any .new left over from a discarded stale attempt (e.g. a file the fresh
@@ -617,7 +739,7 @@ bool PerformUpdate(const Info& info, const Progress& progress) {
             DeleteFileW(s.tmp.c_str());
         }
         ReportFailure(T(L"msg.updApplyFail"));
-        return false;
+        return Outcome::Failed;
     }
 
     // Assets are in place; drop their backups.
@@ -629,21 +751,22 @@ bool PerformUpdate(const Info& info, const Progress& progress) {
 
     if (!exeEntry) {
         LOGI(L"Update: complete (assets only).");
-        return false;
+        // Applied, and there is no executable swap, so the caller keeps running.
+        return Outcome::Applied;
     }
 
-    // ---- Phase 3: swap the running executable via a wait-and-relaunch helper. ----
-    LOGI(L"Update: launching the self-update helper and exiting.");
-    if (!Command::RunDetachedScript(
-            L"selfupdate.bat",
-            BuildSelfUpdateScript(exeEntry->target, exeEntry->tmp, exeEntry->bak,
-                                  Process::OwnCommandLineArgs()))) {
-        LOGE(L"Update: cannot start the self-update helper.");
+    // ---- Phase 3: swap the running executable through the updater. ----
+    LOGI(L"Update: handing the executable swap to the updater and exiting.");
+    if (!StartUpdater(exeEntry->target, exeEntry->tmp, exeEntry->bak,
+                      Command::IsAutostartLaunch())) {
+        LOGE(L"Update: cannot start the updater.");
         DeleteFileW(exeEntry->tmp.c_str());
         ReportFailure(T(L"msg.updApplyFail"));
-        return false;
+        return Outcome::Failed;
     }
-    return true;  // the caller must exit so the helper can replace us
+    // Applied; the caller must exit so the updater can replace the binary.
+    if (exeSwapPending) *exeSwapPending = true;
+    return Outcome::Applied;
 }
 
 }  // namespace Update

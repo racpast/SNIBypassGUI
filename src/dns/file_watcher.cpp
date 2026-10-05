@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "dns/file_watcher.h"
 
@@ -88,6 +88,24 @@ void FileWatcher::Stop() {
     // come.
     if (m_dirHandle) CancelIoEx(m_dirHandle, nullptr);
 
+    // Bounded, and deliberately not given a timeout.
+    //
+    // This join can wait for one callback to finish, because `m_callback` runs on
+    // this thread and the stop flag is only observed at the top of the loop — a
+    // callback already in flight runs to completion first. Its upper bound is
+    // whatever the callback costs, which for the one caller that matters (the
+    // redirector's hot-reload) is a single RegSetValueExW: the callback reaches
+    // Nrpt::InstallRule, which may take the redirector's table mutex and write the
+    // policy rule. No lock is held while waiting here — Redirector::Stop calls
+    // DisableHotReload() (which joins) before it ever takes m_tableMx — so the wait
+    // is a registry write, not a deadlock.
+    //
+    // A timeout would be worse than the wait. std::thread::join cannot be
+    // interrupted, so a bounded wait would mean leaving the thread running and the
+    // std::thread joinable, and destroying a joinable std::thread calls
+    // std::terminate. Abandoning the thread instead would let it keep running
+    // against handles Stop is about to close. Waiting for a known-bounded callback
+    // is the only correct option here.
     const bool joined = m_thread.joinable();
     if (joined) m_thread.join();
 

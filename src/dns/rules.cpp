@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "dns/rules.h"
 
@@ -26,15 +26,17 @@
 #include <unordered_set>
 #include <utility>
 
+// For AsciiLower, which is the same fold the wire-format layer applies when it reads
+// a name out of a query. Sharing it is not only about not writing the function twice:
+// if the two ever differed, a rule stored lowercased would stop matching the very name
+// it was written for, and the failure would look like a rule that does not work rather
+// than like two case folds that disagree.
 #include "app/logging.h"
 #include "app/text.h"
+#include "dns/message.h"
 
 namespace Dns {
 namespace {
-
-char Lower(char c) {
-    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
-}
 
 bool DomainCovers(MatchKind kind, const std::string& domain, const std::string& name) {
     return kind == MatchKind::Suffix ? SuffixMatch(name, domain) : ExactMatch(name, domain);
@@ -45,7 +47,7 @@ bool DomainCovers(MatchKind kind, const std::string& domain, const std::string& 
 // ---- Matching helpers --------------------------------------------------------
 
 std::string NormalizeDomain(std::string d) {
-    for (char& c : d) c = Lower(c);
+    for (char& c : d) c = AsciiLower(c);
     while (!d.empty() && d.front() == '.') d.erase(d.begin());
     while (!d.empty() && d.back() == '.') d.pop_back();
     return d;
@@ -97,7 +99,7 @@ bool ParseRuleLine(const std::string& line, ParsedLine& out, std::string& err) {
     // The first token is the action: "NX" (case-insensitive) or an IP literal.
     const std::string& action = tokens[0];
     std::string lowered = action;
-    for (char& c : lowered) c = Lower(c);
+    for (char& c : lowered) c = AsciiLower(c);
     if (lowered == "nx") {
         out.isBlock = true;
     } else if (action.find(':') != std::string::npos) {

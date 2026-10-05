@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "dns/nrpt.h"
 
@@ -113,26 +113,32 @@ std::wstring PackMultiSz(const std::vector<std::string>& items) {
     return packed;
 }
 
+// The three setters below return the LSTATUS `RegSetValueExW` itself reported,
+// not a bool. `RegSetValueExW` returns its error as its return value and does not
+// set last-error, so a caller that flattens this to bool has thrown away the only
+// copy of it — and a later GetLastError() would read whatever unrelated call ran
+// last. Handing the status up intact is what lets the caller log the real reason.
+//
 // A REG_SZ value: the characters plus the one terminating null the type implies.
-bool SetSz(HKEY key, const wchar_t* name, const std::wstring& value) {
+LSTATUS SetSz(HKEY key, const wchar_t* name, const std::wstring& value) {
     const DWORD bytes = static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t));
     return RegSetValueExW(key, name, 0, REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()),
-                          bytes) == ERROR_SUCCESS;
+                          bytes);
 }
 
 // A REG_MULTI_SZ value. The length is the block's own size and nothing more:
 // PackMultiSz has already appended both terminators, so adding another character's
 // worth — as a helper shared with REG_SZ did — stores a third null past the end of
 // the list. Harmless to most readers, but it is not what the type says.
-bool SetMultiSz(HKEY key, const wchar_t* name, const std::wstring& block) {
+LSTATUS SetMultiSz(HKEY key, const wchar_t* name, const std::wstring& block) {
     const DWORD bytes = static_cast<DWORD>(block.size() * sizeof(wchar_t));
     return RegSetValueExW(key, name, 0, REG_MULTI_SZ,
-                          reinterpret_cast<const BYTE*>(block.data()), bytes) == ERROR_SUCCESS;
+                          reinterpret_cast<const BYTE*>(block.data()), bytes);
 }
 
-bool SetDword(HKEY key, const wchar_t* name, DWORD value) {
+LSTATUS SetDword(HKEY key, const wchar_t* name, DWORD value) {
     return RegSetValueExW(key, name, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value),
-                          sizeof(value)) == ERROR_SUCCESS;
+                          sizeof(value));
 }
 
 // ---- Reading the rule back ---------------------------------------------------
@@ -207,18 +213,33 @@ bool InstallRule(const std::vector<std::string>& namespaces, const std::wstring&
         return false;
     }
 
-    const bool ok = SetDword(key, L"Version", kRuleVersion) &&
-                    SetMultiSz(key, L"Name", PackMultiSz(namespaces)) &&
-                    SetSz(key, L"GenericDNSServers", dnsServer) &&
-                    SetDword(key, L"ConfigOptions", kConfigGenericDnsServers) &&
-                    SetSz(key, L"Comment", kComment);
+    // Sequential rather than a `&&` chain, so the first failure's own LSTATUS is
+    // kept for the log. A short circuit would leave only "one of five failed" and
+    // the report would have to say nothing useful. Stopping at the first failure
+    // is deliberate: the values already written are about to be rolled back with
+    // the key, and there is nothing a later write could add.
+    LSTATUS failed = ERROR_SUCCESS;
+    const bool writeFailed =
+        ((failed = SetDword(key, L"Version", kRuleVersion)) != ERROR_SUCCESS) ||
+        ((failed = SetMultiSz(key, L"Name", PackMultiSz(namespaces))) != ERROR_SUCCESS) ||
+        ((failed = SetSz(key, L"GenericDNSServers", dnsServer)) != ERROR_SUCCESS) ||
+        ((failed = SetDword(key, L"ConfigOptions", kConfigGenericDnsServers)) !=
+         ERROR_SUCCESS) ||
+        ((failed = SetSz(key, L"Comment", kComment)) != ERROR_SUCCESS);
+    if (writeFailed) {
+        // The status travels out of the assign inside the condition; the branch is
+        // taken only once the rollback below has been decided.
+    }
     RegCloseKey(key);
 
-    if (!ok) {
+    if (failed != ERROR_SUCCESS) {
         // A partially written rule is worse than none: the service could route
         // names to a server field that was never stored. Take it back out.
-        LOGE(L"NRPT: cannot write the rule's values (err " + std::to_wstring(GetLastError()) +
-             L").");
+        //
+        // The status logged is the one RegSetValueExW returned, taken from the
+        // assignment itself — not GetLastError(), which this API never sets and
+        // which the RegCloseKey above has since overwritten.
+        LOGE(L"NRPT: cannot write the rule's values (err " + std::to_wstring(failed) + L").");
         RemoveRule();
         return false;
     }

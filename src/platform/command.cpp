@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "platform/command.h"
 
@@ -53,20 +53,54 @@ std::wstring DecodeConsoleOutput(const std::string& bytes) {
     return wide;
 }
 
-// The user's temp directory, with a trailing backslash.
+// Tokenize and compare each argument exactly. `skipFirst` decides whether argv[0] is
+// treated as a program name or as an argument.
 //
-// Resolved through the wide API: the ANSI environment would mis-decode a non-ASCII
-// profile path, and the scripts written here carry install paths that have to
-// survive verbatim.
-std::wstring TempDir() {
-    wchar_t buf[MAX_PATH + 1] = {};
-    const DWORD n = GetTempPathW(MAX_PATH + 1, buf);
-    std::wstring dir = (n > 0 && n <= MAX_PATH) ? std::wstring(buf) : L"C:\\Windows\\Temp\\";
-    if (!dir.empty() && dir.back() != L'\\') dir.push_back(L'\\');
-    return dir;
+// The two callers below differ only in that, and the difference is the whole reason
+// this takes a parameter instead of assuming one form: a full command line puts the
+// program name at argv[0], while the lpCmdLine a wWinMain receives has already had it
+// removed, so the first real argument is at argv[0] there. Skipping unconditionally —
+// which this did — means a stripped line whose flag IS the first argument matches
+// nothing at all, which is exactly how a scheduled `-autostart` launch was missed.
+bool HasFlagTokenized(const std::wstring& line, const std::wstring& flag, bool skipFirst) {
+    if (line.empty() || flag.empty()) return false;
+
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(line.c_str(), &argc);
+    if (!argv) {
+        // The tokenizer failed, which for a non-empty command line means a malformed
+        // one. Answering "no flag" is the conservative result: nothing is enabled on
+        // the strength of an input we could not read.
+        LOGW(L"Could not tokenize the command line; no flags read from it.");
+        return false;
+    }
+
+    bool found = false;
+    for (int i = skipFirst ? 1 : 0; i < argc && !found; ++i) found = (flag == argv[i]);
+    LocalFree(static_cast<void*>(argv));
+    return found;
 }
 
 }  // namespace
+
+bool CommandLineHasFlag(const std::wstring& fullCommandLine, const std::wstring& flag) {
+    return HasFlagTokenized(fullCommandLine, flag, /*skipFirst=*/true);
+}
+
+bool CommandLineHasFlagInArgs(const std::wstring& argsOnly, const std::wstring& flag) {
+    return HasFlagTokenized(argsOnly, flag, /*skipFirst=*/false);
+}
+
+// The one answer to "was this a logon launch", shared by the program and the update
+// helper so the two cannot drift. It reads the command line itself: the answer is only
+// defined for the full form, and letting a caller hand in a string is how the wrong
+// form got in before.
+bool IsAutostartLaunch() {
+    const wchar_t* commandLine = GetCommandLineW();
+    if (commandLine == nullptr) return false;
+    const std::wstring line(commandLine);
+    return CommandLineHasFlag(line, L"-autostart") || CommandLineHasFlag(line, L"/autostart");
+}
 
 int RunHidden(const std::wstring& cmdline, std::wstring* out, DWORD timeoutMs) {
     SECURITY_ATTRIBUTES sa = {};
@@ -137,40 +171,6 @@ int RunHidden(const std::wstring& cmdline, std::wstring* out, DWORD timeoutMs) {
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
     return (waitResult == WAIT_TIMEOUT) ? -2 : static_cast<int>(code);
-}
-
-bool RunDetachedScript(const std::wstring& scriptName, const std::wstring& body) {
-    std::wstring script;
-    script += L"@echo off\r\n";
-    script += L"chcp 65001 >nul\r\n";
-    script += body;
-
-    const std::wstring dir = TempDir();
-    const std::wstring scriptPath = dir + scriptName;
-
-    HANDLE file = CreateFileW(scriptPath.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-                              FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file == INVALID_HANDLE_VALUE) {
-        LOGE(L"Cannot write the helper script " + scriptPath + L" (err " +
-             std::to_wstring(GetLastError()) + L").");
-        return false;
-    }
-    const std::string utf8 = WideToUtf8(script);
-    DWORD written = 0;
-    const bool wrote =
-        WriteFile(file, utf8.data(), static_cast<DWORD>(utf8.size()), &written, nullptr) &&
-        written == utf8.size();
-    CloseHandle(file);
-    if (!wrote) {
-        LOGE(L"Incomplete write of the helper script " + scriptPath + L".");
-        return false;
-    }
-
-    // No job object: this helper exists to act after we are gone, so tying its
-    // lifetime to ours would defeat it. It runs from the temp directory, so neither
-    // it nor anything it starts holds a folder inside the install tree open.
-    return static_cast<bool>(Process::LaunchDetached(L"C:\\Windows\\System32\\cmd.exe",
-                                                     L"/c \"" + scriptPath + L"\"", dir, true));
 }
 
 }  // namespace Command

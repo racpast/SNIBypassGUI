@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "app/logging.h"
 
@@ -122,9 +122,10 @@ void LogLine(const std::wstring& level, const std::wstring& msg) {
 
     SYSTEMTIME now;
     GetLocalTime(&now);
-    wchar_t stamp[64];
-    std::swprintf(stamp, std::size(stamp), L"%04d-%02d-%02d %02d:%02d:%02d", now.wYear,
-                  now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond);
+    wchar_t stamp[64] = L"";
+    if (std::swprintf(stamp, std::size(stamp), L"%04d-%02d-%02d %02d:%02d:%02d", now.wYear,
+                      now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond) < 0)
+        stamp[0] = L'\0';
 
     const std::string line =
         WideToUtf8(L"[" + std::wstring(stamp) + L"] [" + level + L"] " + msg + L"\r\n");

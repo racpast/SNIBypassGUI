@@ -13,13 +13,14 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "app/bootstrap.h"
 
 #include <windows.h>
 
 #include <string>
+#include <vector>
 
 #include "app/i18n.h"
 #include "app/logging.h"
@@ -27,60 +28,17 @@
 #include "app/settings.h"
 #include "app/text.h"
 #include "app/version.h"
+#include "platform/dialogs.h"
 #include "platform/shortcut.h"
-#include "update/client.h"
 
 namespace Bootstrap {
-namespace {
 
-// Fetch the signed manifest and land every payload file that is missing or differs
-// from it. This reuses the ordinary update path: on a fresh install every asset is
-// "missing" so all of them download. Shows a retry/cancel loop so a transient
-// network error is recoverable.
-PayloadStatus DownloadPayloadWithRetry() {
-    for (;;) {
-        LOGI(L"First run: payload missing; fetching it via the signed update channel.");
-        const Update::Info info = Update::FetchManifest();
-        if (info.ok) {
-            // PerformUpdate returns true when it has scheduled an executable swap,
-            // which happens here whenever the channel's version differs from ours.
-            // The helper is now waiting for this process to release its own image, so
-            // carrying on would leave it spinning against a running executable.
-            if (Update::PerformUpdate(info)) {
-                LOGI(
-                    L"First run: the fetch also scheduled an executable swap; exiting "
-                    L"so the helper can complete it.");
-                return PayloadStatus::Restarting;
-            }
-            // A payload-only bootstrap returns false but still lands the assets, so
-            // success is judged by the payload being present afterwards.
-            if (PayloadPresent()) {
-                LOGI(L"First run: payload downloaded and in place.");
-                return PayloadStatus::Ready;
-            }
-        }
-        const std::wstring why = (!info.ok && !info.error.empty())
-                                     ? info.error
-                                     : std::wstring(T(L"msg.bootstrapFail"));
-        if (MessageBoxW(nullptr, why.c_str(), APP_NAME, MB_ICONERROR | MB_RETRYCANCEL) !=
-            IDRETRY) {
-            LOGE(L"First run: user cancelled the payload download; cannot continue.");
-            return PayloadStatus::Unavailable;
-        }
-    }
-}
-
-}  // namespace
-
-// paths.ini (the stable interface) and data/ are the anchors; if both exist we assume
-// a complete extract and run offline, deferring any repair to the update check.
+// paths.ini is the payload's root: every file the application opens is located
+// through it. Its absence reliably means the payload was never extracted beside
+// the executable, regardless of what else the payload contains — so this is the
+// one stable contract, not a check for a specific directory name.
 bool PayloadPresent() {
-    const bool haveIni =
-        GetFileAttributesW((ExeDir() + L"paths.ini").c_str()) != INVALID_FILE_ATTRIBUTES;
-    const DWORD dataAttr = GetFileAttributesW(DataDir().c_str());
-    const bool haveData =
-        dataAttr != INVALID_FILE_ATTRIBUTES && (dataAttr & FILE_ATTRIBUTE_DIRECTORY);
-    return haveIni && haveData;
+    return GetFileAttributesW((ExeDir() + L"paths.ini").c_str()) != INVALID_FILE_ATTRIBUTES;
 }
 
 // Archivers "open" an executable by extracting only it to a scratch directory under
@@ -88,6 +46,13 @@ bool PayloadPresent() {
 // detect that location so a missing payload in this state means "you did not extract
 // the whole archive" rather than "your install is broken" — and so we do NOT go
 // online, which would look like a hang to an offline user.
+//
+// Every branch below treats "cannot tell" as "from a scratch directory", because the
+// two possible mistakes are not equal: a false positive costs an offline user one
+// dialog telling them to extract the archive they were already running out of, while
+// a false negative sends them into a network fetch from a directory that will be
+// deleted under them. The earlier version got this exactly backwards — two unset
+// environment variables made it return "not an archive", i.e. the fail-open direction.
 bool RunningFromArchiveTemp() {
     const std::wstring exeDir = LowerW(ExeDir());
 
@@ -95,24 +60,38 @@ bool RunningFromArchiveTemp() {
     if (exeDir.find(L"\\rar$ex") != std::wstring::npos) return true;
     if (exeDir.find(L"\\7zo") != std::wstring::npos) return true;
 
-    const auto underTempVar = [&exeDir](const wchar_t* variable) {
-        wchar_t buf[MAX_PATH * 2] = {};
-        const DWORD n =
-            GetEnvironmentVariableW(variable, buf, static_cast<DWORD>(std::size(buf)));
-        if (n == 0 || n >= std::size(buf)) return false;
-        std::wstring temp = LowerW(buf);
-        if (!temp.empty() && temp.back() != L'\\') temp.push_back(L'\\');
-        return exeDir.compare(0, temp.size(), temp) == 0;
-    };
-    return underTempVar(L"TEMP") || underTempVar(L"TMP");
-}
+    // The process's temp directory, asked of the system rather than read out of the
+    // environment.
+    //
+    // GetTempPathW is the documented answer to "where is this process's temp
+    // directory" and applies the full resolution order itself — TMP, then TEMP, then
+    // USERPROFILE, then the Windows directory — so it already covers both variables
+    // and still answers when both are unset (running under a sanitized environment, a
+    // service account, or a launcher that cleared them). Reading TEMP/TMP directly
+    // cannot do that, which is the bug this replaces. GetTempPath2W would be the
+    // newer choice — it answers the system temp directory for a system process — but
+    // this program targets Windows 7 and that API is Windows 11 only, so it is not
+    // reachable from here.
+    //
+    // An empty result is itself the archive case: we could not establish where a
+    // normal install would be running from, so we cannot say this is not one.
+    std::wstring temp;
+    {
+        std::vector<wchar_t> buf(MAX_PATH + 1, L'\0');
+        DWORD n = GetTempPathW(static_cast<DWORD>(buf.size()), buf.data());
+        if (n >= buf.size()) {
+            // The returned size exceeds the buffer: grow to that size and ask again.
+            buf.assign(n, L'\0');
+            n = GetTempPathW(n, buf.data());
+        }
+        if (n == 0 || n >= buf.size()) return true;  // undetermined -> refuse to go online
+        temp.assign(buf.data(), n);
+    }
 
-PayloadStatus EnsurePayload() {
-    if (PayloadPresent()) return PayloadStatus::Ready;
-
-    // The archive-scratch case is refused by the caller before any prompt is shown,
-    // so reaching here means a fixed install whose payload is gone: re-fetch it.
-    return DownloadPayloadWithRetry();
+    std::wstring prefix = LowerW(temp);
+    if (prefix.empty()) return true;
+    if (prefix.back() != L'\\') prefix.push_back(L'\\');
+    return exeDir.compare(0, prefix.size(), prefix) == 0;
 }
 
 // Extract-and-run means no installer ever put this program anywhere findable: a user
@@ -170,8 +149,7 @@ void SyncDesktopShortcut() {
         return;
     }
 
-    if (MessageBoxW(nullptr, T(L"msg.shortcutAsk"), APP_NAME, MB_ICONQUESTION | MB_YESNO) !=
-        IDYES) {
+    if (Dialogs::Show(T(L"msg.shortcutAsk"), MB_ICONQUESTION | MB_YESNO) != IDYES) {
         // Any non-Yes outcome (No, Esc, the close button) is a decline, recorded so the
         // question never comes back on its own.
         SetShortcutPref(ShortcutPref::Declined);
@@ -182,7 +160,7 @@ void SyncDesktopShortcut() {
     } else {
         // Do not record a preference we failed to honour: leaving it unset lets the
         // next launch try again rather than silently giving up forever.
-        MessageBoxW(nullptr, T(L"msg.shortcutFail"), APP_NAME, MB_ICONWARNING);
+        Dialogs::Show(T(L"msg.shortcutFail"), MB_ICONWARNING);
     }
 }
 

@@ -15,7 +15,7 @@
 
   For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 
-  See the LICENSE file in the project root for full terms and conditions.
+  See the LICENSE.md file in the project root for full terms and conditions.
 
   GENERATED FROM app.manifest.in by CMake; do not edit the copy in the build
   tree. The version comes from APP_VERSION_NUM in src/app/version.h, like every
@@ -24,6 +24,21 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity version="@SNIB_VER_NUMERIC@" processorArchitecture="*" name="Racpast.SNIBypassGUI" type="win32"/>
   <description>SNIBypassGUI</description>
+
+  <!-- Common Controls v6.
+       Without this dependency the process gets comctl32 v5, so themed controls
+       silently fall back to the unthemed Windows 95-era drawing: the update
+       progress window's custom-drawn button and its PROGRESS theme part would both
+       resolve against the classic theme and render as a grey bevel and a plain
+       green block. The dependency is what makes the theming calls in
+       ui/progress_window.cpp mean anything. -->
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls"
+                        version="6.0.0.0" processorArchitecture="*"
+                        publicKeyToken="6595b64144ccf1df" language="*"/>
+    </dependentAssembly>
+  </dependency>
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>

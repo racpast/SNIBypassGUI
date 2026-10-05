@@ -13,7 +13,7 @@
 #
 # For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 #
-# See the LICENSE file in the project root for full terms and conditions.
+# See the LICENSE.md file in the project root for full terms and conditions.
 
 # Anime-Sharing Community
 127.0.0.1 .anime-sharing.com

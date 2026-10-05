@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "update/crypto.h"
 
@@ -21,6 +21,7 @@
 
 #include <bcrypt.h>
 
+#include <cstdio>
 #include <cstring>
 
 #include "app/logging.h"
@@ -29,13 +30,22 @@
 namespace Crypto {
 namespace {
 
+// STATUS_INVALID_SIGNATURE, from ntstatus.h.
+//
+// Spelled out rather than included: ntstatus.h is not reachable from the headers
+// this file already pulls in, and dragging it in for one constant would be worse
+// than naming it here. The value is not from memory — TestUpdateSignatureVerification
+// asserts it against a real BCryptVerifySignature call, so a wrong constant fails the
+// suite instead of silently mislabeling every bad signature.
+constexpr unsigned long kStatusInvalidSignature = 0xC000A000UL;
+
 std::wstring ToHex(const uint8_t* d, size_t n) {
     static const wchar_t kDigits[] = L"0123456789abcdef";
     std::wstring s;
     s.reserve(n * 2);
     for (size_t i = 0; i < n; ++i) {
-        s.push_back(kDigits[d[i] >> 4]);
-        s.push_back(kDigits[d[i] & 0xF]);
+        s.push_back(kDigits[d[i] >> 4u]);
+        s.push_back(kDigits[d[i] & 0xFu]);
     }
     return s;
 }
@@ -88,6 +98,21 @@ std::wstring Sha256Hex(const void* data, size_t n) {
     return h.Hex();
 }
 
+// Decode standard base64 in canonical form only.
+//
+// A decoder that "just works" on whatever it is fed is a malleability hazard. Two
+// different inputs that both decode to the same bytes (padding that is not counted,
+// a truncated final group, non-zero bits padding the last sextet) mean a signature
+// over one byte string can be presented as a signature over a differently-spelled
+// one. Today the only caller checks `signature.size() == 64` afterwards, which
+// happens to make this unreachable — but that is one check in another file holding
+// up a decoder with no notion of validity, and it stops being true the moment
+// anything variable-length is signed.
+//
+// So the rules are the strict ones: whole 4-character groups, at most one correctly
+// sized padding run, at the very end, with no character after it, and the bits the
+// final sextet leaves over must be zero. What `base64.b64encode` in the release tool
+// emits is exactly what this accepts, and nothing else is.
 bool Base64Decode(const std::string& in, std::vector<uint8_t>& out) {
     const auto sextet = [](char c) -> int {
         if (c >= 'A' && c <= 'Z') return c - 'A';
@@ -98,38 +123,68 @@ bool Base64Decode(const std::string& in, std::vector<uint8_t>& out) {
         return -1;
     };
 
+    // Decoded into a local and handed over only on success, with `out` cleared up
+    // front so that EVERY failing path leaves the caller with an empty vector.
+    //
+    // Both halves matter. Writing into `out` as we go would leave a partial buffer
+    // behind on a late rejection (the non-canonical-final-sextet case). Assigning only
+    // on success but never clearing would be worse in a different way: a caller that
+    // reuses the vector would see the PREVIOUS successful result on failure and have
+    // no way to tell that the decode it just asked for did not happen.
     out.clear();
-    int accumulator = 0;
-    int bits = 0;
-    for (char c : in) {
-        if (c == '\r' || c == '\n' || c == ' ' || c == '\t') continue;
-        if (c == '=') break;
-        const int v = sextet(c);
-        if (v < 0) return false;
-        accumulator = (accumulator << 6) | v;
+    std::vector<uint8_t> decoded;
+    decoded.reserve(in.size() / 4 * 3);
+
+    if (in.empty() || in.size() % 4 != 0) return false;
+
+    // Count trailing pad, then require the body before it to be clean base64.
+    size_t end = in.size();
+    while (end > 0 && in[end - 1] == '=') --end;
+    const size_t pad = in.size() - end;
+    if (pad > 2) return false;
+
+    uint32_t accumulator = 0;
+    unsigned bits = 0;
+    for (size_t i = 0; i < end; ++i) {
+        const int v = sextet(in[i]);
+        if (v < 0) return false;  // includes any '=' before the final run
+        accumulator = (accumulator << 6u) | static_cast<uint32_t>(v);
         bits += 6;
         if (bits >= 8) {
             bits -= 8;
-            out.push_back(static_cast<uint8_t>((accumulator >> bits) & 0xFF));
+            decoded.push_back(static_cast<uint8_t>((accumulator >> bits) & 0xFFu));
         }
     }
+
+    // Any leftover bits are the ones a canonical encoder leaves zero. A non-zero
+    // leftover is a second spelling of the same bytes, which is the whole point of
+    // rejecting it.
+    if (bits > 0 && (accumulator & ((1u << bits) - 1u)) != 0) return false;
+
+    // The padding must account for exactly the bytes that were not emitted.
+    if (bits != 0 && bits != 2 && bits != 4) return false;
+    const size_t expectedPad = (bits == 0) ? 0 : (bits == 2 ? 1 : 2);
+    if (pad != expectedPad) return false;
+
+    out = std::move(decoded);
     return true;
 }
 
-// The signature is raw r||s (64 bytes), exactly what CNG expects. The public key is
-// the uncompressed point X||Y (64 bytes), wrapped in a BCRYPT_ECCKEY_BLOB for import.
-bool VerifySignature(const std::string& message, const std::vector<uint8_t>& signature) {
+// The outcome of a signature check. Encoding it instead of a bool is what keeps a
+// missing crypto provider from being reported to the user as evidence of tampering.
+VerifyResult VerifySignature(const std::string& message,
+                             const std::vector<uint8_t>& signature) {
     if (signature.size() != 64) {
         LOGE(L"Update: signature is " + std::to_wstring(signature.size()) +
              L" bytes, expected 64.");
-        return false;
+        return VerifyResult::Unavailable;
     }
 
     Sha256 hash;
-    if (!hash.valid()) return false;
+    if (!hash.valid()) return VerifyResult::Unavailable;
     hash.Add(message.data(), message.size());
     std::vector<uint8_t> digest;
-    if (!hash.Digest(digest)) return false;
+    if (!hash.Digest(digest)) return VerifyResult::Unavailable;
 
     std::vector<uint8_t> blob(sizeof(BCRYPT_ECCKEY_BLOB) + sizeof(kUpdatePublicKey));
     auto* header = reinterpret_cast<BCRYPT_ECCKEY_BLOB*>(blob.data());
@@ -141,7 +196,7 @@ bool VerifySignature(const std::string& message, const std::vector<uint8_t>& sig
     BCRYPT_ALG_HANDLE alg = nullptr;
     if (BCryptOpenAlgorithmProvider(&alg, BCRYPT_ECDSA_P256_ALGORITHM, nullptr, 0) != 0) {
         LOGE(L"Update: cannot open the ECDSA P-256 provider.");
-        return false;
+        return VerifyResult::Unavailable;
     }
 
     BCRYPT_KEY_HANDLE key = nullptr;
@@ -149,8 +204,9 @@ bool VerifySignature(const std::string& message, const std::vector<uint8_t>& sig
                                           blob.data(), static_cast<ULONG>(blob.size()), 0);
     if (status != 0) {
         BCryptCloseAlgorithmProvider(alg, 0);
-        LOGE(L"Update: cannot import the update public key.");
-        return false;
+        LOGE(L"Update: cannot import the update public key (status 0x" +
+             std::to_wstring(static_cast<unsigned long>(status)) + L").");
+        return VerifyResult::Unavailable;
     }
 
     status = BCryptVerifySignature(
@@ -158,7 +214,20 @@ bool VerifySignature(const std::string& message, const std::vector<uint8_t>& sig
         const_cast<PUCHAR>(signature.data()), static_cast<ULONG>(signature.size()), 0);
     BCryptDestroyKey(key);
     BCryptCloseAlgorithmProvider(alg, 0);
-    return status == 0;
+
+    if (status == 0) return VerifyResult::Ok;
+    // STATUS_INVALID_SIGNATURE is the one NTSTATUS that means "the signature does not
+    // match this message". Every other non-zero status is the provider declining to
+    // answer — a fact about the machine, which must not be shown to the user as a
+    // verdict on the download. The value is defined in ntstatus.h; it is asserted by
+    // TestUpdateSignatureVerification, so a wrong constant there fails loudly rather
+    // than silently routing every mismatch into the "cannot verify" message.
+    if (static_cast<unsigned long>(status) == kStatusInvalidSignature) {
+        return VerifyResult::BadSignature;
+    }
+    LOGE(L"Update: signature check could not be performed (status 0x" +
+         std::to_wstring(static_cast<unsigned long>(status)) + L").");
+    return VerifyResult::Unavailable;
 }
 
 }  // namespace Crypto

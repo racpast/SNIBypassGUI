@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 #include <windows.h>
@@ -158,14 +158,14 @@ Child LaunchChild(const std::wstring& exePath, const std::wstring& args,
 Handle LaunchDetached(const std::wstring& exePath, const std::wstring& args,
                       const std::wstring& workDir, bool hidden);
 
-// The arguments this process was started with: its command line with the program
-// path removed — the same string wWinMain receives as lpCmdLine, available in code
-// that does not have that parameter to hand.
+// There is deliberately no "the arguments this process was started with" accessor.
 //
-// The self-update helper needs it to relaunch this program the way it was invoked.
-// Reading it back from the OS keeps that one caller from forcing every function in
-// between to carry an argument none of them use.
-std::wstring OwnCommandLineArgs();
+// One existed to hand the whole original command line back to the self-update helper,
+// which meant an unparsed string of user input travelled into the code that relaunched
+// the program. The updater now relaunches with a single flag derived from a boolean the
+// caller decided on, so there is nothing left for such an accessor to carry — and any
+// future caller that wants one should be asked why, since re-passing an unparsed
+// command line is exactly the shape this program stopped using.
 
 // Full image path of `pid`. A false return means the process could not be
 // interrogated: it has already exited, or its handle could not be opened

@@ -13,13 +13,15 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 #include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
+
+#include "update/http.h"
 
 // Update endpoints. Chunk URLs in the manifest are relative to the manifest's own
 // directory, so the whole tree can be rehosted under any prefix without editing it.
@@ -51,12 +53,31 @@ struct Info {
     bool ok = false;
     std::wstring error;  // populated when ok == false
     std::wstring version;
-    std::wstring released;
     std::wstring notes;  // release notes for the current language
     uint64_t chunkSize = 0;
     bool reinstallRequired = false;  // we predate min_upgradable_from
     std::vector<File> files;
 };
+
+// What the manifest's version means relative to the running executable.
+//
+// This exists so the ordering question — "is the channel ahead of us, behind us, or
+// the same as us?" — is answered in exactly one place. It used to be recomputed
+// independently in the per-file update decision (client.cpp) and again in the tray's
+// message selection, two evaluations of the same pair of operands with nothing
+// keeping them in agreement.
+//
+// The distinction is not cosmetic. The executable-update decision is INEQUALITY, not
+// "greater than": a force-aligned channel must be able to move clients DOWN as well
+// as up, so Downgrade means "update, in that direction", not "refuse".
+enum class UpdateKind {
+    None,       // the channel serves the same version we run
+    Upgrade,    // the channel is ahead of us
+    Downgrade,  // the channel is behind us (a force-aligned rollback)
+};
+
+// Classify the manifest version against the running executable's version.
+UpdateKind Classify(const Info& info);
 
 // Fetch manifest.json and manifest.json.sig, verify the signature over the exact
 // manifest bytes, then parse. Info.ok is false on any network, parse, signature or
@@ -67,21 +88,48 @@ Info FetchManifest();
 // line per file that would change.
 bool UpdateAvailable(const Info& info, std::wstring& summary);
 
-// Optional progress hooks. Every callback fires on the thread that called
-// PerformUpdate and may be left empty.
+// Optional progress hooks and the cancellation handle. Every callback fires on the
+// thread that called PerformUpdate and may be left empty.
 struct Progress {
     // Fired as each changed file BEGINS transferring: `done` is its 1-based index
     // among the `total` files that will change. Runs while the services are still
     // up — the download only writes <path>.new and never touches the live install.
     std::function<void(size_t done, size_t total, const std::wstring& path)> onFile;
 
+    // Fired as bytes arrive, with the count for the WHOLE run so far, so the bar
+    // describes the job rather than the current file. `path` is the file being
+    // fetched. The overall figure is computed here because this is the layer that
+    // knows every file's size; a consumer that tried to reconstruct it from the
+    // per-file counts would have to guess the size of each file as it finished.
+    std::function<void(const std::wstring& path, uint64_t bytesOverall)> onBytes;
+
     // Fired ONCE after every file is downloaded and verified, immediately before
     // the first byte of the live install is replaced. This is where the caller
     // stops the services: deferring the stop to here keeps the proxy up for the
     // whole download and only drops it for the seconds the apply takes. It never
     // fires if the download fails, so a mid-download failure leaves the services
-    // untouched.
+    // untouched. Cancellation is refused from this point on.
     std::function<void()> onBeforeApply;
+
+    // The transfer object the download runs through, so the caller can cancel a
+    // running update by calling request->Stop() from another thread. Owned by the
+    // caller and outliving this call. May be null, in which case the download still
+    // works but cannot be interrupted mid-transfer.
+    Http::Request* request = nullptr;
+};
+
+// What an update run did.
+//
+// This used to be a bool, which had to carry three unrelated meanings at once — "an
+// executable swap was scheduled", "nothing needed doing" and "it failed" all came
+// back as false — and could not express the fourth state that a progress window with
+// a Cancel button creates. Cancellation in particular must never be reported to the
+// user as a failure: they asked for it.
+enum class Outcome {
+    Applied,    // changes were applied; the caller exits if an exe swap was scheduled
+    UpToDate,   // nothing needed changing
+    Failed,     // a real failure, already reported through the dialog
+    Cancelled,  // the user stopped it; the install is untouched and nothing is reported
 };
 
 // Download and verify every changed file into <path>.new, then apply them all at
@@ -89,11 +137,26 @@ struct Progress {
 // swapped by a wait-and-relaunch helper. Any failure before the apply leaves the
 // install untouched; a failure during it rolls back from the .bak copies.
 //
-// Returns true if an executable swap was scheduled and the caller must exit.
-bool PerformUpdate(const Info& info, const Progress& progress = {});
+// The return value says WHAT happened. `exeSwapPending`, when given, says whether
+// the caller MUST EXIT so the helper can replace the binary — a separate question,
+// because a run that applied only assets returns Outcome::Applied and does not
+// require an exit. Those two were one bool before, which is why a caller that only
+// wanted "should I quit" could not be told anything else.
+Outcome PerformUpdate(const Info& info, const Progress& progress = {},
+                      bool* exeSwapPending = nullptr);
 
 // Lowercase hex SHA-256 of a file. Empty on failure.
 std::wstring Sha256File(const std::wstring& path);
+
+// True if `f` differs from what is installed: the executable by version, data assets
+// by content hash or by being absent.
+//
+// Exposed because a caller has to size the job before it starts — the progress window
+// reports "done of total" bytes, and the total is the sum over exactly these files.
+// This module cannot answer that for the caller without knowing which files will
+// change, and a second implementation of the same rule is how the bar and the work end
+// up disagreeing.
+bool NeedsUpdate(const File& f, const Info& info);
 
 // ---- Pure helpers (no I/O; exposed for unit testing) ------------------------
 

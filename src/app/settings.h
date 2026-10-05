@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 #include <string>
@@ -28,8 +28,23 @@ std::wstring SettingsPath();
 // whether it is allowed to.
 bool LoggingEnabled();
 void SetLoggingEnabled(bool on);
-bool EulaAccepted();
-void SetEulaAccepted(bool accepted);
+
+// Whether the user has accepted the CURRENT text of the agreement, identified by the
+// SHA-256 of the embedded document.
+//
+// What is stored is the hash of the text that was accepted, and nothing else — there
+// is no separate "accepted" boolean. A boolean cannot answer the question that
+// matters: "accepted WHICH text?". With one stored, every existing user counts as
+// having agreed to whatever text a later release ships, including text they have
+// never been shown.
+//
+// The key is new, so an older install's `EulaAccepted=1` is simply not read: an
+// absent hash means not accepted, and the agreement is shown once more. There is no
+// migration, deliberately — a migration would have to invent an answer to "which
+// text did they accept?", and the honest answer for a pre-hash install is that we
+// cannot know.
+bool EulaAccepted(const std::string& textHash);
+void SetEulaAccepted(const std::string& textHash);
 bool AutoUpdateEnabled();
 void SetAutoUpdateEnabled(bool on);
 

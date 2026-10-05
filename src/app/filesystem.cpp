@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "app/filesystem.h"
 
@@ -60,14 +60,11 @@ bool MatchSegment(const std::wstring& seg, const std::wstring& pattern) {
     size_t starIdx = std::wstring::npos, matchIdx = 0;
 
     while (si < seg.size()) {
-        if (pi < pattern.size() && pattern[pi] == L'?') {
-            ++si;
-            ++pi;
-        } else if (pi < pattern.size() && pattern[pi] == L'*') {
+        if (pi < pattern.size() && pattern[pi] == L'*') {
             starIdx = pi;
             matchIdx = si;
             ++pi;
-        } else if (pi < pattern.size() && pattern[pi] == seg[si]) {
+        } else if (pi < pattern.size() && (pattern[pi] == L'?' || pattern[pi] == seg[si])) {
             ++si;
             ++pi;
         } else if (starIdx != std::wstring::npos) {
@@ -98,8 +95,12 @@ void EnumerateRecursive(const std::wstring& dir, const std::wstring& relPath,
 
         const bool isDir = (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
         const bool isReparse = (find.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
-        const std::wstring fullPath = dir + L"\\" + name;
-        const std::wstring rel = relPath.empty() ? name : relPath + L"\\" + name;
+        std::wstring fullPath = dir;
+        fullPath += L'\\';
+        fullPath += name;
+        std::wstring rel = relPath;
+        if (!rel.empty()) rel += L'\\';
+        rel += name;
 
         callback(rel, isDir);
 
@@ -283,7 +284,9 @@ void DeleteTree(const std::wstring& dir) {
     do {
         const std::wstring name = find.cFileName;
         if (name == L"." || name == L"..") continue;
-        const std::wstring full = dir + L"\\" + name;
+        std::wstring full = dir;
+        full += L'\\';
+        full += name;
 
         // Clear read-only so we can delete.
         if (find.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
@@ -306,9 +309,17 @@ void DeleteTree(const std::wstring& dir) {
     RemoveDirectoryW(dir.c_str());
 }
 
-void Delete(const std::wstring& path) {
+// Whether `path` is gone. INVALID_FILE_ATTRIBUTES covers both "does not exist" and
+// "could not be queried"; the two are treated alike because a caller asking whether
+// its deletion worked has the same answer either way — it cannot show that it did.
+bool IsGone(const std::wstring& path) {
+    return GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES;
+}
+
+bool Delete(const std::wstring& path) {
     const DWORD attr = GetFileAttributesW(path.c_str());
-    if (attr == INVALID_FILE_ATTRIBUTES) return;
+    // Nothing there is the state the caller asked for.
+    if (attr == INVALID_FILE_ATTRIBUTES) return true;
 
     if (attr & FILE_ATTRIBUTE_READONLY) SetFileAttributesW(path.c_str(), FILE_ATTRIBUTE_NORMAL);
 
@@ -322,6 +333,14 @@ void Delete(const std::wstring& path) {
     } else {
         DeleteFileW(path.c_str());
     }
+
+    // Confirmed rather than assumed. A deletion can fail without any call reporting
+    // it — a file another process holds open, a directory whose child went away
+    // between the walk and the remove — and the caller counts what this says.
+    if (IsGone(path)) return true;
+    LOGW(L"FileSystem: could not delete " + path + L" (err " + std::to_wstring(GetLastError()) +
+         L").");
+    return false;
 }
 
 std::vector<std::wstring> Enumerate(const std::wstring& baseDir, const std::wstring& pattern) {
@@ -370,9 +389,12 @@ size_t DeleteByPattern(const std::wstring& baseDir, const std::wstring& pattern,
     size_t deleted = 0;
     for (const Match& m : matches) {
         if (filter && !filter(m.rel, m.isDir)) continue;
-        Delete(m.full);
-        ++deleted;
-        LOGI(L"FileSystem: deleted " + m.rel);
+        // Counted only when the item is actually gone: this number reaches the user
+        // as "N items deleted", so a locked file must not be added to it.
+        if (Delete(m.full)) {
+            ++deleted;
+            LOGI(L"FileSystem: deleted " + m.rel);
+        }
     }
 
     return deleted;
@@ -404,7 +426,10 @@ size_t DeleteByPatterns(const std::wstring& baseDir, const std::vector<std::wstr
     EnumerateRecursive(baseDir, L"", [&](const std::wstring& rel, bool isDir) {
         for (const GlobPattern& pat : compiled) {
             if (MatchesPattern(rel, pat)) {
-                matchMap[rel] = {rel, baseDir + L"\\" + rel, isDir};
+                std::wstring full = baseDir;
+                full += L'\\';
+                full += rel;
+                matchMap[rel] = {rel, full, isDir};
                 break;
             }
         }
@@ -424,9 +449,12 @@ size_t DeleteByPatterns(const std::wstring& baseDir, const std::vector<std::wstr
     size_t deleted = 0;
     for (const Match& m : matches) {
         if (filter && !filter(m.rel, m.isDir)) continue;
-        Delete(m.full);
-        ++deleted;
-        LOGI(L"FileSystem: deleted " + m.rel);
+        // As above: counted only when gone, so the number the user is shown is a fact
+        // about the machine rather than a count of what was attempted.
+        if (Delete(m.full)) {
+            ++deleted;
+            LOGI(L"FileSystem: deleted " + m.rel);
+        }
     }
 
     return deleted;

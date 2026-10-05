@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "app/paths.h"
 
@@ -78,4 +78,10 @@ std::wstring PathUnder(const std::wstring& rel) {
     for (wchar_t& c : native)
         if (c == L'/') c = L'\\';
     return ExeDir() + native;
+}
+
+std::wstring DirPart(const std::wstring& path) {
+    const size_t slash = path.find_last_of(L"\\/");
+    if (slash == std::wstring::npos) return L"";
+    return path.substr(0, slash + 1);
 }

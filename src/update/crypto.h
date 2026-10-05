@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 #include <cstdint>
@@ -50,11 +50,27 @@ private:
 // Lowercase hex SHA-256 of a buffer. Empty on failure.
 std::wstring Sha256Hex(const void* data, size_t n);
 
-// Decode standard base64. Returns false on an invalid character.
+// Decode standard base64. Canonical form is required: the input must be a whole
+// number of 4-character groups, padding must be present and correct, no character
+// may follow the padding, and the bits a canonical encoder discards in the final
+// sextet must be zero. Anything else is rejected rather than quietly accepted —
+// see the implementation for why a decoder that tolerates non-canonical input is a
+// malleability hazard even when the caller happens to check the length.
 bool Base64Decode(const std::string& in, std::vector<uint8_t>& out);
+
+// The outcome of a signature check. A failed check is NOT the same event as an
+// unavailable crypto provider, and the two must not be reported to the user as the
+// same thing: one is evidence about the download, the other is a fact about the
+// machine. Collapsing them accuses a correct download of being tampered with on any
+// system that lacks the ECDSA P-256 provider.
+enum class VerifyResult {
+    Ok,            // the signature is valid over the message
+    BadSignature,  // the signature is well-formed but does not match
+    Unavailable,   // the check could not be performed on this system
+};
 
 // Verify a raw r||s (64-byte) ECDSA P-256/SHA-256 signature over `message`,
 // against the public key compiled into this binary.
-bool VerifySignature(const std::string& message, const std::vector<uint8_t>& signature);
+VerifyResult VerifySignature(const std::string& message, const std::vector<uint8_t>& signature);
 
 }  // namespace Crypto

@@ -13,16 +13,18 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "ui/supported_sites.h"
 
+#include <cstdint>
 #include <fstream>
 #include <sstream>
 #include <utility>
 
 #include "app/i18n.h"
 #include "app/logging.h"
+#include "app/paths.h"
 #include "app/services.h"
 #include "app/text.h"
 
@@ -83,7 +85,7 @@ constexpr size_t kMaxTextLen = 100;
 constexpr int kMaxIncludeDepth = 8;
 
 struct Node {
-    enum class Type { Text, Separator, Link, GroupBegin, GroupEnd };
+    enum class Type : std::uint8_t { Text, Separator, Link, GroupBegin, GroupEnd };
     Type type = Type::Text;
     std::wstring text;
     std::wstring link;
@@ -123,7 +125,7 @@ std::wstring SanitizeText(const std::wstring& s) {
     for (wchar_t c : s) out.push_back((c < 0x20 || c == 0x7F) ? L' ' : c);
     if (out.size() > kMaxTextLen) {
         out.resize(kMaxTextLen);
-        out += L"…";
+        out += L'…';
     }
     return out;
 }
@@ -161,12 +163,19 @@ std::wstring EscapeMenuText(const std::wstring& s) {
 }
 
 // Directory portion of a path with a trailing backslash, empty if there is none.
+//
+// Thin wrapper over the shared helper: this file resolves INCLUDE targets relative to
+// the including file, so "no directory" has to stay empty rather than fall back to the
+// program directory — an INCLUDE in a file named with no path belongs beside the
+// current working directory, and substituting ours would silently read the wrong tree.
 std::wstring DirOf(const std::wstring& path) {
-    const size_t slash = path.find_last_of(L"\\/");
-    return slash == std::wstring::npos ? L"" : path.substr(0, slash + 1);
+    return DirPart(path);
 }
 
-// Full canonical path, collapsing "." and ".." and normalizing slashes.
+// Full canonical path, collapsing "." and ".." and normalizing slashes. Empty if the
+// path could not be resolved at all — it is longer than the buffer below, or the call
+// failed. An empty result is a FAILURE, never a value to pass on: downstream it is
+// indistinguishable from the empty string, and the caller has to treat it as one.
 std::wstring CanonicalPath(const std::wstring& path) {
     wchar_t buf[MAX_PATH * 4];
     const DWORD n =
@@ -189,7 +198,7 @@ bool IsRelativeIncludePath(const std::wstring& p) {
 std::wstring ResolveInclude(const std::wstring& rootDir, const std::wstring& includingDir,
                             const std::wstring& rel) {
     if (!IsRelativeIncludePath(rel)) return L"";
-    const std::wstring full = CanonicalPath(includingDir + rel);
+    std::wstring full = CanonicalPath(includingDir + rel);
     if (full.empty()) return L"";
     std::wstring root = CanonicalPath(rootDir);
     if (root.empty()) return L"";
@@ -214,9 +223,12 @@ struct FileStamp {
 void StampFile(const std::wstring& path, FileStamp& out) {
     WIN32_FILE_ATTRIBUTE_DATA data = {};
     if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data)) return;
-    out.size = (static_cast<long long>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
-    out.mtime = (static_cast<long long>(data.ftLastWriteTime.dwHighDateTime) << 32) |
-                static_cast<long long>(data.ftLastWriteTime.dwLowDateTime);
+    out.size =
+        static_cast<long long>((static_cast<unsigned long long>(data.nFileSizeHigh) << 32u) |
+                               static_cast<unsigned long long>(data.nFileSizeLow));
+    out.mtime = static_cast<long long>(
+        (static_cast<unsigned long long>(data.ftLastWriteTime.dwHighDateTime) << 32u) |
+        static_cast<unsigned long long>(data.ftLastWriteTime.dwLowDateTime));
 }
 
 struct Cache {
@@ -240,7 +252,7 @@ Cache g_cache;
 //   parentActive was the enclosing context emitting when the IF opened
 //   seenElse     an ELSE has been consumed, so no ELIF/ELSE may follow
 struct Frame {
-    enum class Kind { Group, Cond };
+    enum class Kind : std::uint8_t { Group, Cond };
     Kind kind = Kind::Group;
     bool taken = false;
     bool active = false;
@@ -275,12 +287,34 @@ bool ParseInto(ParseContext& ctx, const std::wstring& path, int depth) {
 
     std::ifstream in(path.c_str(), std::ios::binary);
     if (!in) {
-        if (depth == 0)
-            // A missing root file is normal before the payload has been delivered;
-            // the submenu simply grays out.
-            LOGI(L"Supported sites file not found: " + path);
-        else
+        if (depth != 0) {
             LOGW(L"Supported sites: INCLUDE target could not be opened: " + path);
+            return true;
+        }
+
+        // The root itself. Two different things land here and only one of them is
+        // normal:
+        //
+        //   * the file is genuinely absent — before the payload has been delivered,
+        //     which is expected, and the submenu simply grays out;
+        //   * the file is there and could not be opened — a permissions problem, a
+        //     lock, a disk error. Nothing about that is normal, and reporting it as
+        //     "not found" at INFO level is how it stayed invisible.
+        //
+        // Asking the filesystem is what tells them apart, so the log says which one
+        // happened instead of guessing. Both leave the submenu grayed, with nothing
+        // shown to the user: neither case arises from a correctly installed payload,
+        // so they are faults to diagnose from the log, not ones to explain in a menu.
+        const DWORD attr = GetFileAttributesW(path.c_str());
+        if (attr == INVALID_FILE_ATTRIBUTES) {
+            LOGI(
+                L"Supported sites file not found (this is normal if the payload has not "
+                L"been delivered yet): " +
+                path);
+        } else {
+            LOGE(L"Supported sites file exists but could not be opened: " + path + L" (err " +
+                 std::to_wstring(GetLastError()) + L").");
+        }
         return true;
     }
 
@@ -495,7 +529,26 @@ std::vector<Node> ParseTree(const std::wstring& rootPath,
 }
 
 const std::vector<Node>& LoadCached() {
-    std::wstring rootPath = CanonicalPath(Services::SupportedSitesFile());
+    // A path that cannot be canonicalized must not be allowed to travel any further:
+    // the empty string it produces is a perfectly good argument to std::ifstream, so
+    // the parse would fail on an empty path and report "file not found" — a message
+    // about a file that was never the problem. Say what actually happened and stop.
+    //
+    // Either way the submenu grays out. Nothing is shown to the user for this: it
+    // cannot happen with a correctly installed payload, so it is a fault to be
+    // diagnosed from the log rather than one to be explained in the menu.
+    const std::wstring configured = Services::SupportedSitesFile();
+    std::wstring rootPath = CanonicalPath(configured);
+    if (rootPath.empty()) {
+        LOGE(
+            L"Supported sites: the configured path could not be resolved (too long, or "
+            L"not a resolvable path): " +
+            configured);
+        g_cache.valid = false;
+        g_cache.nodes.clear();
+        return g_cache.nodes;
+    }
+
     std::wstring lang = CurrentLangCode();
 
     const auto stampAll = [](const std::vector<std::wstring>& files,

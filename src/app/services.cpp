@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #include "app/services.h"
 
@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cwchar>
 #include <functional>
@@ -39,27 +40,32 @@
 #include "app/paths.h"
 #include "app/text.h"
 #include "app/version.h"
+#include "dns/dns_proxy.h"
 #include "dns/nrpt.h"
 #include "dns/redirector.h"
 #include "platform/autostart.h"
 #include "platform/command.h"
+#include "platform/dialogs.h"
+#include "platform/ini.h"
 #include "platform/ports.h"
 #include "platform/process.h"
 #include "platform/shortcut.h"
+#include "updater/module.h"
+#include "updater/plan.h"
 
 namespace Services {
 
 namespace {
 
-// The three things that have to be up for this program to do anything.
+// The four things that have to be up for this program to do anything.
 //
 // Named as one type because the stack does not distinguish between them: any one of
-// them going down takes the other two with it, and for the same reason in each case
+// them going down takes the others with it, and for the same reason in each case
 // — what is left is not a reduced service, it is a machine whose DNS points at
-// something that cannot answer. The two children happen to be processes and DNS
-// redirection happens to be a thread and a registry key, but that is an
-// implementation detail of each, not a difference in how the stack treats them.
-enum class Component { Nginx, SniGate, DnsRedirection };
+// something that cannot answer. The children happen to be processes and the DNS
+// components happen to be threads and a registry key, but that is an implementation
+// detail of each, not a difference in how the stack treats them.
+enum class Component : std::uint8_t { Nginx, SniGate, DnsRedirection, DnsProxy };
 
 // For the log: stable, ASCII, and the name the thing calls itself.
 const wchar_t* ComponentLogName(Component c) {
@@ -67,6 +73,7 @@ const wchar_t* ComponentLogName(Component c) {
         case Component::Nginx: return L"nginx";
         case Component::SniGate: return L"sni-gate";
         case Component::DnsRedirection: return L"DNS redirection";
+        case Component::DnsProxy: return L"DNS proxy";
     }
     return L"";
 }
@@ -79,6 +86,7 @@ const wchar_t* ComponentNameKey(Component c) {
         case Component::Nginx: return L"status.nginx";
         case Component::SniGate: return L"status.route";
         case Component::DnsRedirection: return L"status.dns";
+        case Component::DnsProxy: return L"status.proxy";
     }
     return L"";
 }
@@ -93,8 +101,8 @@ const wchar_t* ComponentNameKey(Component c) {
 // so every redirected name resolves to a loopback address with nothing behind it.
 // Every supported site breaks at once and the program does not say a word.
 //
-// The wait is on kernel objects — the children's process handles, and one event that
-// DNS redirection signals when it has stopped in a way it could not repair — so a
+// The wait is on kernel objects — the children's process handles and events the DNS
+// components signal when they stop in a way they could not repair — so a
 // component going down is observed the instant it happens, thirty milliseconds in or
 // thirty minutes in, indistinguishably, and costs nothing at all until it does. That
 // is the point: any interval here would be a guess about how long a service is
@@ -320,11 +328,14 @@ struct Runtime::State {
     // everything else to the machine's real resolvers.
     Dns::Redirector redirector;
 
+    // DNS forwarder: forwards queries to DoH/DoT/DNSCrypt upstreams with racing.
+    Dns::DnsProxy proxy;
+
     // Watches every component for going down without this program asking.
     //
     // Declared last deliberately: members are destroyed in reverse order, so this one
     // is torn down — its wait cancelled and confirmed ended — while the children and
-    // the redirector whose handles it is waiting on are still alive. Reversed, the
+    // DNS components whose handles it is waiting on are still alive. Reversed, the
     // wait would outlive the handles it waits on for as long as the disarm takes.
     //
     // Armed and disarmed only under operationMutex, or from this state's own
@@ -342,11 +353,79 @@ std::wstring PathsConfigFile() {
     return ExeDir() + L"paths.ini";
 }
 
+// A parsed paths.ini, kept until the file changes underneath it.
+//
+// Every lookup below used to parse the file from scratch, and the ones that matter
+// run often: NginxRunning and SniGateRunning resolve an executable path each time the
+// tray menu is built, so opening the menu meant reading and decoding this file twice,
+// before either of them had even looked at a process. The payload declares this file
+// and it is small, but nothing about the declaration requires re-reading it per call.
+//
+// Invalidated on size and write time rather than read once per process, because the
+// file is NOT immutable while the program runs: it ships in the payload, so a data-only
+// update can replace it under a running instance. An edit is noticed; an unchanged file
+// is parsed once. Same reasoning, and the same key, as the config.ini cache in
+// app/settings.cpp.
+//
+// Guarded because these are called from the tray's worker threads as well as the UI
+// thread. The vector is returned by value rather than by reference so a caller cannot
+// hold a reference into it while another thread replaces it.
+struct PathsStamp {
+    long long size = -1;
+    long long mtime = -1;
+    bool known = false;
+
+    bool operator==(const PathsStamp& o) const {
+        return size == o.size && mtime == o.mtime && known == o.known;
+    }
+};
+
+std::mutex g_pathsMx;
+PathsStamp g_pathsStamp;
+std::vector<Ini::Section> g_pathsSections;
+
+PathsStamp StampOfPathsFile() {
+    PathsStamp stamp;
+    WIN32_FILE_ATTRIBUTE_DATA data = {};
+    if (!GetFileAttributesExW(PathsConfigFile().c_str(), GetFileExInfoStandard, &data))
+        return stamp;
+    stamp.size =
+        static_cast<long long>((static_cast<unsigned long long>(data.nFileSizeHigh) << 32u) |
+                               static_cast<unsigned long long>(data.nFileSizeLow));
+    stamp.mtime = static_cast<long long>(
+        (static_cast<unsigned long long>(data.ftLastWriteTime.dwHighDateTime) << 32u) |
+        static_cast<unsigned long long>(data.ftLastWriteTime.dwLowDateTime));
+    stamp.known = true;
+    return stamp;
+}
+
+std::vector<Ini::Section> PathsSections() {
+    const std::wstring path = PathsConfigFile();
+    const PathsStamp stamp = StampOfPathsFile();
+
+    std::lock_guard<std::mutex> lock(g_pathsMx);
+    if (g_pathsStamp == stamp && g_pathsStamp.known) return g_pathsSections;
+
+    g_pathsSections = Ini::Read(path);
+    g_pathsStamp = stamp;
+    return g_pathsSections;
+}
+
+// Read one string value out of paths.ini.
+//
+// This goes through Ini::Value rather than GetPrivateProfileStringW, because the
+// profile API cannot serve a value longer than 32767 characters: at exactly 32768 it
+// returns 0 and a character later it returns a wrapped fragment, so a caller that
+// checks only "did I get something" receives a short value that looks real. That is
+// not a cosmetic loss for these entries — they are glob patterns the uninstall and
+// cache-clean paths delete by, and a pattern cut in the middle ("data\nginx*" from
+// "data\nginx*something") is still a valid wildcard that CompilePattern accepts and
+// DeleteByPatterns then acts on. The reader in platform/ini parses the file directly,
+// so the value arrives whole or not at all.
 std::wstring ResolvedPath(const wchar_t* key, const std::wstring& fallback) {
-    wchar_t buf[MAX_PATH * 2] = {};
-    GetPrivateProfileStringW(L"Paths", key, fallback.c_str(), buf,
-                             static_cast<DWORD>(std::size(buf)), PathsConfigFile().c_str());
-    std::wstring rel = TrimW(buf);
+    // An unreadable or oversized value falls back to the built-in default rather than
+    // resolving a truncated path to a directory that is not the one intended.
+    std::wstring rel = Ini::Value(PathsSections(), L"Paths", key);
     if (rel.empty()) rel = fallback;
     return PathUnder(rel);
 }
@@ -356,10 +435,12 @@ std::wstring DnsRulesPath() {
     return ResolvedPath(L"Hosts", L"data\\dns_hosts.txt");
 }
 
-// Directory containing `exe`, with a trailing backslash.
+// Directory containing `exe`, with a trailing backslash. A path with no separator is
+// taken to mean a name in our own directory, which is where such a service would have
+// been launched from.
 std::wstring DirOf(const std::wstring& exe) {
-    const size_t slash = exe.find_last_of(L"\\/");
-    return (slash == std::wstring::npos) ? ExeDir() : exe.substr(0, slash + 1);
+    const std::wstring dir = DirPart(exe);
+    return dir.empty() ? ExeDir() : dir;
 }
 
 // ---- Timing constants --------------------------------------------------------
@@ -395,8 +476,16 @@ void AwaitPortsReleased(DWORD timeoutMs) {
 // Drop the OS resolver cache. Synthesized answers carry a short TTL, so without
 // this a start would be shadowed by cached real addresses, and a stop would keep
 // sending traffic to a loopback that no longer listens until the TTL expired.
+//
+// Bounded well below Command::RunHidden's default. This runs inside StopLocked, which
+// the exit path waits on, so its timeout is part of how long closing the program can
+// take — and ipconfig answers locally in milliseconds or not at all. A flush that has
+// not completed in a few seconds is not going to, and the cache expiring on its own
+// TTL is a far smaller cost than a program that will not close.
+constexpr DWORD kFlushTimeoutMs = 5000;
+
 void FlushResolverCache() {
-    Command::RunHidden(L"ipconfig /flushdns");
+    Command::RunHidden(L"ipconfig /flushdns", nullptr, kFlushTimeoutMs);
 }
 
 // The published state, and the lock that makes publishing it and taking a reference
@@ -467,7 +556,7 @@ bool ChildRunning(const std::shared_ptr<Runtime::State>& state,
 // answering with its health would walk past exactly the state that most needs
 // clearing up.
 bool AnythingRunning(Runtime::State& state) {
-    if (state.redirector.Active()) return true;
+    if (state.redirector.Active() || state.proxy.Running()) return true;
     std::lock_guard<std::mutex> lock(state.childMutex);
     return static_cast<bool>(state.nginx) || static_cast<bool>(state.sniGate);
 }
@@ -547,6 +636,7 @@ void StopLocked(Runtime::State& state) {
     // drops the loopback answers we synthesized, so names resolve for real again
     // straight away instead of after their TTL runs out.
     state.redirector.Stop();
+    state.proxy.Stop();
     FlushResolverCache();
 
     StopChildren(state);
@@ -567,11 +657,33 @@ std::wstring ServiceProblem(Component component, const wchar_t* reasonKey) {
            L"\n" + T(L"msg.serviceFailed");
 }
 
-// Report a failed start. The logon path passes interactive == false and must never
-// put a dialog in front of someone who is still signing in.
-void ReportStartFailure(bool interactive, Component component, const wchar_t* reasonKey) {
-    if (!interactive) return;
-    MessageBoxW(nullptr, ServiceProblem(component, reasonKey).c_str(), APP_NAME, MB_ICONERROR);
+// A start's failure to report, carried out of the critical section that detected it.
+//
+// Every failure below used to be shown where it was found, and that place is inside
+// operationMutex. A dialog is a wait on a person, and Start, Stop, the cache clean and
+// the exit path all queue behind that lock — so an unread message box froze every one
+// of them. The message therefore travels out with the result and is shown once the
+// lock is released; see Start().
+//
+// The logon path must never put a dialog in front of someone who is still signing in,
+// so Set() takes whether this start is allowed to talk to the user at all and records
+// nothing when it is not. Absent a message there is nothing to show, and the caller
+// needs no second flag.
+struct StartFailure {
+    std::wstring message;
+
+    bool pending() const { return !message.empty(); }
+
+    void Set(bool canShow, std::wstring text) {
+        if (!canShow || text.empty()) return;
+        message = std::move(text);
+    }
+};
+
+// Report a failed start through `failure`, which decides whether the user is told.
+void ReportStartFailure(StartFailure& failure, bool interactive, Component component,
+                        const wchar_t* reasonKey) {
+    failure.Set(interactive, ServiceProblem(component, reasonKey));
 }
 
 // Why the component stopped, in the words the user is shown.
@@ -581,6 +693,7 @@ void ReportStartFailure(bool interactive, Component component, const wchar_t* re
 // machine's networking, while a policy rule that keeps being deleted is another
 // program on the machine, and no amount of restarting this one will help.
 const wchar_t* ReasonKeyFor(Runtime::State& state, Component component) {
+    if (component == Component::DnsProxy) return L"reason.dnsProxyStopped";
     if (component != Component::DnsRedirection) return L"reason.exitedWhileRunning";
     return state.redirector.failure() == Dns::RedirectFailure::RuleUnholdable
                ? L"reason.dnsRuleRemoved"
@@ -651,7 +764,12 @@ void OnComponentDown(Component component, uint64_t generation) {
     // Outside the lock on purpose: this dialog waits for a person, and holding the
     // operation mutex across it would freeze Start, Stop and the tray behind it for
     // as long as the message box goes unread.
-    MessageBoxW(nullptr, message.c_str(), APP_NAME, MB_ICONERROR);
+    //
+    // This is the supervisory thread, which owns no window, so the dialog is
+    // marshalled to the UI thread and owned by the tray window. The block here still
+    // delays only this thread — it has already stopped supervising, as the note above
+    // says — but it no longer depends on being lucky about which thread that is.
+    Dialogs::Show(message, MB_ICONERROR);
 }
 
 // Begin watching every component. Called at the end of a start, which is also the
@@ -665,7 +783,8 @@ void ArmSupervisor(Runtime::State& state) {
     state.supervisor.Arm(
         {{Component::Nginx, state.nginx.waitHandle()},
          {Component::SniGate, state.sniGate.waitHandle()},
-         {Component::DnsRedirection, state.redirector.failureHandle()}},
+         {Component::DnsRedirection, state.redirector.failureHandle()},
+         {Component::DnsProxy, state.proxy.stoppedHandle()}},
         [generation](Component component) { OnComponentDown(component, generation); });
 }
 
@@ -677,7 +796,10 @@ void ArmSupervisor(Runtime::State& state) {
 // is taken (see dns/nrpt.h for the two that were measured and rejected). Since the
 // user has to restart either way, the useful thing to hand them is that
 // instruction, delivered before a stack comes up that could not have worked.
-bool EnsureDnsClientRunning(bool interactive) {
+//
+// The message is composed here and shown by the caller, for the reason given on
+// StartFailure: this runs under operationMutex.
+bool EnsureDnsClientRunning(StartFailure& failure, bool interactive) {
     const Dns::Nrpt::DnsClient state = Dns::Nrpt::QueryDnsClient();
     if (state == Dns::Nrpt::DnsClient::Running) return true;
 
@@ -696,11 +818,15 @@ bool EnsureDnsClientRunning(bool interactive) {
                L"Aborting start."
              : L"The DNS Client service is not running; DNS redirection cannot work. "
                L"Aborting start.");
-    if (interactive) MessageBoxW(nullptr, T(L"msg.dnsClientOff"), APP_NAME, MB_ICONERROR);
+    failure.Set(interactive, T(L"msg.dnsClientOff"));
     return false;
 }
 
-bool StartLocked(Runtime::State& state, bool interactive) {
+// `portsApproved` is the caller's answer to the port-conflict question, asked before
+// this lock was taken. It has no effect unless a port actually turns out to be held,
+// so the common case (nothing running on 80/443/22222) never consults it.
+bool StartLocked(Runtime::State& state, bool interactive, StartFailure& failure,
+                 bool portsApproved) {
     // Teardown has the last word: once it has started, nothing may bring the stack
     // back up behind it.
     if (state.shuttingDown.load(std::memory_order_acquire)) {
@@ -721,11 +847,12 @@ bool StartLocked(Runtime::State& state, bool interactive) {
     // still up — is not left to the port-conflict path either. This stack is
     // all-or-nothing by design, so the remnant is cleared and the start proceeds from
     // a known state rather than from whatever happened to survive.
-    if (state.redirector.Running() && state.nginx.Running() && state.sniGate.Running()) {
+    if (state.redirector.Running() && state.proxy.Running() && state.nginx.Running() &&
+        state.sniGate.Running()) {
         LOGI(L"Start requested while everything is already running; nothing to do.");
         return true;
     }
-    if (state.redirector.Active() || state.nginx || state.sniGate) {
+    if (state.redirector.Active() || state.proxy.Running() || state.nginx || state.sniGate) {
         LOGW(L"Start requested with part of the stack still up; stopping the remnant first.");
         StopLocked(state);
     }
@@ -736,44 +863,55 @@ bool StartLocked(Runtime::State& state, bool interactive) {
     // absence fails silently: without the DNS Client service the policy rule is
     // inert, every listed name resolves the ordinary way, and the user sees a stack
     // that reports itself running while not one site works.
-    if (!EnsureDnsClientRunning(interactive)) return false;
+    if (!EnsureDnsClientRunning(failure, interactive)) return false;
 
     if (AnyPortOccupied()) {
-        bool shouldClean = true;
-        if (interactive) {
-            shouldClean = MessageBoxW(nullptr, T(L"msg.portsInUse"), APP_NAME,
-                                      MB_ICONWARNING | MB_YESNO) == IDYES;
+        // The question itself was asked by the caller, outside this lock. All that is
+        // decided here is what to do with the answer, and the answer to "free them"
+        // for a non-interactive start is not a question at all: the logon path and the
+        // cache clean have nobody to ask and must not put a dialog in front of anyone.
+        if (!portsApproved && !interactive) {
+            LOGW(L"Ports are held and this start cannot ask; aborting.");
+            return false;
         }
-        if (!shouldClean) {
+        if (!portsApproved) {
             LOGW(L"User declined port cleanup; aborting start.");
             return false;
         }
         if (!KillPortHolders()) {
             LOGE(L"Cannot free ports held by system-critical processes; aborting start.");
-            if (interactive)
-                MessageBoxW(nullptr, T(L"msg.portsCritical"), APP_NAME, MB_ICONERROR);
+            failure.Set(interactive, T(L"msg.portsCritical"));
             return false;
         }
         if (AnyPortOccupied()) {
             LOGE(L"Ports still occupied after cleanup; aborting start.");
-            if (interactive)
-                MessageBoxW(nullptr, T(L"msg.portsStillInUse"), APP_NAME, MB_ICONERROR);
+            failure.Set(interactive, T(L"msg.portsStillInUse"));
             return false;
         }
     }
 
-    // From here on the start is all-or-nothing. A stack with nginx up but the DNS
-    // redirection down proxies nothing, yet holds the ports and reads as partly running;
-    // rolling back leaves the machine exactly as it was found.
+    // From here on the start is all-or-nothing. Nginx resolves dynamic upstreams
+    // through this proxy, so it must be listening before nginx reads its config.
+    const std::wstring proxyConfig = ResolvedPath(L"DnsProxyConfig", L"data\\dns_proxy.ini");
+    if (!state.proxy.LoadConfig(proxyConfig) || !state.proxy.Start()) {
+        LOGE(L"Failed to start DNS proxy from " + proxyConfig + L".");
+        StopLocked(state);
+        failure.Set(interactive, T(L"msg.dnsProxyStartFail"));
+        return false;
+    }
+    LOGI(L"DNS proxy started.");
+
+    // A stack with a child up but DNS redirection down proxies nothing, yet holds
+    // the ports and reads as partly running; rolling back restores the known state.
     if (!StartChild(state, &Runtime::State::nginx, Component::Nginx, NginxExe())) {
         StopLocked(state);
-        ReportStartFailure(interactive, Component::Nginx, L"reason.launchFailed");
+        ReportStartFailure(failure, interactive, Component::Nginx, L"reason.launchFailed");
         return false;
     }
 
     if (!StartChild(state, &Runtime::State::sniGate, Component::SniGate, SniGateExe())) {
         StopLocked(state);
-        ReportStartFailure(interactive, Component::SniGate, L"reason.launchFailed");
+        ReportStartFailure(failure, interactive, Component::SniGate, L"reason.launchFailed");
         return false;
     }
 
@@ -781,7 +919,7 @@ bool StartLocked(Runtime::State& state, bool interactive) {
     if (!state.redirector.Start()) {
         LOGE(L"Failed to start DNS redirection.");
         StopLocked(state);
-        if (interactive) MessageBoxW(nullptr, T(L"msg.dnsStartFail"), APP_NAME, MB_ICONERROR);
+        if (interactive) Dialogs::Show(T(L"msg.dnsStartFail"), MB_ICONERROR);
         return false;
     }
 
@@ -821,11 +959,15 @@ std::vector<std::wstring> SplitList(const std::wstring& s) {
 }
 
 // Read one '|'-separated value from a section in paths.ini.
+//
+// An oversized value comes back empty from the reader, so a truncated list can never be
+// produced: either every entry is present in full or the list reads as absent. That
+// matters because these lists drive deletion — the last entry, cut mid-word, becomes a
+// prefix glob that matches more than it should, and a cleanup that silently does
+// nothing is the recoverable direction while one that deletes by a pattern nobody wrote
+// is not.
 std::vector<std::wstring> ReadPathsList(const wchar_t* section, const wchar_t* key) {
-    std::vector<wchar_t> buf(32768, L'\0');
-    GetPrivateProfileStringW(section, key, L"", buf.data(), static_cast<DWORD>(buf.size()),
-                             PathsConfigFile().c_str());
-    return SplitList(buf.data());
+    return SplitList(Ini::Value(PathsConfigFile(), section, key));
 }
 
 // Read a certificate's subject or issuer common name.
@@ -848,15 +990,25 @@ std::wstring CertName(PCCERT_CONTEXT ctx, DWORD which) {
 // signer on the machine with no software left to justify it.
 //
 // Deleting invalidates the enumeration, so each pass restarts from the top and the
-// loop repeats until a full sweep finds nothing to remove.
+// loop repeats until a full sweep finds nothing to remove — which is also why the
+// restart must be conditional on the delete having happened. Repeating because a
+// delete succeeded is progress; repeating because one did not is the same sweep
+// forever, and a root store is writable only by an administrator (enterprise
+// policy locks it down outright), so a delete that fails once fails every time.
 size_t RemoveRootCertificates(DWORD storeLocation, const std::vector<std::wstring>& names) {
     size_t removed = 0;
     HCERTSTORE store = CertOpenStore(CERT_STORE_PROV_SYSTEM_W, 0, 0,
                                      storeLocation | CERT_STORE_OPEN_EXISTING_FLAG, L"ROOT");
     if (!store) return 0;
 
-    for (bool again = true; again;) {
-        again = false;
+    // Each pass removes at most one certificate, so no store can need more passes
+    // than it can hold. The bound is a second line of defence for a delete that
+    // reports success without the certificate leaving: the enumeration is finite
+    // either way, and a loop that cannot end is the one outcome worth ruling out
+    // twice.
+    constexpr int kMaxSweeps = 4096;
+    for (int sweep = 0; sweep < kMaxSweeps; ++sweep) {
+        bool removedThisSweep = false;
         PCCERT_CONTEXT ctx = nullptr;
         while ((ctx = CertEnumCertificatesInStore(store, ctx)) != nullptr) {
             const std::wstring subject = LowerW(CertName(ctx, 0));
@@ -875,47 +1027,71 @@ size_t RemoveRootCertificates(DWORD storeLocation, const std::vector<std::wstrin
             // enumeration cannot continue from it — duplicate, delete, restart.
             PCCERT_CONTEXT dup = CertDuplicateCertificateContext(ctx);
             CertFreeCertificateContext(ctx);
+
+            // Only a delete that actually happened earns another pass. When it does
+            // not — or when the duplicate itself could not be made — the certificate
+            // is left where it is, said out loud, and this sweep carries on to the
+            // next one rather than restarting on the one that would not go.
             if (dup && CertDeleteCertificateFromStore(dup)) {
                 ++removed;
-            } else if (dup) {
-                LOGW(L"Uninstall: failed to remove a root certificate (err " +
-                     std::to_wstring(GetLastError()) + L").");
-                CertFreeCertificateContext(dup);
+                removedThisSweep = true;
+                break;  // restart the sweep
             }
-            again = true;
-            break;  // restart the sweep
+            if (dup) {
+                LOGW(L"Uninstall: failed to remove a root certificate (err " +
+                     std::to_wstring(GetLastError()) + L"); it will be left in the store.");
+                CertFreeCertificateContext(dup);
+            } else {
+                LOGW(L"Uninstall: could not duplicate a root certificate context (err " +
+                     std::to_wstring(GetLastError()) + L"); it will be left in the store.");
+            }
         }
+        if (!removedThisSweep) break;
     }
     CertCloseStore(store, 0);
     return removed;
 }
 
-// The executable cannot delete itself while running, so a detached script waits for
-// this process to exit, removes it, and then tries a NON-recursive rmdir of the
-// program directory. That call succeeds only if nothing else is left — if the user
-// keeps unrelated files there, it fails harmlessly and their files remain.
+// The executable cannot delete itself while running, so the updater waits for this
+// process to exit, removes it, and then tries a NON-recursive rmdir of the program
+// directory. That call succeeds only if nothing else is left — if the user keeps
+// unrelated files there, it fails harmlessly and their files remain.
 void ScheduleSelfRemoval() {
     std::wstring dir = ExeDir();
     if (!dir.empty() && dir.back() == L'\\') dir.pop_back();
 
-    std::wstring body;
-    body += L"set \"SELF=" + ExePath() + L"\"\r\n";
-    body += L"set \"DIR=" + dir + L"\"\r\n";
-    body += L":wait\r\n";
-    body += L"ping 127.0.0.1 -n 2 >nul\r\n";
-    // Retrying the delete IS the wait condition: it succeeds as soon as this process
-    // releases its own image. Watching the process name instead would hang on an
-    // unrelated copy running elsewhere.
-    body += L"del \"%SELF%\" >nul 2>&1\r\n";
-    body += L"if exist \"%SELF%\" goto wait\r\n";
-    // Non-recursive: removes the folder only when it is now empty.
-    body += L"rmdir \"%DIR%\" >nul 2>&1\r\n";
-    body += L"(goto) 2>nul & del \"%~f0\"\r\n";
-
-    if (!Command::RunDetachedScript(L"snib_uninstall.bat", body))
+    // The same work-order mechanism the update path uses: a data file under
+    // %ProgramData% plus an explicit CreateProcessW, with no shell anywhere in between.
+    // The former script wrote its paths into batch, where a directory name containing
+    // & would have been re-read as command syntax by an elevated cmd.exe.
+    const std::wstring planDir = Updater::PlanDirectory();
+    if (planDir.empty()) {
         LOGE(
-            L"Uninstall: the self-removal helper could not be started; "
-            L"the executable will have to be deleted by hand.");
+            L"Uninstall: the updater's plan directory could not be secured; the "
+            L"executable will have to be deleted by hand.");
+        return;
+    }
+
+    Updater::Plan plan;
+    plan.op = Updater::Op::Remove;
+    plan.target = ExePath();
+    plan.dir = dir;
+    plan.parentPid = GetCurrentProcessId();
+
+    const std::wstring planPath = planDir + L"\\" + Updater::RandomPlanFileName();
+    if (!Updater::WritePlan(planPath, plan)) {
+        LOGE(
+            L"Uninstall: cannot write the updater plan; the executable will have to be "
+            L"deleted by hand.");
+        return;
+    }
+
+    if (!UpdaterModule::Launch({L"--apply-plan", planPath})) {
+        LOGE(
+            L"Uninstall: the updater module could not be started; the executable will "
+            L"have to be deleted by hand.");
+        Updater::DeletePlanFile(planPath);
+    }
 }
 
 }  // namespace
@@ -941,9 +1117,26 @@ Runtime::~Runtime() {
         if (AnythingRunning(*m_state)) StopLocked(*m_state);
     }
 
-    // Everything the stack owns is now stopped, and releasing this reference destroys
-    // the state itself — here, on the ordinary path, because a worker still inside a
-    // call holds the only other reference and there is none once it returns.
+    // Wait out every call that was already under way when we unpublished, so that the
+    // final release — and with it DnsProxy::Stop() and Redirector::Stop(), and every
+    // thread, child and handle they own — happens HERE, on wWinMain's thread, rather
+    // than on whichever detached worker happens to drop the last copy.
+    //
+    // The unpublish above is what makes waiting safe and bounded rather than a race:
+    // a caller reaches the slot only through Ctx(), which takes the same lock, so once
+    // PublishState(nullptr) has returned no new reference can appear. Every remaining
+    // one is held by a thread that acquired it before the unpublish and will release
+    // it when its call returns. Workers also take the state lock before waiting on
+    // operationMutex, so holding no lock here cannot deadlock against them.
+    //
+    // A holder runs a finite operation, and this destructor is what makes it finite
+    // even when the operation is a Stop: shuttingDown is already set, so a worker
+    // arriving on the mutex returns rather than starting the stack again.
+    while (m_state.use_count() > 1) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    // This is now provably the last reference. Everything the stack owns is stopped,
+    // and releasing it destroys the state here, before wWinMain returns — the
+    // guarantee services.h states, and the one main.cpp relies on.
 }
 
 // ---- Resolved locations ------------------------------------------------------
@@ -967,6 +1160,11 @@ bool DnsRedirectRunning() {
     return state && state->redirector.Running();
 }
 
+bool DnsProxyRunning() {
+    const std::shared_ptr<Runtime::State> state = Ctx();
+    return state && state->proxy.Running();
+}
+
 bool NginxRunning() {
     return ChildRunning(Ctx(), &Runtime::State::nginx, NginxExe());
 }
@@ -976,7 +1174,7 @@ bool SniGateRunning() {
 }
 
 bool AnyRunning() {
-    return DnsRedirectRunning() || NginxRunning() || SniGateRunning();
+    return DnsRedirectRunning() || DnsProxyRunning() || NginxRunning() || SniGateRunning();
 }
 
 // ---- Ports -------------------------------------------------------------------
@@ -1022,28 +1220,47 @@ bool KillPortHolders() {
 // ---- Lifecycle ---------------------------------------------------------------
 
 void EnforceCleanSlate() {
-    // An orphan of a previous run is two things at once: one of OUR executables, and
-    // still holding a port this stack needs. Both are required here, and each one
-    // rules out a mistake the other would let through.
+    const std::wstring ours[] = {NginxExe(), SniGateExe()};
+
+    // Sweep by image path first: every process whose executable is OUR file at OUR
+    // resolved location, whether or not it holds a port.
     //
-    // Matching the image name alone would reach any nginx.exe on the machine — a
-    // user's own web server, in their own folder, serving their own port — and
-    // terminate it at startup without asking. Matching the port alone would terminate
-    // whatever happens to hold port 80, which is not this program's call to make
-    // silently. A foreign program holding one of our ports is not dealt with here at
-    // all: that is a conflict the user is asked about, in KillPortHolders, on the way
-    // into a start.
+    // The port-based pass below cannot see a child that started but never bound —
+    // nginx killed between launch and its listen, or a copy that failed to bind and is
+    // sitting there retrying. Such an orphan is still a live process holding a job
+    // object, a config file and a log handle open, and nothing else in the program
+    // will ever notice it. Matching the full resolved path is what keeps this from
+    // reaching a user's own nginx.exe, which lives somewhere else entirely; a process
+    // whose image path cannot be read is not returned by FindByImagePath at all, so
+    // "could not identify" stays handled as "not ours".
     //
-    // A process whose image path cannot be read is left alone. Unidentified is not
-    // the same as ours, and the whole point of this function is to act only on what
-    // is certainly ours.
-    const std::wstring ours[] = {LowerW(NginxExe()), LowerW(SniGateExe())};
+    // This runs before anything is launched (see the call in wWinMain), so anything
+    // matching here is an orphan of a previous run by construction — there is no
+    // child of this run for it to mistake for one.
+    for (const std::wstring& mine : ours) {
+        for (DWORD pid : Process::FindByImagePath(mine)) {
+            if (pid == GetCurrentProcessId()) continue;
+            LOGW(L"Terminating a leftover " + mine + L" (pid " + std::to_wstring(pid) +
+                 L") that a previous run did not clean up.");
+            Process::KillTree(pid);
+        }
+    }
+
+    // Then the port intersection, which covers the case the path sweep cannot: one of
+    // our binaries that is running from a location the current configuration no longer
+    // names, still holding port 80. Both halves are required, and each rules out a
+    // mistake the other would let through — matching the port alone would terminate
+    // whatever happens to hold 80, which is not this program's call to make silently.
+    // A foreign program holding one of our ports is not dealt with here at all: that
+    // is a conflict the user is asked about, in KillPortHolders, on the way into a
+    // start.
+    const std::wstring oursLower[] = {LowerW(ours[0]), LowerW(ours[1])};
     for (int port : Ports::kServicePorts) {
         for (DWORD pid : Ports::ListenersOn(port)) {
             std::wstring image;
             if (pid == 0 || !Process::TryImagePath(pid, image)) continue;
             image = LowerW(image);
-            for (const std::wstring& mine : ours) {
+            for (const std::wstring& mine : oursLower) {
                 if (image != mine) continue;
                 LOGW(L"Terminating a leftover " + image + L" (pid " + std::to_wstring(pid) +
                      L") still holding port " + std::to_wstring(port) + L".");
@@ -1060,13 +1277,49 @@ void EnforceCleanSlate() {
     // fixed key of our own, so this can never reach one the user installed.
     if (Dns::Nrpt::RemoveRule())
         LOGW(L"Removed a DNS policy rule left behind by a previous run.");
+
+    // The updater deletes the copy of itself it was started from, so a leftover means
+    // one was killed before it could. Swept here because this is the one place that runs
+    // before anything could be launched from that directory, and safe to call
+    // unconditionally: a copy still executing is skipped rather than reported.
+    UpdaterModule::SweepStaleCopies();
 }
 
 bool Start(bool interactive) {
     const std::shared_ptr<Runtime::State> state = Ctx();
     if (!state) return false;
-    std::lock_guard<std::mutex> lock(state->operationMutex);
-    return StartLocked(*state, interactive);
+
+    // The port-conflict question is asked HERE, before the operation lock is taken.
+    //
+    // It used to be asked inside, and that was the one place in the program where a
+    // message box was held under operationMutex — which Stop, the cache clean and the
+    // exit path all queue behind. An unread question therefore froze every one of
+    // them, including the answer to "why will this not exit". The question is a wait
+    // on a person, so it belongs outside everything that waits on the lock.
+    //
+    // Asked only when nothing of ours is already up: while our own stack is running
+    // the ports belong to it, and offering to free them would be offering to kill the
+    // services the user is using. The full check is repeated under the lock below,
+    // where the decision is actually made.
+    bool portsApproved = true;
+    if (interactive && !AnythingRunning(*state) && AnyPortOccupied()) {
+        portsApproved = Dialogs::Show(T(L"msg.portsInUse"), MB_ICONWARNING | MB_YESNO) == IDYES;
+        if (!portsApproved) {
+            LOGW(L"User declined port cleanup; aborting start.");
+            return false;
+        }
+    }
+
+    StartFailure failure;
+    bool started = false;
+    {
+        std::lock_guard<std::mutex> lock(state->operationMutex);
+        started = StartLocked(*state, interactive, failure, portsApproved);
+    }
+
+    // Shown with the lock released, for the same reason the question is asked there.
+    if (failure.pending()) Dialogs::Show(failure.message, MB_ICONERROR);
+    return started;
 }
 
 void Stop() {
@@ -1156,7 +1409,13 @@ CacheCleanResult CleanCache() {
     // Directories that were empty may have matched a pattern and gone with it.
     EnsureRequiredDirectories();
 
-    result.ok = !wasRunning || StartLocked(*state, false);
+    // Bringing the stack back up is not an interactive start: it is restoring a state
+    // this function took down a moment ago, and nothing may be put in front of the
+    // user for it. The ports it is about to hold were freed by the StopLocked above,
+    // so what is left is whether it comes up — not whether it may ask.
+    StartFailure failure;
+    result.ok = !wasRunning || StartLocked(*state, /*interactive=*/false, failure,
+                                           /*portsApproved=*/true);
     if (!result.ok) LOGE(L"Cache: the services did not come back up after cleanup.");
     return result;
 }

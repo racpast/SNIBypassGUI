@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE file in the project root for full terms and conditions.
+// See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
 // DNS redirection, whole: the rules, the policy table that routes names here, and
@@ -181,10 +181,21 @@ private:
 
     // The guardian: one thread, waiting on cancellation, the server's loop and the
     // policy table. Started at the end of a successful Start, ended first by Stop.
-    void StartGuardian();
+    //
+    // Returns false if no guardian could be established, having freed whatever it
+    // created. A redirection without one is not a degraded redirection, it is the
+    // state the header above describes as the worst this program has — so Start
+    // refuses it rather than answering true over it.
+    [[nodiscard]] bool StartGuardian();
     void StopGuardian();
     void Guard();
     void Fail(RedirectFailure cause, const wchar_t* detail);
+
+    // Undo what Start has in place so far — the policy rule first, then the server,
+    // in the order Stop uses and for the same reason. Both a guardian that could
+    // not be started and a rule that could not be installed end here, so there is
+    // one description of "Start gave up" rather than one per failure.
+    void RollBackStart();
 
     // What a look at the policy table concluded.
     enum class RuleGuard {

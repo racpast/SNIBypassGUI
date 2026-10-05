@@ -13,7 +13,7 @@
 #
 # For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 #
-# See the LICENSE file in the project root for full terms and conditions.
+# See the LICENSE.md file in the project root for full terms and conditions.
 
 IF ZH
 TEXT "以下按字母顺序分组列出了本程序支持的大部分站点。"
