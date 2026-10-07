@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #pragma once
 // The DNSCrypt certificate, and the cache that holds one per provider.
@@ -133,7 +133,9 @@ public:
     //
     // A cancelled waiter stops waiting. It does not cancel the fetch — the result
     // is shared, and the fetcher may be a thread whose query is still live — so
-    // the work is not wasted, it is simply collected by whoever wanted it.
+    // the work is not wasted, it is simply collected by whoever wanted it. The
+    // fetch itself therefore runs against a deadline rather than against any one
+    // caller's token; `cancel` gates the waiting and nothing else.
     //
     // An invalid result is returned immediately, without calling `fetch`, while
     // the provider is inside its cooldown.
@@ -141,6 +143,8 @@ public:
     DNSCryptCert Get(const std::string& providerName, uint32_t now, const CancelToken* cancel,
                      Fetch&& fetch) {
         std::shared_ptr<Pending> pending;
+        uint64_t fetchRound = 0;
+        bool owner = false;
 
         {
             std::lock_guard<std::mutex> lock(m_mx);
@@ -158,24 +162,40 @@ public:
 
             const auto running = m_pending.find(providerName);
             if (running != m_pending.end()) {
-                pending = running->second;  // someone else is already fetching
+                // Someone else is already fetching this provider. Wait for that
+                // round rather than starting a second one — which is the whole
+                // reason this map exists, because a cold start has several
+                // upstreams naming the same provider and each would otherwise
+                // pay its own round trip for the same certificate.
+                pending = running->second;
             } else {
                 // The caller that installs the slot is the caller that fetches.
-                // Ownership is expressed by the slot being absent, not by a flag
-                // on it, so there is no state two threads could both think they
-                // set. A second caller racing this one finds the slot and waits.
-                pending = std::make_shared<Pending>();
+                // Ownership is a local of this call and never a field of the
+                // slot, so there is no default a later caller can inherit: the
+                // slot is shared, and what a thread does with it is not.
+                fetchRound = ++m_fetchRound;
+                pending = std::make_shared<Pending>(fetchRound);
                 m_pending.emplace(providerName, pending);
+                owner = true;
             }
         }
 
         // No lock is held from here on, so a slow provider stalls nothing else.
-        if (pending->owner.load(std::memory_order_acquire)) {
+        if (owner) {
             const DNSCryptCert cert = fetch();
 
             {
                 std::lock_guard<std::mutex> lock(m_mx);
-                m_pending.erase(providerName);
+
+                // Peek, then erase only what this round installed. A round that
+                // has already been retired by a failure must not be able to
+                // erase its replacement: the map is keyed by provider, and the
+                // entry under that key may now belong to a newer fetch whose
+                // waiters are relying on it.
+                const auto slot = m_pending.find(providerName);
+                if (slot != m_pending.end() && slot->second->round == fetchRound) {
+                    m_pending.erase(slot);
+                }
 
                 if (cert.valid) {
                     CachedCert entry;
@@ -267,10 +287,21 @@ private:
     // the fetcher removes the map entry before it publishes, so a waiter that
     // looked the entry up again could miss it entirely. Holding the slot itself
     // is what makes the hand-off independent of the map's contents.
+    //
+    // There is deliberately no "am I the owner" field here. Pending is shared by
+    // every caller interested in one provider, so a flag on it would be shared
+    // too — and a shared default is one every waiter inherits, which is how a
+    // deduplicated fetch turns back into one round trip per caller. Ownership is
+    // a local of the call that installed the slot, and the round below is what
+    // lets a straggler from an older round recognize that the map entry under its
+    // key is no longer its own.
     struct Pending {
-        // True only on the slot its creator installed. Waiters get false, which
-        // is what routes them to the wait path instead of the network.
-        std::atomic<bool> owner{true};
+        explicit Pending(uint64_t roundNumber) : round(roundNumber) {}
+
+        // Which fetch installed this slot. Compared under m_mx before erasing,
+        // so a round that has already been retired by a failure cannot remove
+        // the entry a newer round installed in its place.
+        uint64_t round = 0;
 
         std::mutex mx;
         std::condition_variable cv;
@@ -318,6 +349,10 @@ private:
     // Providers that failed to produce a certificate, with the backoff that keeps
     // a dead one from costing a network round trip on every query.
     std::map<std::string, Failure> m_failures;
+    // Hands out the identity of each fetch round. Monotonic and never reused, so
+    // a slot can always tell whether the map entry under its key is still the one
+    // it installed. Guarded by m_mx, which is the only lock it is touched under.
+    uint64_t m_fetchRound = 0;
 };
 
 }  // namespace Dns

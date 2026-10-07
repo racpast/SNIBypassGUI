@@ -3,7 +3,7 @@
 // This file is part of SNIBypassGUI, a proprietary software project.
 //
 // NOTICE: All information contained herein is, and remains the property of
-// Racpast. The intellectual and technical concepts contained herein is
+// Racpast. The intellectual and technical concepts contained herein are
 // proprietary to Racpast and are protected by copyright law and international
 // treaties. Dissemination of this information or reproduction of this material
 // is strictly forbidden unless prior written permission is obtained from Racpast.
@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #include "ui/progress_window.h"
 
@@ -227,17 +227,6 @@ COLORREF Accent() {
         if (rgb != RGB(0, 0, 0) && rgb != RGB(255, 255, 255)) return rgb;
     }
     return RGB(0, 120, 212);
-}
-
-// Replace the first "%s" in a translated string. The table has no formatting of its
-// own, and the alternative -- building the sentence by concatenation -- cannot express
-// a language whose word order differs, which is exactly the case here.
-std::wstring Expand(const wchar_t* key, const std::wstring& arg) {
-    std::wstring s = T(key);
-    const size_t at = s.find(L"%s");
-    if (at == std::wstring::npos) return s + L" " + arg;
-    s.replace(at, 2, arg);
-    return s;
 }
 
 // Resolve a function from user32, satisfying both gates at once.
@@ -473,7 +462,7 @@ void Paint(State* st) {
         const std::wstring rate = Update::FormatRate(snap.bytesPerSecond);
         const std::wstring eta =
             snap.etaSeconds >= 0
-                ? Expand(L"msg.updEtaRemaining", Update::FormatDuration(snap.etaSeconds))
+                ? TFmt(L"msg.updEtaRemaining", Update::FormatDuration(snap.etaSeconds))
                 : std::wstring();
         if (!rate.empty()) second = rate;
         if (!eta.empty()) {

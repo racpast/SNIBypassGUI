@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #include <windows.h>
 
@@ -169,7 +169,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR lpCmdLine, int) {
     if (!autostartMode) Bootstrap::SyncDesktopShortcut();
 
     // Check payload presence after the tray is up, so there is always a visible UI.
-    // If paths.ini is missing the user is asked once whether to restore it; if they
+    // If meta.ini is missing the user is asked once whether to restore it; if they
     // agree the full manifest is fetched and applied — the same engine as a normal
     // update. Returns immediately; the work runs on a detached worker thread inside.
     Controller::RepairIfNeeded();

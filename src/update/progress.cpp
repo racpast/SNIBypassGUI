@@ -3,8 +3,8 @@
 // This file is part of SNIBypassGUI, a proprietary software project.
 //
 // NOTICE: All information contained herein is, and remains the property of
-// Racpast. The intellectual and technical property described herein is
-// proprietary to Racpast and is protected by copyright law and international
+// Racpast. The intellectual and technical concepts contained herein are
+// proprietary to Racpast and are protected by copyright law and international
 // treaties. Dissemination of this information or reproduction of this material
 // is strictly forbidden unless prior written permission is obtained from Racpast.
 //
@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #include "update/progress.h"
 

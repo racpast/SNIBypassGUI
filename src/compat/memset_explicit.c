@@ -1,5 +1,20 @@
 // Copyright © 2026 Racpast. All Rights Reserved.
 //
+// This file is part of SNIBypassGUI, a proprietary software project.
+//
+// NOTICE: All information contained herein is, and remains the property of
+// Racpast. The intellectual and technical concepts contained herein are
+// proprietary to Racpast and are protected by copyright law and international
+// treaties. Dissemination of this information or reproduction of this material
+// is strictly forbidden unless prior written permission is obtained from Racpast.
+//
+// Unauthorized copying, modification, distribution, or use of this file,
+// via any medium, is strictly prohibited.
+//
+// For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
+//
+// See the license file in the project root for full terms and conditions.
+//
 // MinGW headers expose the C23 memset_explicit API before the runtime provides
 // its symbol. libsodium correctly uses that API for secret erasure, so provide
 // the missing semantics instead of aliasing it to optimizable memset.

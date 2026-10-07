@@ -13,12 +13,15 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #pragma once
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
+
+#include "platform/ports.h"
 
 // High-level orchestration of the local proxy stack: DNS redirection, encrypted
 // DNS forwarding, and the two loopback services redirected names resolve to.
@@ -63,7 +66,7 @@ private:
 };
 
 // Resolved executable and data locations. Every one comes from [Paths] in
-// paths.ini, so the payload owns its own layout and can be restructured in a later
+// meta.ini, so the payload owns its own layout and can be restructured in a later
 // release without rebuilding this executable. These need no Runtime.
 std::wstring NginxExe();
 std::wstring SniGateExe();
@@ -124,11 +127,40 @@ void Stop();
 void EnforceCleanSlate();
 
 // ---- Ports ----
-bool AnyPortOccupied();
+//
+// The endpoints this program needs, assembled from every declaration that names
+// one: [Ports] Required in the payload descriptor, the proxy's listeners from
+// dns_proxy.ini, and the resolver's address.
+//
+// One list rather than a check per component, because the question "can this start"
+// is about all of them at once. It used to be asked in two places and at two
+// different times — the payload's three ports early, the DNS endpoints implicitly,
+// when a bind failed — so a conflict on a DNS endpoint surfaced as a component
+// failure rather than as the port conflict it was.
+std::vector<Ports::PortClaim> RequiredPorts();
 
-// Attempt to free occupied ports by stopping HTTP.sys services and terminating
-// non-critical holders. Returns true if all ports ended up free.
+// Why the endpoints this program needs could not be held all at once.
+//
+// The whole answer, and the reason a caller wants all of it rather than one list:
+// whether a claim is blocked by another program, by one of THIS program's own
+// declarations, or by nothing at all cannot be read off one list. A duplicated
+// declaration fails the same way a held port does, and a declaration that cannot be
+// bound at all fails the same way again — so asking for one half and reporting it is
+// how a defect in the declarations reaches the user as "these endpoints are being
+// used by another program".
+//
+// See ClaimAudit for what each list means and HasConfigurationFault() for the
+// question a start actually branches on.
+Ports::ClaimAudit AuditEndpoints();
+
+// Attempt to free the endpoints nothing else critical holds, by stopping HTTP.sys
+// services and terminating non-critical holders. Returns true if the whole set can
+// be bound together afterwards.
 bool KillPortHolders();
+
+// The PIDs holding `claim`, for the message and for the decision to terminate.
+// Diagnostics only: never the test for whether a port is free.
+std::vector<DWORD> HoldersOf(const Ports::PortClaim& claim);
 
 // ---- Uninstall ----
 // Stop everything, remove what the payload's [Uninstall] manifest declares as ours,
@@ -142,7 +174,7 @@ struct CacheCleanResult {
 };
 
 // Stop the stack if it is running, delete everything matching [Cache] Clean from
-// paths.ini, then bring it back up if it was up before.
+// meta.ini, then bring it back up if it was up before.
 CacheCleanResult CleanCache();
 
 // ---- Directory management ----

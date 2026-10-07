@@ -13,7 +13,7 @@
 #
 # For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 #
-# See the LICENSE.md file in the project root for full terms and conditions.
+# See the license file in the project root for full terms and conditions.
 
 # snib_core reaches into the updater's work-order format, and those objects travel with
 # it — they are named in snib_core's own source list, so nothing has to be added here.

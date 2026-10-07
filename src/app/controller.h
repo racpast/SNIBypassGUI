@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full license terms.
+// See the license file in the project root for full terms and conditions.
 
 #pragma once
 #include <cstdint>
@@ -23,30 +23,14 @@
 
 #include "app/i18n.h"
 
-// The update progress window, referred to here only by an opaque handle.
-//
-// The controller must not include ui/progress_window.h: this translation unit is part
-// of snib_core, and snib_ui is deliberately absent from the test runner's link line
-// (see the target split in CMakeLists.txt). Naming the type without its definition is
-// enough, because the controller only ever passes the handle through — it never opens
-// it, reports into it, or reads it. What it needs to do those things arrives as the
-// presenter callbacks below.
+// Forward declaration: controller only passes this handle, never dereferences it.
+// Avoids linking snib_ui into test runner.
 namespace ProgressWindow {
 struct State;
 }
 
-// Application-layer orchestration: what each user-facing command actually DOES.
-//
-// These operations used to live in src/ui/tray.cpp, next to the menu that invokes
-// them. That put service lifecycle policy — when the stack may be started or stopped,
-// which operations may overlap, how an update applies itself around a running stack —
-// in the presentation layer, and it made the two busy gates that enforce the policy
-// properties of a translation unit the test runner deliberately does not link.
-//
-// The split now is: the tray decides what to show and which command a click means;
-// this module decides what happens. It knows nothing about menus, command ids or
-// window handles, and the only way it reaches the user is through the Presenter
-// attached to it.
+// Application command orchestration: lifecycle policy and business logic.
+// UI layer (tray) delegates to this via Presenter callbacks.
 namespace Controller {
 
 // What the controller needs from whatever is presenting the program.
@@ -136,7 +120,7 @@ void CheckForUpdates();
 // The same path with every failure swallowed to a log line, for the startup check.
 void StartSilentUpdateCheck();
 
-// Check whether the payload (paths.ini) is present. If it is missing, prompt the
+// Check whether the payload descriptor (meta.ini) is present. If it is missing, prompt the
 // user once and, if they agree, fetch and apply the full manifest to restore it.
 // Runs synchronously on the calling thread; call it from a worker after the tray
 // is up so it does not block the message loop.

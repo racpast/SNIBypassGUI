@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full license terms.
+// See the license file in the project root for full terms and conditions.
 
 #include "app/controller.h"
 
@@ -37,10 +37,8 @@
 namespace Controller {
 namespace {
 
-// The attached presenter, read and written only from the UI thread except that a
-// worker reads the callbacks while it runs. A worker that reads after Detach() gets
-// an empty one and does nothing, which is the behaviour a teardown needs; the
-// snapshot below is what keeps that from tearing.
+// Presenter callbacks accessed from UI thread and worker threads.
+// Snapshot prevents use-after-detach.
 std::mutex g_presenterMx;
 Presenter g_presenter;
 
@@ -71,20 +69,13 @@ void Quit() {
 
 // ---- Busy gates --------------------------------------------------------------
 
-// Set for the whole lifetime of an update check (fetch, confirm, download, apply).
-// While it is set the tray disables "Check for Updates" and Start/Stop, so a second
-// check cannot be launched and — critically — the user cannot start the services back
-// up in the window where PerformUpdate has stopped them to replace a locked binary.
+// Update busy flag: disables concurrent updates and Start/Stop during update.
 std::atomic<bool> g_updateBusy{false};
 
 // Set during cache cleanup to prevent Start/Stop operations that would interfere.
 std::atomic<bool> g_cleanupBusy{false};
 
-// Clears whichever gate it was given when the worker thread unwinds, on every path.
-//
-// One type for both gates: they differ only in which flag they release, and the two
-// near-identical structs this replaced would have been joined by a third the next time
-// an operation wanted a gate of its own.
+// RAII guard: releases the busy flag on destruction (all exit paths).
 class BusyGuard {
 public:
     explicit BusyGuard(std::atomic<bool>& flag) : m_flag(flag) {}
@@ -97,27 +88,13 @@ private:
     std::atomic<bool>& m_flag;
 };
 
-// Claim a gate, or report that someone else holds it. False means an operation of this
-// kind is already running and the caller must do nothing. Deciding this before the
-// thread exists is what closes the double-click race.
+// Atomically claim gate. Returns false if already held (prevents races).
 bool Claim(std::atomic<bool>& flag) {
     bool expected = false;
     return flag.compare_exchange_strong(expected, true);
 }
 
-// Run `fn` on a detached thread, or report that no thread could be created.
-//
-// Every command below used to construct a std::thread inline, so a failure to create
-// one — resource exhaustion, a handle limit reached — threw std::system_error out of a
-// window procedure or a detached worker. Neither has a handler: the first is undefined
-// behaviour, the second is an unhandled exception, and both end the process while the
-// DNS policy rule is still installed and the child services are still running. The rest
-// of the program already guards its own thread creation for that reason (resolver,
-// forwarder, redirector, file watcher, supervisor); this is the same guard, in the one
-// place the commands live.
-//
-// `what` names the operation for the log. A false return has already logged why, and
-// the caller has nothing to do about it beyond not pretending the command ran.
+// Run fn on detached thread with exception safety. Logs and returns false on failure.
 bool RunDetached(const char* what, std::function<void()> fn) {
     try {
         std::thread(std::move(fn)).detach();
@@ -276,9 +253,13 @@ void PromptAndApply(const Update::Info& info, const std::wstring& summary) {
                    : L"msg.updConfirmData";
 
     std::wstring message = std::wstring(T(titleKey)) + L" (" + info.version + L")" +
-                           T(L"punct.colonEol") + L"\n\n" + summary;
+                           T(L"punct.colonEol") + L"\n" + summary;
+    // Bulleted here rather than in the manifest. One item reads as a sentence under
+    // the heading; several read as a list, which is what BulletList decides — and the
+    // cap keeps a long changelog from pushing the question off the dialog.
     if (!info.notes.empty())
-        message += std::wstring(L"\n") + T(L"msg.updNotes") + L"\n" + info.notes + L"\n";
+        message +=
+            std::wstring(L"\n") + T(L"msg.updNotes") + L"\n" + BulletList(info.notes) + L"\n";
     message += std::wstring(L"\n") + T(confirmKey);
     if (Dialogs::Show(message, MB_ICONQUESTION | MB_YESNO) != IDYES) return;
 
@@ -286,8 +267,9 @@ void PromptAndApply(const Update::Info& info, const std::wstring& summary) {
 }
 
 void DoRepairIfNeeded() {
-    // Cheap local check first: if paths.ini is present the payload is intact enough to
-    // run, so skip the network entirely. This is the common case — a normal install.
+    // Cheap local check first: if the payload descriptor is present, the payload is
+    // intact enough to run, so skip the network entirely. This is the common case —
+    // a normal install.
     if (Bootstrap::PayloadPresent()) return;
 
     // Claim the update gate so a concurrent manual check cannot race us. The dialog
@@ -295,7 +277,7 @@ void DoRepairIfNeeded() {
     if (!Claim(g_updateBusy)) return;
     if (!RunDetached("Repair", [] {
             BusyGuard guard(g_updateBusy);
-            LOGW(L"Repair: paths.ini missing; prompting the user.");
+            LOGW(L"Repair: meta.ini missing; prompting the user.");
             if (Dialogs::Show(T(L"msg.repairNeeded"), MB_ICONWARNING | MB_YESNO) != IDYES) {
                 LOGI(L"Repair: user declined; running without payload.");
                 return;

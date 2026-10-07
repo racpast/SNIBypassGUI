@@ -13,15 +13,14 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #pragma once
 #include <functional>
 #include <string>
 #include <vector>
 
-// File system utilities: glob pattern matching, recursive operations, and safe path
-// validation. Shared across uninstall, cache cleanup, and directory management.
+// File system utilities: glob matching, recursive ops, path validation.
 namespace FileSystem {
 
 // ---- Pattern matching ----
@@ -41,25 +40,9 @@ struct GlobPattern {
     std::vector<Segment> segments;
 };
 
-// Compile a glob pattern. Returns a GlobPattern with isValid set based on safety
-// checks (no .., no drive letters, no absolute paths). Supports:
-//   *      - matches any characters except path separators
-//   ?      - matches a single character except path separators
-//   **     - recursively matches any depth of directories
-//
-// Examples:
-//   "*.log"           - all .log files in the root
-//   "data\*.conf"     - all .conf files directly under data
-//   "data\**\*.log"   - all .log files recursively under data
-//   "logs\*"          - all direct children under logs (empties the directory)
-//   "**\*.tmp"        - all .tmp files anywhere recursively
-//
-// Forbidden patterns (isValid will be false):
-//   "..\path"         - directory traversal
-//   "C:\path"         - absolute path
-//   "**\*"            - redundant (use * instead)
-//   "dir\**\*"        - redundant (use dir\* instead)
-//   "**"              - ambiguous semantics
+// Compile a glob pattern with safety checks (no .., no absolute paths).
+// Wildcards: * (segment), ? (char), ** (recursive directory).
+// Returns GlobPattern with isValid=false if pattern is unsafe or redundant.
 GlobPattern CompilePattern(const std::wstring& pattern);
 
 // True if the relative path `rel` matches the compiled `pattern`. Both are
@@ -68,10 +51,7 @@ bool MatchesPattern(const std::wstring& rel, const GlobPattern& pattern);
 
 // ---- Path safety ----
 
-// True if `p` is a plain relative path safe to operate on under the program
-// directory: no drive letter or ADS, not root-relative or UNC, no "." or ".."
-// component. This is the strictest validation, used for paths that will be written
-// or deleted.
+// True if path is safe for write/delete: relative, no drive/ADS/UNC, no . or ..
 bool IsSafePath(const std::wstring& p);
 
 // True if `p` is a valid glob pattern safe to match under the program directory.
@@ -94,20 +74,15 @@ size_t EnsureDirectories(const std::vector<std::wstring>& dirs);
 // Callback invoked before each deletion. Return false to skip that item.
 using DeletionFilter = std::function<bool(const std::wstring& path, bool isDir)>;
 
-// Recursively delete `dir` and everything under it. Read-only attributes are cleared
-// first. Reparse points are removed as links and never followed, so a symlink or
-// junction in the payload cannot redirect the recursion outside it.
+// Recursively delete `dir` and everything under it. Clears read-only attributes;
+// reparse points removed as links.
 void DeleteTree(const std::wstring& dir);
 
 // Delete the file or directory at `path`. If it's a directory, recursively deletes
 // its contents. Reparse points are unlinked without following.
 //
-// True when the path is gone afterwards. False is not "nothing was there" — an
-// already-absent path is a success, since that is the state being asked for — but a
-// deletion that did not happen: a file held open by another process, a directory
-// that could not be removed, a permissions problem. Callers that report a count to
-// the user need that distinction, because "deleted 12 items" is a claim about the
-// machine and a locked file makes it false.
+// Returns true if path is gone (including already-absent paths).
+// False means deletion failed (locked file, permissions, etc.).
 bool Delete(const std::wstring& path);
 
 // Find all paths under `baseDir` matching `pattern` and delete them. The pattern is

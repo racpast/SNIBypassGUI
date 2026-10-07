@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #include "dns/dnscrypt_client.h"
 
@@ -390,6 +390,15 @@ DNSCryptCert FetchCertificateFromNetwork(const NetworkUtils::IpEndpoint& endpoin
 // callers asking for the same provider wait on that single fetch rather than
 // each starting their own. A provider inside its failure cooldown yields an
 // invalid certificate without a network round trip.
+//
+// `cancel` is deliberately NOT handed to the fetch. The fetch is shared: whoever
+// starts it serves every waiter, and the waiters may belong to queries that have
+// since been abandoned or already answered. Passing this caller's token through
+// would let one query's cancellation close the sockets of a fetch that other
+// queries — and the cache itself, which records the result — are still waiting
+// on, and would record a spurious failure against a provider that never got a
+// chance to answer. What bounds the fetch is its own deadline instead, which is
+// the timeout the caller's query would have given it anyway.
 DNSCryptCert GetCertificate(CertCache& cache, const NetworkUtils::IpEndpoint& endpoint,
                             const std::string& providerName,
                             const std::vector<uint8_t>& providerPublicKey, uint32_t timeoutMs,
@@ -398,7 +407,7 @@ DNSCryptCert GetCertificate(CertCache& cache, const NetworkUtils::IpEndpoint& en
 
     return cache.Get(providerName, now, cancel, [&]() {
         return FetchCertificateFromNetwork(endpoint, providerName, providerPublicKey, timeoutMs,
-                                           cancel);
+                                           nullptr);
     });
 }
 

@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #include "app/bootstrap.h"
 
@@ -25,6 +25,7 @@
 #include "app/i18n.h"
 #include "app/logging.h"
 #include "app/paths.h"
+#include "app/payload.h"
 #include "app/settings.h"
 #include "app/text.h"
 #include "app/version.h"
@@ -33,26 +34,16 @@
 
 namespace Bootstrap {
 
-// paths.ini is the payload's root: every file the application opens is located
-// through it. Its absence reliably means the payload was never extracted beside
-// the executable, regardless of what else the payload contains — so this is the
-// one stable contract, not a check for a specific directory name.
+// Check if meta.ini exists. Every file location is resolved through it,
+// so its absence means incomplete extraction.
 bool PayloadPresent() {
-    return GetFileAttributesW((ExeDir() + L"paths.ini").c_str()) != INVALID_FILE_ATTRIBUTES;
+    return Payload::Present();
 }
 
-// Archivers "open" an executable by extracting only it to a scratch directory under
-// %TEMP% and launching it there, leaving the sibling payload inside the archive. We
-// detect that location so a missing payload in this state means "you did not extract
-// the whole archive" rather than "your install is broken" — and so we do NOT go
-// online, which would look like a hang to an offline user.
-//
-// Every branch below treats "cannot tell" as "from a scratch directory", because the
-// two possible mistakes are not equal: a false positive costs an offline user one
-// dialog telling them to extract the archive they were already running out of, while
-// a false negative sends them into a network fetch from a directory that will be
-// deleted under them. The earlier version got this exactly backwards — two unset
-// environment variables made it return "not an archive", i.e. the fail-open direction.
+// Detect if running from archiver temp directory (e.g., Rar$EXa0.123\, 7zO1A2B\).
+// This prevents network fetches from a transient location that will be deleted.
+// Defaults to true on uncertainty (fail-safe: one extra dialog is better than
+// fetching into a directory about to disappear).
 bool RunningFromArchiveTemp() {
     const std::wstring exeDir = LowerW(ExeDir());
 
@@ -60,18 +51,9 @@ bool RunningFromArchiveTemp() {
     if (exeDir.find(L"\\rar$ex") != std::wstring::npos) return true;
     if (exeDir.find(L"\\7zo") != std::wstring::npos) return true;
 
-    // The process's temp directory, asked of the system rather than read out of the
-    // environment.
-    //
-    // GetTempPathW is the documented answer to "where is this process's temp
-    // directory" and applies the full resolution order itself — TMP, then TEMP, then
-    // USERPROFILE, then the Windows directory — so it already covers both variables
-    // and still answers when both are unset (running under a sanitized environment, a
-    // service account, or a launcher that cleared them). Reading TEMP/TMP directly
-    // cannot do that, which is the bug this replaces. GetTempPath2W would be the
-    // newer choice — it answers the system temp directory for a system process — but
-    // this program targets Windows 7 and that API is Windows 11 only, so it is not
-    // reachable from here.
+    // Use GetTempPathW (not environment variables) to get temp directory.
+    // Handles TMP/TEMP/USERPROFILE fallback chain and works when variables are unset.
+    // GetTempPath2W unavailable (requires Windows 11, we target Windows 7).
     //
     // An empty result is itself the archive case: we could not establish where a
     // normal install would be running from, so we cannot say this is not one.
@@ -94,25 +76,10 @@ bool RunningFromArchiveTemp() {
     return exeDir.compare(0, prefix.size(), prefix) == 0;
 }
 
-// Extract-and-run means no installer ever put this program anywhere findable: a user
-// who extracted it into a nested folder has nothing to click next time. So we offer a
-// desktop shortcut, and thereafter keep it honest.
-//
-// Two facts shape the rules. First, each copy carries its own config.ini, so the
-// stored preference is per-copy while the desktop is shared: running a second copy
-// repoints the one shortcut at itself. Second, the two ways a shortcut can stop being
-// ours are NOT equivalent:
-//
-//   Foreign (present, pointing elsewhere) — another copy took the name. The user asked
-//       THIS copy for a shortcut and no longer has one, so repointing it restores what
-//       they asked for. Whichever copy ran last owns the desktop, which matches the
-//       copy the user is actually using.
-//   Missing (not there at all) — the user deleted it. Recreating that would overrule
-//       them on every launch, so a delete is taken as a change of mind and the
-//       preference is reset to declined.
-//
-// A decline is therefore permanent until the user acts again, and we never fight the
-// user over a file they removed on purpose. Only the never-asked state prompts.
+// Manage desktop shortcut for extract-and-run installs.
+// - Foreign shortcut (points elsewhere): repoint to this copy
+// - Missing shortcut: user deleted it, mark preference as declined
+// Each copy has its own config.ini, so last-run copy owns the desktop shortcut.
 void SyncDesktopShortcut() {
     // The executable already sits on the desktop: a shortcut beside it is pointless.
     if (Shortcut::ExeIsOnDesktop()) return;
@@ -125,9 +92,7 @@ void SyncDesktopShortcut() {
     if (pref == ShortcutPref::Wanted) {
         switch (state) {
             case Shortcut::State::Ours:
-                // Already correct. Create() is cheap and idempotent, so refresh
-                // unconditionally — the stored description does not follow a language
-                // change on its own.
+                // Already correct. Refresh description (handles language changes).
                 Shortcut::Create();
                 return;
             case Shortcut::State::Foreign:
@@ -142,24 +107,21 @@ void SyncDesktopShortcut() {
         return;
     }
 
-    // Never asked. If a shortcut for this executable somehow already exists, adopt it
-    // rather than asking about something the user evidently already has.
+    // Never asked. Adopt existing shortcut if present.
     if (state == Shortcut::State::Ours) {
         SetShortcutPref(ShortcutPref::Wanted);
         return;
     }
 
     if (Dialogs::Show(T(L"msg.shortcutAsk"), MB_ICONQUESTION | MB_YESNO) != IDYES) {
-        // Any non-Yes outcome (No, Esc, the close button) is a decline, recorded so the
-        // question never comes back on its own.
+        // Non-Yes outcomes recorded to prevent re-asking.
         SetShortcutPref(ShortcutPref::Declined);
         return;
     }
     if (Shortcut::Create()) {
         SetShortcutPref(ShortcutPref::Wanted);
     } else {
-        // Do not record a preference we failed to honour: leaving it unset lets the
-        // next launch try again rather than silently giving up forever.
+        // Don't record failed preference (allows retry on next launch).
         Dialogs::Show(T(L"msg.shortcutFail"), MB_ICONWARNING);
     }
 }

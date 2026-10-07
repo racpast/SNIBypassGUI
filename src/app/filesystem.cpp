@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #include "app/filesystem.h"
 
@@ -309,9 +309,7 @@ void DeleteTree(const std::wstring& dir) {
     RemoveDirectoryW(dir.c_str());
 }
 
-// Whether `path` is gone. INVALID_FILE_ATTRIBUTES covers both "does not exist" and
-// "could not be queried"; the two are treated alike because a caller asking whether
-// its deletion worked has the same answer either way — it cannot show that it did.
+// Whether path is gone (treats "not exist" and "query failed" as equivalent).
 bool IsGone(const std::wstring& path) {
     return GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES;
 }

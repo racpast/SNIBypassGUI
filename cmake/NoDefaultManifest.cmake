@@ -13,7 +13,7 @@
 #
 # For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 #
-# See the LICENSE.md file in the project root for full terms and conditions.
+# See the license file in the project root for full terms and conditions.
 
 # Derive a GCC spec override that suppresses the automatic default-manifest.o.
 #

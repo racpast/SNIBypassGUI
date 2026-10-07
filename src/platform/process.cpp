@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #include "platform/process.h"
 
@@ -28,9 +28,7 @@
 namespace Process {
 namespace {
 
-// "<code> (<system message>)" — a bare error number tells whoever reads the log
-// nothing, and these are exactly the lines someone reaches for when a child will
-// not start.
+// Format error as "code (system message)" for log readability.
 std::wstring DescribeError(DWORD code) {
     wchar_t* text = nullptr;
     const DWORD n =
@@ -76,13 +74,7 @@ std::vector<DWORD> CollectTree(DWORD root) {
     return std::vector<DWORD>(visited.rbegin(), visited.rend());
 }
 
-// Terminate every PID in `victims` and wait until each is actually gone.
-//
-// TerminateProcess is asynchronous — it marks the process for death and returns —
-// so anything that looks at the process list straight afterwards sees a PID that
-// has been terminated but not yet reaped, with no readable image path. Waiting on
-// the handles is what turns "asked it to die" into "it is dead", and it is
-// event-driven: each wait returns the moment its process disappears.
+// Terminate PIDs and wait for actual exit (TerminateProcess is async).
 bool TerminateAndWait(const std::vector<DWORD>& victims, DWORD timeoutMs) {
     std::vector<HANDLE> pending;
     pending.reserve(victims.size());
@@ -119,9 +111,7 @@ bool TerminateAndWait(const std::vector<DWORD>& victims, DWORD timeoutMs) {
     return allGone;
 }
 
-// A job whose members are killed when its last handle closes. Our handles close
-// when this process object is destroyed, however that happens, so children cannot
-// outlive us.
+// Job object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE (crash-safe cleanup).
 HANDLE CreateContainingJob() {
     HANDLE job = CreateJobObjectW(nullptr, nullptr);
     if (!job) {
@@ -145,8 +135,20 @@ struct Started {
     HANDLE thread = nullptr;
 };
 
+// Inheritable null device handle. Returns nullptr on failure (not INVALID_HANDLE_VALUE).
+HANDLE OpenNull(DWORD access) {
+    SECURITY_ATTRIBUTES sa = {};
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+
+    HANDLE handle = CreateFileW(L"NUL", access, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa,
+                                OPEN_EXISTING, 0, nullptr);
+    return handle == INVALID_HANDLE_VALUE ? nullptr : handle;
+}
+
 Started StartProcess(const std::wstring& exePath, const std::wstring& args,
-                     const std::wstring& workDir, bool hidden, DWORD extraFlags) {
+                     const std::wstring& workDir, bool hidden, DWORD extraFlags,
+                     const OutputCapture* capture) {
     std::wstring cmd = L"\"" + exePath + L"\"";
     if (!args.empty()) cmd += L" " + args;
     std::vector<wchar_t> mutableCmd(cmd.begin(), cmd.end());
@@ -161,9 +163,34 @@ Started StartProcess(const std::wstring& exePath, const std::wstring& args,
         flags |= CREATE_NO_WINDOW;
     }
 
+    // An unset member of STARTF_USESTDHANDLES is NULL rather than "whatever we had", and
+    // a null standard handle is a trap the child falls into in ways that depend on the
+    // child. So once capturing, all three are real handles: the pipe for a channel being
+    // read, and the null device for the rest — including stdin, which this program has
+    // none of, being built -mwindows. A capture is whole or absent, so a channel is never
+    // handed a pipe nobody is reading; no capture at all leaves every handle alone, as the
+    // header promises.
+    const bool capturing = capture != nullptr && capture->active();
+    HANDLE nullIn = nullptr;
+    HANDLE nullOut = nullptr;
+    HANDLE nullErr = nullptr;
+    if (capturing) {
+        si.dwFlags |= STARTF_USESTDHANDLES;
+        si.hStdOutput = capture->stdoutWrite();
+        si.hStdError = capture->stderrWrite();
+        if (!si.hStdOutput) si.hStdOutput = nullOut = OpenNull(GENERIC_WRITE);
+        if (!si.hStdError) si.hStdError = nullErr = OpenNull(GENERIC_WRITE);
+        si.hStdInput = nullIn = OpenNull(GENERIC_READ);
+    }
+
     PROCESS_INFORMATION pi = {};
-    if (!CreateProcessW(exePath.c_str(), mutableCmd.data(), nullptr, nullptr, FALSE, flags,
-                        nullptr, workDir.empty() ? nullptr : workDir.c_str(), &si, &pi)) {
+    const BOOL started = CreateProcessW(exePath.c_str(), mutableCmd.data(), nullptr, nullptr,
+                                        capturing ? TRUE : FALSE, flags, nullptr,
+                                        workDir.empty() ? nullptr : workDir.c_str(), &si, &pi);
+    if (nullIn) CloseHandle(nullIn);
+    if (nullOut) CloseHandle(nullOut);
+    if (nullErr) CloseHandle(nullErr);
+    if (!started) {
         LOGE(L"Launch failed: " + cmd + L" [working directory: " +
              (workDir.empty() ? std::wstring(L"<inherited>") : workDir) + L"] err " +
              DescribeError(GetLastError()));
@@ -201,46 +228,112 @@ Child& Child::operator=(Child&& other) noexcept {
         Child discarded(std::move(*this));
         process_ = std::move(other.process_);
         job_ = other.job_;
+        capture_ = std::move(other.capture_);
         other.job_ = nullptr;
     }
     return *this;
 }
 
 Child::~Child() {
-    // A contained child dies with its job as soon as the last handle closes, which
-    // is the guarantee we launched it for. Without containment there is nothing to
-    // inherit that guarantee, so take the tree down by hand rather than leave a
-    // process holding a port after we are gone.
-    if (!job_ && process_ && !process_.Exited()) KillTree(process_.pid());
+    // Stop the process before anything joins its readers: the other order joins a pipe
+    // the living child still holds, which never reaches EOF.
+    static_cast<void>(StopAndJoin(kTerminateTimeoutMs));
     if (job_) CloseHandle(job_);
 }
 
-bool Child::Terminate(DWORD timeoutMs) {
-    if (!process_ || process_.Exited()) return true;
+// Stop child and join readers. Returns whether process is confirmed gone.
+// noexcept: destructor calls this, only allocation can throw.
+bool Child::StopAndJoin(DWORD timeoutMs) noexcept {
+    bool gone = true;
 
     if (job_) {
-        // One kernel call takes the whole tree — nginx's workers included — with no
-        // snapshot to walk and no PID to race.
+        // Also when the process has already exited: a descendant in the job can outlive
+        // it and hold the output pipe open.
         TerminateJobObject(job_, 1);
-        const bool gone = process_.WaitForExit(timeoutMs);
-        if (!gone)
-            LOGW(L"pid " + std::to_wstring(process_.pid()) +
-                 L" did not exit within the termination timeout.");
-        return gone;
+        gone = process_.WaitForExit(timeoutMs);
+    } else if (process_) {
+        // No job, so the tree comes down by hand — and also when the root has already
+        // exited, for the reason stated above: a descendant outliving it holds the pipe
+        // open and the join below never reaches EOF.
+        //
+        // The root is stopped through the handle this object owns, never by PID, and
+        // before its descendants so that it cannot replace what is about to be walked
+        // over. Between a snapshot and an OpenProcess a PID can name a different process,
+        // and the one process this object is responsible for is the one that must not be
+        // stopped by mistake. Its descendants have no handle of ours and are reached by
+        // PID exactly as KillTree does — that part cannot be made race-free, and it is
+        // not the part this type exists to make safe.
+        //
+        // Collecting the tree by the root's PID is safe even when the root has already
+        // exited, and for the same reason everything else here is: an open process handle
+        // keeps its PID from being reused, so this handle is what guarantees the snapshot
+        // is still describing the process it names.
+        const DWORD root = process_.pid();
+        const ULONGLONG start = GetTickCount64();
+        try {
+            std::vector<DWORD> descendants = CollectTree(root);
+            descendants.erase(std::remove(descendants.begin(), descendants.end(), root),
+                              descendants.end());
+
+            if (!process_.Exited()) {
+                TerminateProcess(process_.get(), 1);
+                gone = process_.WaitForExit(timeoutMs);
+            }
+
+            // What is left of the budget, so a root that took its whole timeout does not
+            // hand the descendants a second one.
+            const ULONGLONG elapsed = GetTickCount64() - start;
+            const DWORD remaining =
+                elapsed >= timeoutMs ? 0 : timeoutMs - static_cast<DWORD>(elapsed);
+            if (!TerminateAndWait(descendants, remaining)) gone = false;
+        } catch (...) {
+            // Out of memory walking the tree. Fall back to the handle we own: leaving
+            // the root alive would hang the join below, which is worse than the
+            // descendants we cannot chase.
+            TerminateProcess(process_.get(), 1);
+            gone = process_.WaitForExit(timeoutMs);
+        }
     }
-    return KillTree(process_.pid(), timeoutMs);
+
+    // On every path, so "stopped" means everything the child wrote has been delivered.
+    capture_.Drain();
+    return gone;
+}
+
+bool Child::Terminate(DWORD timeoutMs) {
+    const DWORD pid = process_.pid();
+
+    if (StopAndJoin(timeoutMs)) return true;
+
+    LOGW(L"pid " + std::to_wstring(pid) + L" did not exit within the termination timeout.");
+    return false;
 }
 
 // ---- Free functions ---------------------------------------------------------
 
 Child LaunchChild(const std::wstring& exePath, const std::wstring& args,
-                  const std::wstring& workDir) {
+                  const LaunchOptions& options) {
+    OutputCapture capture(options.output);
+
+    // A capture was asked for and could not be built. Launching anyway would hand the
+    // child a standard handle it cannot write to successfully, and its own account of why
+    // it failed — the reason the caller asked for a capture — would be the part lost. So
+    // the launch does not happen, and the caller gets the same empty Child it gets for a
+    // program that is not there.
+    if (options.output && !capture) {
+        LOGE(L"Could not capture the output of " + exePath +
+             L"; the launch was refused so that no component runs unobserved.");
+        return {};
+    }
+
     HANDLE job = CreateContainingJob();
 
     // Suspended, so containment is decided before a single instruction runs: a
     // child that started first could spawn a descendant outside the job.
-    Started started = StartProcess(exePath, args, workDir, true, CREATE_SUSPENDED);
+    Started started =
+        StartProcess(exePath, args, options.workDir, true, CREATE_SUSPENDED, &capture);
     if (!started.process) {
+        capture.Drain();
         if (job) CloseHandle(job);
         return {};
     }
@@ -258,16 +351,23 @@ Child LaunchChild(const std::wstring& exePath, const std::wstring& args,
              L").");
         TerminateProcess(started.process.get(), 1);
         CloseHandle(started.thread);
+        capture.Drain();
         if (job) CloseHandle(job);
         return {};
     }
     CloseHandle(started.thread);
-    return Child(std::move(started.process), job);
+
+    // The child owns the write ends now, so this is the earliest the readers can run
+    // without waiting on a pipe we ourselves are holding open.
+    capture.Begin();
+    return Child(std::move(started.process), job, std::move(capture));
 }
 
 Handle LaunchDetached(const std::wstring& exePath, const std::wstring& args,
                       const std::wstring& workDir, bool hidden) {
-    Started started = StartProcess(exePath, args, workDir, hidden, 0);
+    // No capture: it means joining a reader, and a process that must outlive us cannot
+    // be joined.
+    Started started = StartProcess(exePath, args, workDir, hidden, 0, nullptr);
     if (started.thread) CloseHandle(started.thread);
     return std::move(started.process);
 }

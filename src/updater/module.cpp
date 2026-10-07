@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full license terms.
+// See the license file in the project root for full terms and conditions.
 
 #include "updater/module.h"
 

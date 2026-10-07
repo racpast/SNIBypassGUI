@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #include "update/client.h"
 
@@ -22,6 +22,8 @@
 #include <shellapi.h>
 
 #include <cstdint>
+#include <cstring>
+#include <cwchar>
 #include <fstream>
 #include <map>
 #include <set>
@@ -58,31 +60,18 @@ std::wstring ToNative(std::wstring p) {
     return p;
 }
 
-// Absolute install path for a manifest entry. The executable is matched to
-// wherever we actually run from, so a renamed executable still updates in place.
+// Absolute install path for manifest entry (exe matched to actual running location).
 std::wstring InstallPath(const File& f) {
     return f.isExe ? ExePath() : PathUnder(f.path);
 }
 
-// Fetch every chunk of `f`, verifying each, and write the reassembled file to
-// `dest`. The whole-file hash is checked before returning success, so a true result
-// means `dest` is byte-for-byte what the signed manifest promised.
+// Download and verify file chunks into dest. Returns true if file matches manifest hash.
 //
-// On failure, `stale` separates two very different situations:
-//   stale == true   the REMOTE tree disagreed with the manifest we hold: a chunk
-//                   404'd, or a chunk / the reassembled file failed its hash. Most
-//                   likely a publish landed between our manifest fetch and now, so
-//                   the manifest is worth re-fetching and the download retried.
-//   stale == false  a LOCAL problem (cannot create, write or flush the staging
-//                   file, or the hash engine is unavailable). Re-fetching would not
-//                   help; the caller should give up.
+// On failure, stale distinguishes:
+//   true  = remote mismatch (404, hash fail) → retry manifest fetch
+//   false = local problem (write fail, crypto unavailable) → give up
 //
-// `request` performs the transfer, so a cancellation arrives from the caller's
-// thread in the middle of a body rather than being noticed only between files.
-// `cancelled` is set instead of `err` when the user stopped it: cancellation is not
-// a failure and must not be reported as one.
-// `priorBytes` is how much of the whole run was already staged before this file
-// started, so the byte callback reports a figure for the job and not for one file.
+// cancelled set on user abort (not an error). priorBytes: bytes staged before this file.
 bool DownloadFile(const File& f, const std::wstring& base, const std::wstring& dest,
                   Http::Request* request, uint64_t priorBytes,
                   std::function<void(uint64_t)> onBytes, std::wstring& err, bool& stale,
@@ -201,12 +190,8 @@ enum class DownloadResult : std::uint8_t {
     Cancelled,  // the user stopped it; not an error and not retryable
 };
 
-// Download every file `info` says needs changing into <target>.new, verifying each,
-// and record the resulting Staged list. Content-addressed reuse across retries:
-// `verified` maps target to the SHA already staged there this run, so a file whose
-// bytes are unchanged between manifest versions is NOT re-downloaded. Every .new
-// path touched is recorded in `allNew` so the caller can clean up after a failure
-// regardless of which pass created it.
+// Download files into <target>.new with content-addressed reuse.
+// verified: SHA cache (skip re-download if unchanged). allNew: tracks all .new paths.
 DownloadResult DownloadPhase(const Info& info, std::vector<Staged>& staged,
                              std::map<std::wstring, std::wstring>& verified,
                              std::set<std::wstring>& allNew, const Progress& progress,
@@ -269,18 +254,8 @@ DownloadResult DownloadPhase(const Info& info, std::vector<Staged>& staged,
     return DownloadResult::Ok;
 }
 
-// Hand the executable swap to the updater.
-//
-// Nothing here is a shell command. The paths, the parent pid and the autostart bit go
-// into a work order (updater/plan.h) created fresh under %ProgramData%, and the updater
-// module is launched with one fixed flag and that file's path. The previous
-// implementation built a batch script instead, which meant every one of these strings
-// was re-parsed as command language — and by an elevated cmd.exe. A path is a path here,
-// whatever characters it contains.
-//
-// `self` is where the running executable lives, `newExe` the verified replacement
-// already staged beside it, and `bak` where the current one is preserved until the swap
-// is confirmed.
+// Launch updater with structured plan file (not shell script, prevents injection).
+// self: current exe, newExe: replacement, bak: backup location.
 bool StartUpdater(const std::wstring& self, const std::wstring& newExe, const std::wstring& bak,
                   bool autostart) {
     const std::wstring dir = Updater::PlanDirectory();
@@ -342,26 +317,9 @@ UpdateKind Classify(const Info& info) {
 
 // Whether a file entry should be (re)downloaded.
 //
-// The executable is decided ONLY by the numeric version, and by INEQUALITY rather
-// than "greater than": the remote build simply differs from what we run. That makes a
-// DOWNGRADE a first-class operation — when the release channel is force-aligned to an
-// older version, every newer client steps DOWN to what the channel currently serves. A
-// too-old install that cannot step forward is gated separately by the
-// min_upgradable_from floor.
-//
-// We deliberately do NOT compare the executable's SHA: data no longer lives inside it,
-// so its hash is a pure function of source and would force spurious re-downloads on
-// byte-different builds. The manifest SHA is still verified AFTER download, so it
-// remains an integrity check; it just never triggers the update.
-//
-// Data assets are decided by content: local SHA differs from the manifest SHA, or the
-// file is missing. Because the comparison is local-versus-manifest, a file the user
-// hand-edited is restored to canonical on the next update even if the remote copy is
-// unchanged — updates fully own the payload tree.
-//
-// Public rather than internal: the progress window has to size the job before the
-// download begins, which means asking the same question this asks. Answering it a
-// second time in the caller is how the two answers end up disagreeing.
+// Executable: compare version (inequality, allows downgrades). SHA not compared (avoids
+// spurious re-downloads on byte-different builds; integrity verified post-download).
+// Data files: compare SHA or check existence. User-edited files restored to canonical.
 bool NeedsUpdate(const File& f, const Info& info) {
     if (f.isExe) return Classify(info) != UpdateKind::None;
 
@@ -410,6 +368,82 @@ bool IsHexDigest(const std::wstring& s) {
     for (wchar_t c : s)
         if (!((c >= L'0' && c <= L'9') || (c >= L'a' && c <= L'f'))) return false;
     return true;
+}
+
+namespace {
+
+// One language's value out of the notes object, as items.
+//
+// The array case is the shape written since the notes became a list. The string case
+// is what every earlier publish wrote, and it is still what the channel serves, so it
+// is not a compatibility nicety — it is the shape this client will actually be handed
+// until the next release.
+//
+// A legacy string is split on newlines and one leading marker is stripped from each
+// line. THE MARKER IS NOT COSMETIC: those lines were written as "• Added support for
+// X." because the reader at the time showed the text verbatim, and the renderer that
+// draws these items now prefixes its own bullet — so a marker left in place renders as
+// "• • Added support for X." Stripping it here is what keeps the old publishes
+// looking the way they always did.
+//
+// An empty item is dropped rather than kept: a blank line in a block scalar is
+// spacing, not a note.
+std::vector<std::wstring> NoteItems(const Json::Value& value) {
+    std::vector<std::wstring> items;
+
+    if (value.type == Json::Value::Type::Array && value.arr) {
+        for (const Json::Value& item : *value.arr) {
+            if (item.type != Json::Value::Type::String) continue;
+            const std::wstring text = TrimW(Utf8ToWide(item.str));
+            if (!text.empty()) items.push_back(text);
+        }
+        return items;
+    }
+
+    if (value.type != Json::Value::Type::String) return items;
+
+    const std::wstring whole = Utf8ToWide(value.str);
+    size_t start = 0;
+    for (;;) {
+        const size_t brk = whole.find(L'\n', start);
+        std::wstring line = TrimW(brk == std::wstring::npos ? whole.substr(start)
+                                                            : whole.substr(start, brk - start));
+
+        // One marker, not a loop: a line that genuinely begins with a second bullet
+        // character after the first is text, and eating it would be this parser
+        // inventing an item boundary the author did not write.
+        for (const wchar_t* marker : {L"• ", L"•", L"- ", L"* "}) {
+            if (line.rfind(marker, 0) == 0) {
+                line = TrimW(line.substr(std::wcslen(marker)));
+                break;
+            }
+        }
+
+        if (!line.empty()) items.push_back(std::move(line));
+        if (brk == std::wstring::npos) break;
+        start = brk + 1;
+    }
+    return items;
+}
+
+}  // namespace
+
+std::vector<std::wstring> ParseNotes(const Json::Value& notes, const char* lang) {
+    std::vector<std::wstring> items;
+    if (notes.type != Json::Value::Type::Object) return items;
+
+    // The requested language if it says anything, English otherwise.
+    //
+    // The test is whether the value PRODUCED items, not what type it is. Testing the
+    // type is the defect this replaced: a language stored as a plain string was
+    // rejected as "not an array" and its reader was handed English instead, so a
+    // Chinese install would show English notes from a manifest that carried Chinese
+    // ones — the shape the channel is serving right now.
+    if (const Json::Value* wanted = notes.Find(lang)) items = NoteItems(*wanted);
+    if (items.empty() && std::strcmp(lang, "en") != 0) {
+        if (const Json::Value* english = notes.Find("en")) items = NoteItems(*english);
+    }
+    return items;
 }
 
 std::wstring Sha256File(const std::wstring& path) {
@@ -495,14 +529,10 @@ Info FetchManifest() {
         return info;
     }
 
-    // Release notes for the active language, falling back to English.
+    // Release notes for the active language, falling back to English. The decisions
+    // about which language and what shape are in ParseNotes, which is tested.
     if (const Json::Value* notes = root.Find("notes")) {
-        if (notes->type == Json::Value::Type::Object) {
-            const char* want = (GetLang() == Lang::Chinese) ? "zh-CN" : "en";
-            std::string text = notes->GetStr(want);
-            if (text.empty()) text = notes->GetStr("en");
-            info.notes = TrimW(Utf8ToWide(text));
-        }
+        info.notes = ParseNotes(*notes, GetLang() == Lang::Chinese ? "zh-CN" : "en");
     }
 
     // An install older than min_upgradable_from cannot be stepped forward
@@ -595,18 +625,12 @@ bool UpdateAvailable(const Info& info, std::wstring& summary) {
 
     if (paths.empty()) return false;
 
-    constexpr int kMaxShown = 8;
-    const int total = static_cast<int>(paths.size());
-    const int shown = total < kMaxShown ? total : kMaxShown;
-    for (int i = 0; i < shown; ++i) summary += L"• " + paths[i] + L"\n";
-
-    const int remaining = total - shown;
-    if (remaining > 0) {
-        wchar_t buf[64];
-        static_cast<void>(swprintf(buf, 64, T(L"msg.updFileMore"), remaining));
-        summary += buf;
-        summary += L'\n';
-    }
+    // Rendered through the shared list builder rather than here, so this and the
+    // release notes above it truncate at the same count and with the same wording.
+    // The count used to be a local constant, which is how two lists in one dialog
+    // came to shorten at different points.
+    summary = BulletList(paths);
+    summary += L'\n';
     return true;
 }
 

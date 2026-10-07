@@ -4,14 +4,16 @@
 //
 // NOTICE: All information contained herein is, and remains the property of
 // Racpast. The intellectual and technical concepts contained herein are
-// proprietary to Racpast. All rights reserved.
+// proprietary to Racpast and are protected by copyright law and international
+// treaties. Dissemination of this information or reproduction of this material
+// is strictly forbidden unless prior written permission is obtained from Racpast.
 //
 // Unauthorized copying, modification, distribution, or use of this file,
 // via any medium, is strictly prohibited.
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full license terms.
+// See the license file in the project root for full terms and conditions.
 
 #include "ui/tray.h"
 
@@ -38,11 +40,7 @@
 #include "ui/progress_window.h"
 #include "ui/supported_sites.h"
 
-// What this module owns is the tray icon, its menu, and the mapping from a menu
-// command to an application operation. What an operation DOES — starting the stack,
-// applying an update, uninstalling — belongs to Controller (src/app/controller.h),
-// which is also where the gates that serialize those operations live. Nothing here
-// reads a service gate or decides service policy.
+// Tray icon, menu, and command mapping. Business logic delegated to Controller.
 
 namespace Tray {
 namespace {
@@ -101,10 +99,7 @@ std::vector<std::wstring> g_supportedSiteLinks;
 
 // The system's own directory, resolved rather than assumed.
 //
-// The paths below used to be the literals "C:\Windows\System32\..." — which is only
-// where Windows lives until someone installs it somewhere else, and then the Hosts
-// menu item launches a process that does not exist. What the user sees is a menu
-// entry that does nothing, on exactly the machine where the guess was wrong.
+// Resolve Windows directory (not hardcoded C:\Windows, which may differ).
 const std::wstring& WindowsDir() {
     static const std::wstring dir = [] {
         wchar_t buf[MAX_PATH] = {};
@@ -134,13 +129,7 @@ void CopyBounded(wchar_t* dst, size_t capacity, const std::wstring& text) {
     dst[n] = L'\0';
 }
 
-// Just enough of the structure to name our icon.
-//
-// Every notify-icon call builds its own copy rather than sharing one: tooltips and
-// balloons are updated from the worker threads behind Start, Stop, cache cleanup
-// and the update check, while the UI thread re-adds the icon when Explorer
-// restarts. One shared NOTIFYICONDATAW would have those threads writing the same
-// flags and buffers at the same time.
+// Build fresh NOTIFYICONDATAW per call (avoids races between UI and worker threads).
 NOTIFYICONDATAW IconIdentity() {
     NOTIFYICONDATAW data = {};
     data.cbSize = sizeof(data);
@@ -185,10 +174,7 @@ void RequestQuit() {
 }
 
 // ---- The update progress window ----
-//
-// The controller drives these; the window itself lives in ui/progress_window.cpp and
-// everything it needs about this thread is handled there. These four are just the
-// pass-through that keeps the Controller from having to know about a window handle.
+// Pass-through to ProgressWindow, hides window handle from Controller.
 
 std::shared_ptr<ProgressWindow::State> ProgressBegin(uint64_t totalBytes, size_t totalFiles,
                                                      std::function<void()> onCancel) {

@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #pragma once
 #include <windows.h>
@@ -22,22 +22,16 @@
 #include <utility>
 #include <vector>
 
+#include "platform/child_output.h"
+
 // Process ownership and lifetime.
 //
-// The unit of identity here is the kernel handle, never the PID. A PID is an
-// integer the kernel may hand to an unrelated process the moment its owner exits,
-// so any code that drops a handle and later looks the process back up by PID has
-// manufactured a race it then has to defend against. Launching therefore yields an
-// owning object, and every later question — is it alive, what did it exit with,
-// kill it — is answered through that object rather than through a number.
+// Process identity via kernel handle (not PID, which may be reused).
+// All queries go through the handle to avoid races.
 namespace Process {
 
-// Upper bound on waiting for a terminated process to disappear.
-//
-// This is not a sleep. The wait is on a kernel object and returns the instant the
-// process is gone, so on every normal path it costs microseconds; the bound only
-// caps how long we tolerate a teardown that never completes (a wedged driver, a
-// handle held open by something stuck).
+// Timeout for process termination wait (event-driven, not sleep).
+// Caps abnormal cases (wedged driver, stuck handle holder).
 constexpr DWORD kTerminateTimeoutMs = 5000;
 
 // An owned process handle. Move-only: exactly one owner closes it.
@@ -86,30 +80,21 @@ private:
     DWORD pid_ = 0;
 };
 
-// A child process this program is responsible for.
-//
-// Each child runs inside its own job object, which buys two things a bare handle
-// cannot:
-//
-//   * Terminating the job kills the process AND every descendant in one kernel
-//     operation. nginx forks workers; killing them through a process snapshot
-//     means enumerating PIDs and racing their lifetimes, while the job knows its
-//     own membership exactly.
-//   * The job is configured to kill its members when its last handle closes.
-//     Handles close when this program's process object is destroyed — including
-//     when it is killed outright — so a crash cannot leave children behind holding
-//     ports 80/443/22222. Orphan cleanup stops being an after-the-fact heuristic.
-//
-// If the OS refuses to contain the child (an outer job that forbids nesting), the
-// child still runs and is still owned; only the two guarantees above are lost, and
-// termination falls back to walking the process tree.
+// Child process in job object:
+// - Terminating job kills process + all descendants atomically
+// - Job kills members on last handle close (crash-safe cleanup)
+// Falls back to tree walk if OS denies job containment.
 class Child {
 public:
     Child() = default;
-    Child(Handle&& process, HANDLE job) : process_(std::move(process)), job_(job) {}
+    Child(Handle&& process, HANDLE job, OutputCapture capture)
+        : process_(std::move(process)), job_(job), capture_(std::move(capture)) {}
     ~Child();
 
-    Child(Child&& other) noexcept : process_(std::move(other.process_)), job_(other.job_) {
+    Child(Child&& other) noexcept
+        : process_(std::move(other.process_)),
+          job_(other.job_),
+          capture_(std::move(other.capture_)) {
         other.job_ = nullptr;
     }
     Child& operator=(Child&& other) noexcept;
@@ -142,15 +127,31 @@ public:
     bool Terminate(DWORD timeoutMs = kTerminateTimeoutMs);
 
 private:
+    // Stop the child and everything it started, then join its readers. noexcept because
+    // the destructor calls it, and stopping before joining is the correctness.
+    bool StopAndJoin(DWORD timeoutMs) noexcept;
+
     Handle process_;
     HANDLE job_ = nullptr;  // null when the OS declined to contain this child
+
+    // Destroyed first, so the join happens while the process handle that stops it is
+    // still in scope.
+    OutputCapture capture_;
+};
+
+// What a child is launched with, beyond its executable and arguments.
+struct LaunchOptions {
+    std::wstring workDir;
+
+    // Empty captures nothing and leaves the child's standard handles untouched.
+    OutputSink output;
 };
 
 // Launch a child under this program's supervision: hidden, no console, contained
 // in its own job object. An empty Child means the launch failed (the reason,
 // including the command line and working directory, is logged).
 Child LaunchChild(const std::wstring& exePath, const std::wstring& args,
-                  const std::wstring& workDir);
+                  const LaunchOptions& options);
 
 // Launch a process that must OUTLIVE this program — the uninstall and self-update
 // helpers, which exist precisely to act after we are gone — so it gets no job.

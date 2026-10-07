@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #pragma once
 #include <windows.h>
@@ -24,31 +24,12 @@
 
 namespace Command {
 
-// Run a command line hidden and wait for it. Returns the child's exit code, -1
-// if it could not be started, or -2 if it was killed on timeout. When `out` is
-// given, stdout and stderr are captured into it.
-int RunHidden(const std::wstring& cmdline, std::wstring* out = nullptr,
-              DWORD timeoutMs = 30000);
+// Run command hidden with timeout. Returns exit code, -1 on launch fail, -2 on timeout.
+// Output not captured (use supervised children for that).
+int RunHidden(const std::wstring& cmdline, DWORD timeoutMs = 30000);
 
-// Whether `flag` appears as a complete argument on `fullCommandLine`.
-//
-// `fullCommandLine` is the whole line, program name included, which is what
-// GetCommandLineW returns. Tokenized with CommandLineToArgvW and compared exactly,
-// never searched for as a substring: a substring test turns a path, a quoted
-// argument, or the tail of a longer flag (`-notautostart`) into a match, which is how
-// a launch that was not a logon launch ends up suppressing UI and splitting into a
-// different mode.
-//
-// Every argument is examined INCLUDING argv[0], which the tokenizer makes the program
-// name. So this is the right entry point for a line that still carries one, and the
-// wrong one for the lpCmdLine a wWinMain receives — that string has the program name
-// already removed, so its first argument sits at argv[0]. Use
-// CommandLineHasFlagInArgs for it.
-//
-// The distinction is not cosmetic. This function used to be documented as accepting
-// either form and skipped argv[0] unconditionally, which silently made it unable to
-// find a flag that was the first argument of a stripped line — precisely the shape a
-// scheduled `-autostart` launch arrives in, so logon launches were never recognised.
+// Check if flag appears as complete argument in full command line (includes argv[0]).
+// Use CommandLineHasFlagInArgs for lpCmdLine (program name already stripped).
 bool CommandLineHasFlag(const std::wstring& fullCommandLine, const std::wstring& flag);
 
 // Whether `flag` appears as a complete argument on a command line that has ALREADY

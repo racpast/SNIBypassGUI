@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #pragma once
 // The Name Resolution Policy Table: telling Windows which names to resolve here.
@@ -45,8 +45,20 @@
 #include <string>
 #include <vector>
 
+#include "dns/socket_utils.h"
+
 namespace Dns {
 namespace Nrpt {
+
+// The endpoint as the rule's server field spells it: the bare address at port 53,
+// `address:port` otherwise.
+//
+// The port's omission at 53 is the registry's own convention — its examples are
+// bare addresses — and it carries a second, sharper reason here: RuleMatches
+// compares this string against what is stored, so if one configuration could be
+// spelled two ways, the guardian would read its own write back as a difference and
+// rewrite the rule forever. One endpoint, one spelling.
+std::wstring ServerField(const BindEndpoint& endpoint);
 
 // Install (replacing any previous copy of) the rule that routes `namespaces` to
 // `dnsServer`. An empty list installs nothing and removes the rule instead, since

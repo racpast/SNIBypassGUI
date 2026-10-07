@@ -13,7 +13,7 @@
 #
 # For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 #
-# See the LICENSE.md file in the project root for full terms and conditions.
+# See the license file in the project root for full terms and conditions.
 
 # 3.25 is the real floor: DOWNLOAD_EXTRACT_TIMESTAMP below is 3.24, and
 # CMakePresets.json declares schema version 6, which is 3.25. Declaring 3.21 let a
@@ -64,28 +64,11 @@ set(CMAKE_C_STANDARD 11)
 option(SNIB_BUILD_TESTS "Build the unit test suite" OFF)
 
 # ---------------------------------------------------------------------------
-# libsodium — official MinGW prebuilt distribution.
-#
-# Downloaded, never vendored: the archive is not committed, because a binary in the
-# repository would hide which build it came from, record no ABI, and could not be
-# reviewed. Upstream publishes a MinGW tarball alongside its Autotools sources, so
-# the pinned URL plus SHA-256 below is the whole dependency — no compiler run, and
-# therefore no Autotools, no `make`, and no MSYS2.
-#
-# The previous flow built libsodium from source through build-mingw64.sh, which
-# needed cygpath and GNU make. That made an MSYS2 installation a hard requirement at
-# a point where nothing else in this build wants one, and it failed on any machine
-# without it long before anything could be compiled.
-#
-# Reproducibility note: the tarball name carries "-stable", and libsodium has been
-# known to re-upload a name like that in place. The SHA-256 is what actually pins
-# the bytes; if upstream ever reissues the file, this hash stops matching and the
-# download fails loudly rather than silently pulling a different library. To move
-# to a new release, change both the version and the hash together.
+# libsodium — official MinGW prebuilt (pinned URL + SHA-256).
 # ---------------------------------------------------------------------------
 set(SNIB_SODIUM_VERSION "1.0.22")
 set(SNIB_SODIUM_MINGW_SHA256
-    "2dbb9fdb0882ec44a328b1f6a8fccbfa0bb0d0f5b1034f135e15827acaf6dba7")
+    "12d7c395af85b9b8690230ae318db847f128d8c71cd7732c96b12a358d42007e")
 
 include(FetchContent)
 FetchContent_Declare(libsodium_mingw
@@ -334,6 +317,7 @@ add_library(snib_core OBJECT
     src/app/i18n.cpp
     src/app/logging.cpp
     src/app/paths.cpp
+    src/app/payload.cpp
     src/app/services.cpp
     src/app/settings.cpp
     src/app/text.cpp
@@ -360,6 +344,7 @@ add_library(snib_core OBJECT
     src/dns/tcp_session.cpp
     src/dns/tls_utils.cpp
     src/platform/autostart.cpp
+    src/platform/child_output.cpp
     src/platform/command.cpp
     src/platform/dialogs.cpp
     src/platform/elevation.cpp
@@ -369,6 +354,7 @@ add_library(snib_core OBJECT
     src/platform/process.cpp
     src/platform/shell.cpp
     src/platform/shortcut.cpp
+    src/platform/socket_runtime.cpp
     src/update/client.cpp
     src/update/crypto.cpp
     src/update/http.cpp

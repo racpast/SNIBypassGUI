@@ -13,7 +13,7 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 // Unit tests for the I/O-free logic.
 //
@@ -31,11 +31,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
+#include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "app/filesystem.h"
+#include "app/i18n.h"
+#include "app/payload.h"
 #include "app/text.h"
 #include "app/version.h"
 #include "dns/answer.h"
@@ -51,8 +56,12 @@
 #include "dns/rules.h"
 #include "dns/socket_utils.h"
 #include "dns/tcp_session.h"
+#include "platform/child_output.h"
 #include "platform/command.h"
 #include "platform/ini.h"
+#include "platform/ports.h"
+#include "platform/process.h"
+#include "platform/socket_runtime.h"
 #include "update/client.h"
 #include "update/crypto.h"
 #include "update/http.h"
@@ -554,6 +563,174 @@ void TestResponseCarriesRuleAddress() {
     CHECK(rdata[12] == 0xde && rdata[13] == 0xad && rdata[14] == 0xbe && rdata[15] == 0xef);
 }
 
+// The release-notes reader, which is the one piece of the manifest parser whose
+// INPUT SHAPE is a contract with a producer outside this repository.
+//
+// That is why it is tested here and not by inspection: the field's shape changed when
+// the notes became a list, and nothing verified that the two sides agreed. Both of the
+// defects below shipped past a green build and a clean CI until a pack run tripped
+// over the producer half.
+void TestParseNotes() {
+    using namespace Update;
+
+    auto notesOf = [](const char* json) {
+        static Json::Value root;
+        root = Json::Value();
+        const bool ok = Json::Parse(json, root);
+        CHECK(ok);
+        return root.Find("notes");
+    };
+
+    // --- the array shape tools/release.py writes now ---
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":["first","second"]}})");
+        CHECK(notes != nullptr);
+        if (notes) {
+            const std::vector<std::wstring> en = ParseNotes(*notes, "en");
+            CHECK(en.size() == 2);
+            if (en.size() == 2) {
+                CHECK(en[0] == L"first");
+                CHECK(en[1] == L"second");
+            }
+        }
+    }
+
+    // --- the string shape every earlier publish wrote, and what the channel serves ---
+    //
+    // One item per line, and the leading bullet marker — which was there because the
+    // reader at the time showed the text verbatim — has to come off, or the renderer
+    // that adds its own bullet shows two.
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":"• Added X.\n• Fixed Y."}})");
+        CHECK(notes != nullptr);
+        if (notes) {
+            const std::vector<std::wstring> en = ParseNotes(*notes, "en");
+            CHECK(en.size() == 2);
+            if (en.size() == 2) {
+                CHECK(en[0] == L"Added X.");
+                CHECK(en[1] == L"Fixed Y.");
+            }
+        }
+    }
+
+    // The same, spelled with the other markers authors have used, and with blank
+    // lines among them: spacing in a block scalar is not an item.
+    {
+        const Json::Value* notes =
+            notesOf(R"({"notes":{"en":"- Added X.\n\n* Fixed Y.\n   \n"}})");
+        CHECK(notes != nullptr);
+        if (notes) {
+            const std::vector<std::wstring> en = ParseNotes(*notes, "en");
+            CHECK(en.size() == 2);
+            if (en.size() == 2) {
+                CHECK(en[0] == L"Added X.");
+                CHECK(en[1] == L"Fixed Y.");
+            }
+        }
+    }
+
+    // A marker is stripped once, never repeatedly: a line whose text genuinely begins
+    // with a second bullet character keeps it.
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":"• • literal"}})");
+        if (notes) {
+            const std::vector<std::wstring> en = ParseNotes(*notes, "en");
+            CHECK(en.size() == 1);
+            if (en.size() == 1) CHECK(en[0] == L"• literal");
+        }
+    }
+
+    // --- the defect this replaced ---
+    //
+    // A requested language stored as a STRING is readable and must be used. The old
+    // reader compared the node's TYPE against Array, rejected the string, and fell
+    // back to English — so a Chinese install showed English notes from a manifest
+    // that was carrying Chinese. It is asserted in both directions, because the old
+    // code happened to pass the array case.
+    {
+        const Json::Value* notes =
+            notesOf(R"({"notes":{"en":"English text","zh-CN":"中文文本"}})");
+        CHECK(notes != nullptr);
+        if (notes) {
+            const std::vector<std::wstring> zh = ParseNotes(*notes, "zh-CN");
+            CHECK(zh.size() == 1);
+            if (zh.size() == 1) CHECK(zh[0] == L"中文文本");
+        }
+    }
+
+    // The fallback still works, and only when the language produces nothing: a
+    // requested language that is ABSENT falls back...
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":"English only"}})");
+        if (notes) {
+            const std::vector<std::wstring> zh = ParseNotes(*notes, "zh-CN");
+            CHECK(zh.size() == 1);
+            if (zh.size() == 1) CHECK(zh[0] == L"English only");
+        }
+    }
+
+    // ...and one that is present but says nothing (empty array, empty string, blank
+    // lines) falls back too, since an empty list is not a reason to show nothing when
+    // English has something.
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":["fallback"],"zh-CN":[]}})");
+        if (notes) {
+            const std::vector<std::wstring> zh = ParseNotes(*notes, "zh-CN");
+            CHECK(zh.size() == 1);
+            if (zh.size() == 1) CHECK(zh[0] == L"fallback");
+        }
+    }
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":["fallback"],"zh-CN":"  "}})");
+        if (notes) {
+            const std::vector<std::wstring> zh = ParseNotes(*notes, "zh-CN");
+            CHECK(zh.size() == 1);
+            if (zh.size() == 1) CHECK(zh[0] == L"fallback");
+        }
+    }
+
+    // Asking for English never falls back to itself, and "en" is not special-cased
+    // into being read twice.
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":["only english"]}})");
+        if (notes) {
+            const std::vector<std::wstring> en = ParseNotes(*notes, "en");
+            CHECK(en.size() == 1);
+        }
+    }
+
+    // --- shapes that must not crash or invent items ---
+
+    // No notes at all, and a notes field that is not an object.
+    {
+        const Json::Value* notes = notesOf(R"({"version":"1.0"})");
+        CHECK(notes == nullptr);
+    }
+    {
+        const Json::Value* notes = notesOf(R"({"notes":"just a string"})");
+        if (notes) CHECK(ParseNotes(*notes, "en").empty());
+        CHECK(notes != nullptr);
+    }
+    {
+        const Json::Value* notes = notesOf(R"({"notes":[]})");
+        if (notes) CHECK(ParseNotes(*notes, "en").empty());
+    }
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":42}})");
+        if (notes) CHECK(ParseNotes(*notes, "en").empty());
+    }
+    {
+        const Json::Value* notes = notesOf(R"({"notes":{"en":[1,"ok",null,true]}})");
+        if (notes) {
+            // Non-strings are skipped rather than coerced: a number in this array is a
+            // producer bug, and turning it into "1" would hide it.
+            const std::vector<std::wstring> en = ParseNotes(*notes, "en");
+            CHECK(en.size() == 1);
+            if (en.size() == 1) CHECK(en[0] == L"ok");
+        }
+    }
+}
+
 void TestUpdateHelpers() {
     using namespace Update;
 
@@ -648,7 +825,7 @@ void TestBase64Canonical() {
 
 // Path safety and glob pattern compilation are the highest-consequence pure functions
 // in the codebase: they guard deletion operations against escaping the program
-// directory. These tests verify that hand-edited or corrupted paths.ini entries
+// directory. These tests verify that hand-edited or corrupted meta.ini entries
 // cannot aim operations outside the tree we own.
 void TestFileSystemSafety() {
     using namespace FileSystem;
@@ -656,7 +833,7 @@ void TestFileSystemSafety() {
     // Safe paths used in the shipped payload.
     CHECK(IsSafePath(L"data"));
     CHECK(IsSafePath(L"logs"));
-    CHECK(IsSafePath(L"paths.ini"));
+    CHECK(IsSafePath(L"meta.ini"));
     CHECK(IsSafePath(L"config.ini"));
     CHECK(IsSafePath(L"data\\temp"));
     CHECK(IsSafePath(L"data/temp"));  // forward slashes accepted
@@ -1011,6 +1188,9 @@ void TestDnsProxyConfigParsing() {
     // Written as the payload files are: INI content, UTF-8 on disk. The stamps are
     // the same well-known ones the shipped file uses, so the fixture stays honest
     // about the real format while owning none of its content.
+    //
+    // No Enabled= key anywhere: a section's presence is the declaration, so the
+    // fixture states that by what it does and does not contain.
     const std::string ini =
         "[General]\n"
         "TimeoutMs=2500\n"
@@ -1018,36 +1198,64 @@ void TestDnsProxyConfigParsing() {
         "\n"
         // DoH with a hostname and path.
         "[Upstream.cloudflare]\n"
-        "Enabled=1\n"
         "Stamp=sdns://AgcAAAAAAAAABzEuMS4xLjEAEmRucy5jbG91ZGZsYXJlLmNvbQovZG5zLXF1ZXJ5\n"
         "\n"
         // DoH with a pinned certificate, so the hash list is populated.
         "[Upstream.fdn]\n"
-        "Enabled=1\n"
         "Stamp=sdns://AgcAAAAAAAAADDgwLjY3LjE2OS40MCCMUDOXP_5P8e8KqSmE_JMoG6epJ474v2QSJriY0Q1OdApuczEuZmRuLmZyCi9kbnMtcXVlcnk\n"
         "\n"
         // Plain DNS: an address and nothing to authenticate.
         "[Upstream.plain]\n"
-        "Enabled=1\n"
-        "Stamp=sdns://AAcAAAAAAAAABzEuMS4xLjE\n"
-        "\n"
-        // Disabled. Parsed and present, but excluded from the enabled set.
-        "[Upstream.disabled]\n"
-        "Enabled=0\n"
         "Stamp=sdns://AAcAAAAAAAAABzEuMS4xLjE\n"
         "\n"
         // No Stamp at all: skipped entirely.
         "[Upstream.missing]\n"
-        "Enabled=1\n"
         "\n"
         // A Stamp that does not parse: also skipped.
         "[Upstream.garbage]\n"
-        "Enabled=1\n"
         "Stamp=not-a-stamp\n"
         "\n"
         // Not an Upstream section: ignored.
         "[SomethingElse]\n"
-        "Enabled=1\n";
+        "Stamp=sdns://AAcAAAAAAAAABzEuMS4xLjE\n"
+        "\n"
+        // A pool naming two upstreams, one by a name that does not exist.
+        "[Pool.secure]\n"
+        "Upstreams=cloudflare, fdn, nosuchupstream\n"
+        "\n"
+        // A pool whose every name is unknown: dropped, so the listener that would
+        // race it is dropped too.
+        "[Pool.empty]\n"
+        "Upstreams=nosuchupstream\n"
+        "\n"
+        // Races the two upstreams its pool names.
+        "[Listener.secure]\n"
+        "Address=127.191.98.10\n"
+        "Port=53\n"
+        "Pool=secure\n"
+        "\n"
+        // No Pool=, so every upstream in the file. Port defaults to 53.
+        "[Listener.all]\n"
+        "Address=127.0.0.2\n"
+        "\n"
+        // Names a pool that was dropped, so it forwards nowhere and is skipped.
+        "[Listener.orphan]\n"
+        "Address=127.0.0.3\n"
+        "Pool=empty\n"
+        "\n"
+        // Names a pool that is not declared at all.
+        "[Listener.unknown]\n"
+        "Address=127.0.0.4\n"
+        "Pool=nosuchpool\n"
+        "\n"
+        // No address: not a listener.
+        "[Listener.addressless]\n"
+        "Port=5353\n"
+        "\n"
+        // A port that is not a port.
+        "[Listener.badport]\n"
+        "Address=127.0.0.5\n"
+        "Port=70000\n";
     {
         std::FILE* f = _wfopen(path.c_str(), L"wb");
         CHECK(f != nullptr);
@@ -1060,10 +1268,9 @@ void TestDnsProxyConfigParsing() {
     const Dns::DnsProxyConfig config = Dns::DnsProxyConfig::Load(path);
     DeleteFileW(path.c_str());
 
-    // The two sections that could not yield an endpoint are dropped; the other four
-    // become upstreams, one of which is disabled.
-    CHECK(config.upstreams.size() == 4);
-    CHECK(config.EnabledCount() == 3);
+    // The two sections that could not yield an endpoint are dropped; the other three
+    // become upstreams.
+    CHECK(config.upstreams.size() == 3);
     CHECK(config.timeoutMs == 2500);
     CHECK(config.threadPoolSize == 8);
 
@@ -1080,10 +1287,6 @@ void TestDnsProxyConfigParsing() {
             default: break;
         }
     }
-
-    const std::vector<Dns::DnsProxyEndpoint> enabled = config.EnabledUpstreams();
-    CHECK(enabled.size() == 3);
-    for (const Dns::DnsProxyEndpoint& e : enabled) CHECK(e.enabled);
 
     // Fields arrive from the stamp, not from defaults.
     bool sawCloudflare = false;
@@ -1106,13 +1309,34 @@ void TestDnsProxyConfigParsing() {
     CHECK(sawCloudflare);
     CHECK(sawPinned);
 
+    // Two of the five declared listeners are usable: one racing its pool, one
+    // racing everything. The other three name an empty pool, an undeclared pool, or
+    // no address at all — and the fourth is the invalid port.
+    CHECK(config.listeners.size() == 2);
+    if (config.listeners.size() == 2) {
+        const Dns::DnsProxyListener& secure = config.listeners[0];
+        CHECK(secure.name == L"secure");
+        CHECK(secure.address == L"127.191.98.10");
+        CHECK(secure.port == 53);
+        // Two of the three names resolved; the unknown one was skipped.
+        CHECK(secure.upstreams.size() == 2);
+
+        const Dns::DnsProxyListener& all = config.listeners[1];
+        CHECK(all.name == L"all");
+        CHECK(all.address == L"127.0.0.2");
+        // Port omitted, so the DNS default.
+        CHECK(all.port == 53);
+        // No Pool=, so every upstream in the file.
+        CHECK(all.upstreams.size() == config.upstreams.size());
+    }
+
     // An unreadable path yields an empty config rather than crashing. Emptiness is a
     // legitimate state — the proxy refuses to start on it — so the only requirement
     // here is that the parser reports it cleanly.
     const Dns::DnsProxyConfig missing =
         Dns::DnsProxyConfig::Load(std::wstring(tempDir) + L"snib_no_such_file.ini");
     CHECK(missing.upstreams.empty());
-    CHECK(missing.EnabledCount() == 0);
+    CHECK(missing.listeners.empty());
 }
 
 void TestHttpResponseParser() {
@@ -1215,6 +1439,128 @@ bool IsSuccessfulLiveDnsAnswer(const std::vector<uint8_t>& response, uint16_t id
            Dns::ParseQuery(response.data(), response.size(), parsed);
 }
 
+// One provider, many threads: the network is touched once.
+//
+// This is the property the cache exists for and the one it is easiest to lose.
+// A cold start has several upstreams naming the same provider, and each query is
+// raced against all of them, so the same certificate is asked for by many worker
+// threads at almost the same instant. If each of them fetches, the provider is hit
+// once per caller — and every one of those extra round trips is on the path a user
+// is waiting behind.
+//
+// Ownership is per caller, not per slot, so a reader has to be able to see which
+// caller fetched. That is what the counter is: not "did a fetch happen" but "how
+// many threads believed they were the fetcher", which is exactly the question a
+// shared default answers wrongly.
+//
+// No network: `fetch` is a lambda the test owns, so the assertion is about the
+// cache's arithmetic and not about a provider being up.
+void TestCertCacheConcurrentFetch() {
+    constexpr int kThreads = 8;
+
+    Dns::CertCache cache;
+    const std::string provider = "2.dnscrypt-cert.concurrent.test.example";
+
+    // A certificate that is usable at the `now` the calls below use: the cache
+    // tests `now <= tsEnd` and demands more than kCertRefreshMargin left, so the
+    // start has to be behind now rather than ahead of it.
+    const uint32_t now = static_cast<uint32_t>(std::time(nullptr));
+    Dns::DNSCryptCert golden;
+    golden.valid = true;
+    golden.esVersion = Dns::kEsVersionXChacha20;
+    golden.serial = 7;
+    golden.tsStart = now - 3600;
+    golden.tsEnd = now + 86400;
+
+    std::atomic<int> fetches{0};
+    std::atomic<int> arrived{0};
+
+    // Every worker blocks here until all of them have arrived, a timeout included.
+    // Without the barrier the first thread could finish and populate the cache
+    // before the last one read it, and a correct implementation would pass the
+    // test for a reason that has nothing to do with the code under it — the miss
+    // has to be concurrent for the wait path to be exercised at all.
+    //
+    // The rendezvous sits OUTSIDE the cache, in front of Get(), and that placement is
+    // the whole of its correctness. It used to sit inside the `fetch` callback, where
+    // it could never be satisfied: the cache calls `fetch` once per round — that is
+    // the behaviour under test — so a loop waiting for kThreads arrivals from a
+    // function with a single caller spun out its full timeout on every run, and the
+    // assertions passed anyway, which is what made it invisible. Ahead of Get() the
+    // eight threads really are all contending before any of them has stored
+    // anything, which is the state this test exists to create.
+    const std::function<void()> barrier = [&arrived] {
+        arrived.fetch_add(1, std::memory_order_acq_rel);
+        // A safety net for a thread that never arrives, not a budget the test should
+        // spend: with the rendezvous in the right place this is not reached.
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while (arrived.load(std::memory_order_acquire) < kThreads &&
+               std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::yield();
+        }
+    };
+
+    const std::function<Dns::DNSCryptCert()> fetch = [&] {
+        fetches.fetch_add(1, std::memory_order_acq_rel);
+        return golden;
+    };
+
+    std::vector<Dns::DNSCryptCert> results(kThreads);
+    std::vector<std::thread> threads;
+    threads.reserve(kThreads);
+    for (int i = 0; i < kThreads; ++i) {
+        threads.emplace_back([&cache, &provider, &fetch, &results, &barrier, i, now] {
+            barrier();
+            results[static_cast<size_t>(i)] = cache.Get(provider, now, nullptr, fetch);
+        });
+    }
+    for (std::thread& t : threads) t.join();
+
+    CHECK(fetches.load() == 1);
+    for (const Dns::DNSCryptCert& cert : results) {
+        CHECK(cert.valid);
+        CHECK(cert.serial == golden.serial);
+    }
+
+    // The thread that did fetch is not special: a later caller is served from the
+    // entry it stored, without touching `fetch` again.
+    fetches.store(0, std::memory_order_release);
+    const Dns::DNSCryptCert cached = cache.Get(provider, now, nullptr, fetch);
+    CHECK(cached.valid);
+    CHECK(cached.serial == golden.serial);
+    CHECK(fetches.load() == 0);
+
+    // A provider whose fetch fails is remembered as failed, and the second look
+    // inside the cooldown neither retries nor counts a second strike — one round
+    // that failed is one failure, however many threads were waiting on it.
+    const std::string broken = "2.dnscrypt-cert.never.answers.example";
+    std::atomic<int> attempts{0};
+    const Dns::DNSCryptCert unused =
+        cache.Get(broken, now, nullptr, [&attempts] {  // NOLINT(bugprone-unused-raii)
+            attempts.fetch_add(1, std::memory_order_acq_rel);
+            return Dns::DNSCryptCert{};
+        });
+    CHECK(!unused.valid);
+    CHECK(attempts.load() == 1);
+
+    const Dns::DNSCryptCert cooldown = cache.Get(broken, now + 1, nullptr, [&attempts] {
+        attempts.fetch_add(1, std::memory_order_acq_rel);
+        return Dns::DNSCryptCert{};
+    });
+    CHECK(!cooldown.valid);
+    CHECK(attempts.load() == 1);
+
+    // Past the cooldown it is tried again, which is the other half of the same
+    // property: a cooldown that never lapsed would be an outage nobody could end
+    // by fixing the provider.
+    const Dns::DNSCryptCert retried = cache.Get(broken, now + 31, nullptr, [&attempts] {
+        attempts.fetch_add(1, std::memory_order_acq_rel);
+        return Dns::DNSCryptCert{};
+    });
+    CHECK(!retried.valid);
+    CHECK(attempts.load() == 2);
+}
+
 void TestLiveDnsProxy(const std::vector<uint8_t>& query) {
     const std::wstring configPath =
         std::wstring(SNIB_SOURCE_DIR) + L"/resources/payload/data/dns_proxy.ini";
@@ -1225,9 +1571,22 @@ void TestLiveDnsProxy(const std::vector<uint8_t>& query) {
     const bool started = loaded && proxy.Start();
     CHECK(started);
 
+    // The address is asked of the proxy rather than written here. It comes from the
+    // payload, so a test that spelled out "127.191.98.10:53" would stop testing the
+    // file the moment someone moved the listener — and would fail while pointing at
+    // the test rather than at the configuration.
+    //
+    // Narrowed because the DNS layer speaks narrow addresses throughout: the
+    // endpoint is wide only where it comes from the payload, which is a Windows
+    // INI.
+    const std::vector<std::wstring> bound = proxy.BoundEndpoints();
+    CHECK(bound.size() == 1);
+
     Dns::NetworkUtils::IpEndpoint local;
-    CHECK(Dns::NetworkUtils::ParseIpEndpoint("127.191.98.10:53", 53, local));
-    if (started && local.length != 0) {
+    const bool resolved = !bound.empty() && Dns::NetworkUtils::ParseIpEndpoint(
+                                                WideToUtf8(bound.front()), 53, local);
+    CHECK(resolved);
+    if (started && resolved && local.length != 0) {
         Dns::SocketUtils::SocketHandle udp(
             socket(local.address.ss_family, SOCK_DGRAM, IPPROTO_UDP));
         CHECK(udp.IsValid());
@@ -1286,7 +1645,7 @@ void TestLiveDnsProxy(const std::vector<uint8_t>& query) {
 void TestLiveDnsTransports() {
     if (!EnvFlagSet(L"SNIB_RUN_NETWORK_TESTS")) return;
 
-    const bool winsockReady = Dns::SocketUtils::EnsureWinsock();
+    const bool winsockReady = SocketRuntime::Ensure();
     CHECK(winsockReady);
     if (!winsockReady) return;
 
@@ -1881,7 +2240,7 @@ struct LoopbackServer {
 }  // namespace
 
 void TestHttpCancellation() {
-    if (!Dns::SocketUtils::EnsureWinsock()) {
+    if (!SocketRuntime::Ensure()) {
         CHECK(false);
         return;
     }
@@ -2055,7 +2414,867 @@ void TestProgressMeter() {
 
 }  // namespace
 
+// ---- Payload descriptor and port claims --------------------------------------
+//
+// The parser and the formatter, against fixtures this file owns. What is NOT
+// asserted here is resources/payload/meta.ini itself: it is hand-maintained DATA
+// that changes with every release, and a test that pinned its contents would go red
+// on an edit that broke nothing.
+void TestIniList() {
+    // The '|' convention, and the two properties every caller depends on: items are
+    // trimmed, and blanks are dropped rather than yielding empty entries.
+    const std::vector<std::wstring> items =
+        Ini::Split(L" data|  licenses |logs| |\t|meta.ini ");
+    CHECK(items.size() == 4);
+    if (items.size() == 4) {
+        CHECK(items[0] == L"data");
+        CHECK(items[1] == L"licenses");
+        CHECK(items[2] == L"logs");
+        CHECK(items[3] == L"meta.ini");
+    }
+
+    // No separator yields one item, so a caller never special-cases a single entry.
+    const std::vector<std::wstring> single = Ini::Split(L"only");
+    CHECK(single.size() == 1);
+    CHECK(!single.empty() && single[0] == L"only");
+
+    // An empty (or entirely blank) value yields none, which is what "the key is
+    // absent" has to look like to a caller that only sees the list.
+    CHECK(Ini::Split(L"").empty());
+    CHECK(Ini::Split(L"   ").empty());
+    CHECK(Ini::Split(L"||").empty());
+
+    // Repeated separators do not produce empty items.
+    CHECK(Ini::Split(L"a||b").size() == 2);
+}
+
+void TestPortClaim() {
+    using Ports::BindMode;
+    using Ports::PortClaim;
+    using Ports::Transport;
+
+    // The short form is what almost every claim says, so the defaults print as
+    // nothing at all rather than being spelled out.
+    CHECK(
+        (PortClaim{L"0.0.0.0", 80, Transport::Tcp, BindMode::Default}.Text() == L"0.0.0.0:80"));
+    CHECK((PortClaim{L"0.0.0.0", 443, Transport::Tcp, BindMode::Exclusive}.Text() ==
+           L"0.0.0.0:443/exclusive"));
+    CHECK((PortClaim{L"127.0.0.1", 53, Transport::Udp, BindMode::Default}.Text() ==
+           L"127.0.0.1:53/udp"));
+    CHECK((PortClaim{L"127.0.0.1", 53, Transport::Both, BindMode::Reuse}.Text() ==
+           L"127.0.0.1:53/both/reuse"));
+    CHECK((PortClaim{L"::1", 53, Transport::Both, BindMode::Exclusive}.Text() ==
+           L"::1:53/both/exclusive"));
+
+    // CanBind against the loopback. These are real binds, so the fixture picks a port
+    // nothing is on — and asserts the negative case by holding it first, which is the
+    // only way to state "this answers the world".
+    const bool winsockReady = SocketRuntime::Ensure();
+    CHECK(winsockReady);
+    if (!winsockReady) return;
+
+    const PortClaim freeClaim{L"127.0.0.1", 53419, Transport::Tcp, BindMode::Default};
+    CHECK(Ports::CanBind(freeClaim));
+
+    // A specific address and the wildcard coexist when the newcomer sets REUSEADDR;
+    // both hold the port afterwards and the second one gets no error. This is the
+    // combination the old table-reading check reported as a conflict, and it is why
+    // the check binds rather than lists.
+    {
+        SOCKET holder = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        CHECK(holder != INVALID_SOCKET);
+        sockaddr_in addr = {};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(53420);
+        InetPtonW(AF_INET, L"127.0.0.1", &addr.sin_addr);
+        CHECK(bind(holder, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == 0);
+
+        const PortClaim wildcardReuse{L"0.0.0.0", 53420, Transport::Tcp, BindMode::Reuse};
+        CHECK(Ports::CanBind(wildcardReuse));
+
+        // The same address in the default mode is a genuine conflict, and this is the
+        // half the old check happened to get right.
+        const PortClaim sameDefault{L"127.0.0.1", 53420, Transport::Tcp, BindMode::Default};
+        CHECK(!Ports::CanBind(sameDefault));
+
+        closesocket(holder);
+    }
+
+    // TCP and UDP are separate namespaces: a TCP holder does not stop a UDP claim.
+    {
+        SOCKET tcpHolder = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        CHECK(tcpHolder != INVALID_SOCKET);
+        sockaddr_in addr = {};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(53421);
+        InetPtonW(AF_INET, L"127.0.0.1", &addr.sin_addr);
+        CHECK(bind(tcpHolder, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == 0);
+
+        CHECK(
+            Ports::CanBind(PortClaim{L"127.0.0.1", 53421, Transport::Udp, BindMode::Default}));
+        // "Both" is unsatisfiable while only one half is free, which is what makes it
+        // the right claim for a DNS server.
+        CHECK(!Ports::CanBind(
+            PortClaim{L"127.0.0.1", 53421, Transport::Both, BindMode::Default}));
+
+        closesocket(tcpHolder);
+    }
+
+    // A malformed address cannot be bound, so it reports as unavailable rather than
+    // silently passing.
+    CHECK(!Ports::CanBind(PortClaim{L"not-an-address", 80, Transport::Tcp, BindMode::Default}));
+    CHECK(!Ports::CanBind(PortClaim{L"", 80, Transport::Tcp, BindMode::Default}));
+}
+
+// The group bind, which is the question a start actually asks.
+//
+// Every case here is one a per-claim check answers wrongly, in one direction or the
+// other, and the two directions are why the group test exists at all: it must not
+// report a legitimate pair as a conflict, and it must not report a genuine conflict as
+// free.
+void TestPortClaimGroupBinding() {
+    using Ports::BindMode;
+    using Ports::PortClaim;
+    using Ports::Transport;
+
+    const bool winsockReady = SocketRuntime::Ensure();
+    CHECK(winsockReady);
+    if (!winsockReady) return;
+
+    // Two different specific addresses of one port: a legitimate pair, and the false
+    // positive a comparison of endpoint TEXT would produce. 127.0.0.2:53430 and
+    // 127.0.0.3:53430 read alike and are two endpoints; all of 127/8 is loopback, so
+    // both bind and both can be held at once.
+    {
+        const std::vector<PortClaim> pair = {
+            {L"127.0.0.2", 53430, Transport::Both, BindMode::Exclusive},
+            {L"127.0.0.3", 53430, Transport::Both, BindMode::Exclusive},
+        };
+        CHECK(Ports::CanBindAll(pair));
+        // Nothing was left bound by the check: the same set binds again, which is what
+        // makes this usable as a probe rather than a lock.
+        CHECK(Ports::CanBindAll(pair));
+    }
+
+    // The wildcard and a specific address of one port cannot both be held. No
+    // comparison of the two claims' fields can establish that — they are different
+    // addresses — and this is the case the previous check must not confuse with the
+    // legitimate pair above. Only the bind tells them apart.
+    {
+        const std::vector<PortClaim> clash = {
+            {L"0.0.0.0", 53431, Transport::Both, BindMode::Exclusive},
+            {L"127.0.0.4", 53431, Transport::Both, BindMode::Exclusive},
+        };
+
+        std::vector<PortClaim> failed;
+        CHECK(!Ports::CanBindAll(clash, &failed));
+        CHECK(failed.size() == 1);
+        // The second is the one that could not bind, and it is named.
+        CHECK(!failed.empty() && failed[0].address == L"127.0.0.4");
+
+        // Each one ALONE is free. That is the point: the group's answer is not the
+        // conjunction of the per-claim answers, and a check that walked the list one
+        // claim at a time reported this set as available.
+        CHECK(Ports::CanBind(clash[0]));
+        CHECK(Ports::CanBind(clash[1]));
+    }
+
+    // The same endpoint declared twice is the same blindness: free once, unbindable
+    // beside itself.
+    {
+        const PortClaim once{L"127.0.0.6", 53432, Transport::Both, BindMode::Exclusive};
+        CHECK(Ports::CanBind(once));
+        CHECK(!Ports::CanBindAll({once, once}));
+    }
+
+    // A claim that cannot be bound at all still fails the group, and is reported: the
+    // group test is a superset of the per-claim one, not a replacement for it.
+    {
+        std::vector<PortClaim> failed;
+        CHECK(!Ports::CanBindAll(
+            {PortClaim{L"127.0.0.7", 53433, Transport::Tcp, BindMode::Default},
+             PortClaim{L"not-an-address", 53433, Transport::Tcp, BindMode::Default}},
+            &failed));
+        CHECK(failed.size() == 1);
+        CHECK(!failed.empty() && failed[0].address == L"not-an-address");
+    }
+
+    // An empty set is trivially bindable, which is what lets a caller run this without
+    // special-casing "nothing declared".
+    CHECK(Ports::CanBindAll({}));
+}
+
+// BoundEndpoints() answers from the configuration, and the case that says why is a
+// FAILED start: that is the caller's only use for it, and it is exactly when no bound
+// session exists to read. Reading the bound listeners answered with an empty list here,
+// and the caller then named the configuration FILE instead of the endpoint that would
+// not bind — the message the user cannot act on.
+void TestBoundEndpointsBeforeStart() {
+    wchar_t tempDir[MAX_PATH + 1] = {};
+    const DWORD dirLen = GetTempPathW(MAX_PATH, tempDir);
+    CHECK(dirLen != 0 && dirLen < MAX_PATH);
+    if (dirLen == 0 || dirLen >= MAX_PATH) return;
+
+    const std::wstring path = std::wstring(tempDir) + L"snib_test_bound_endpoints.ini";
+
+    // 192.0.2.1 is TEST-NET-1: a literal the parser accepts and no ordinary machine has
+    // assigned to an interface, so the bind fails for a reason this test controls rather
+    // than because of whatever happens to be installed.
+    const std::string ini =
+        "[Upstream.plain]\n"
+        "Stamp=sdns://AAcAAAAAAAAABzEuMS4xLjE\n"
+        "\n"
+        "[Listener.unbindable]\n"
+        "Address=192.0.2.1\n"
+        "Port=5340\n";
+    {
+        std::FILE* f = _wfopen(path.c_str(), L"wb");
+        CHECK(f != nullptr);
+        if (!f) return;
+        const size_t written = std::fwrite(ini.data(), 1, ini.size(), f);
+        CHECK(written == ini.size());
+        static_cast<void>(std::fclose(f));
+    }
+
+    {
+        Dns::DnsProxy proxy;
+        // Nothing loaded yet: there is no declaration to name, and the answer is empty
+        // rather than a guess.
+        CHECK(proxy.BoundEndpoints().empty());
+
+        CHECK(proxy.LoadConfig(path));
+        // Declared, not bound. The endpoint is known the moment the file parses, which
+        // is what makes this usable as a failure report.
+        CHECK(proxy.BoundEndpoints().size() == 1);
+        CHECK(!proxy.BoundEndpoints().empty() &&
+              proxy.BoundEndpoints()[0] == L"192.0.2.1:5340");
+
+        // The bind fails, so no session is installed...
+        CHECK(!proxy.Start());
+        CHECK(!proxy.Running());
+        // ...and the endpoint is still named, which is the whole point of this test.
+        CHECK(proxy.BoundEndpoints().size() == 1);
+        CHECK(!proxy.BoundEndpoints().empty() &&
+              proxy.BoundEndpoints()[0] == L"192.0.2.1:5340");
+    }
+
+    DeleteFileW(path.c_str());
+}
+
+// The classification a start acts on, and the reason the three lists cannot be
+// produced separately.
+//
+// A listener section declared twice reached the user as "these endpoints are being used
+// by another program", with an offer to terminate whoever held them — nobody held them,
+// the payload had declared one endpoint twice. That answer came from asking only the
+// held-port question, so the behaviour that has to hold is the classification itself:
+// a claim blocked by its own set is contradicted, one blocked by the machine is
+// unavailable, and one that cannot be bound at all is invalid.
+//
+// Synthetic claims only. The claims a real start uses come from three files, and none
+// of that has any bearing on whether the two lists are told apart — so nothing here
+// reads a payload, writes a file, or depends on where the test binary happens to sit.
+void TestClaimAudit() {
+    using Ports::BindMode;
+    using Ports::PortClaim;
+    using Ports::Transport;
+
+    const bool winsockReady = SocketRuntime::Ensure();
+    CHECK(winsockReady);
+    if (!winsockReady) return;
+
+    // Everything free: both lists empty, so a caller can proceed on either.
+    {
+        const Ports::ClaimAudit audit = Ports::AuditClaims(
+            {PortClaim{L"127.0.0.8", 53440, Transport::Both, BindMode::Exclusive},
+             PortClaim{L"127.0.0.9", 53441, Transport::Both, BindMode::Exclusive}});
+        CHECK(audit.unavailable.empty());
+        CHECK(audit.contradicted.empty());
+    }
+
+    // One endpoint declared twice. Both entries are the same claim, the second bind
+    // fails, and asking it alone succeeds — so it is a contradiction, and NOT something
+    // the user is offered the chance to terminate a program over.
+    {
+        const PortClaim twice{L"127.0.0.10", 53442, Transport::Both, BindMode::Exclusive};
+        const Ports::ClaimAudit audit = Ports::AuditClaims({twice, twice});
+
+        CHECK(!audit.contradicted.empty());
+        CHECK(audit.unavailable.empty());
+        for (const PortClaim& claim : audit.contradicted) {
+            CHECK(claim.address == L"127.0.0.10");
+            CHECK(claim.port == 53442);
+        }
+    }
+
+    // The wildcard beside a specific address of one port: two DIFFERENT endpoints that
+    // still cannot both be held. Nothing about the two claims as text says so, which is
+    // why this cannot be decided by comparing them.
+    {
+        const Ports::ClaimAudit audit = Ports::AuditClaims(
+            {PortClaim{L"0.0.0.0", 53443, Transport::Both, BindMode::Exclusive},
+             PortClaim{L"127.0.0.11", 53443, Transport::Both, BindMode::Exclusive}});
+
+        CHECK(!audit.contradicted.empty());
+        CHECK(audit.unavailable.empty());
+        // The SECOND is the one that could not bind, and it is the one named.
+        CHECK(audit.contradicted.size() == 1);
+        CHECK(!audit.contradicted.empty() && audit.contradicted[0].address == L"127.0.0.11");
+    }
+
+    // A port genuinely held by something else. The holder is a socket this test opens
+    // and keeps, so the verdict comes from the machine rather than from a fixture.
+    {
+        SOCKET holder = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        CHECK(holder != INVALID_SOCKET);
+        sockaddr_in addr = {};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(53444);
+        InetPtonW(AF_INET, L"127.0.0.12", &addr.sin_addr);
+        CHECK(bind(holder, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == 0);
+
+        const Ports::ClaimAudit audit = Ports::AuditClaims(
+            {PortClaim{L"127.0.0.12", 53444, Transport::Tcp, BindMode::Default}});
+
+        // Held, and reported as held: this is the half that legitimately asks the user
+        // about terminating whatever owns the port.
+        CHECK(!audit.unavailable.empty());
+        CHECK(audit.contradicted.empty());
+
+        closesocket(holder);
+    }
+
+    // A claim that cannot be bound at all is INVALID, not unavailable: nothing is
+    // holding it, so there is no process to name and no port to free. It fails alone,
+    // and the declaration is the only thing that can change.
+    {
+        const Ports::ClaimAudit audit = Ports::AuditClaims(
+            {PortClaim{L"not-an-address", 53445, Transport::Tcp, BindMode::Default}});
+        CHECK(!audit.invalid.empty());
+        CHECK(audit.unavailable.empty());
+        CHECK(audit.contradicted.empty());
+        CHECK(audit.HasConfigurationFault());
+
+        // And it names NOBODY. This is the whole reason it is a separate list: the
+        // unavailable path terminates the holders of the endpoint, and a claim whose
+        // address could not even be parsed would have been searched for by PORT —
+        // naming whoever holds that port number on an address it never mentioned.
+        CHECK(Ports::BlockersOf(
+                  PortClaim{L"not-an-address", 53445, Transport::Tcp, BindMode::Default})
+                  .empty());
+    }
+
+    // An address this machine does not have: the same category, by the same test. The
+    // bind fails, the tables show nobody, and the declaration is what has to change.
+    // TEST-NET-1 is a literal the parser accepts and no interface is assigned.
+    {
+        const Ports::ClaimAudit audit = Ports::AuditClaims(
+            {PortClaim{L"192.0.2.1", 53446, Transport::Both, BindMode::Exclusive}});
+        CHECK(!audit.invalid.empty());
+        CHECK(audit.unavailable.empty());
+        CHECK(Ports::BlockersOf(
+                  PortClaim{L"192.0.2.1", 53446, Transport::Both, BindMode::Exclusive})
+                  .empty());
+    }
+}
+
+// The address matching that decides whether a holder is named at all.
+//
+// This is the mis-kill regression. The listing used to be by port number alone, and a
+// port is a namespace per ADDRESS: measured on Windows 11, a socket holding
+// 127.0.0.2:P does not stop a bind of 127.0.0.3:P, and 127/8 is all loopback, so both
+// are ordinary endpoints. A listing that answered "everyone on port P" therefore named
+// processes holding nothing the claim wanted — and that list is walked to decide what
+// to terminate.
+void TestBlockersAddressMatching() {
+    const bool winsockReady = SocketRuntime::Ensure();
+    CHECK(winsockReady);
+    if (!winsockReady) return;
+
+    // A holder in the shape a real one has: bound AND listening. The listen() is not
+    // decoration — a TCP socket that is bound but not yet listening appears in NO
+    // system table, so a test that stopped at bind() would be asking BlockersOf to
+    // name a process the tables cannot see. The classification does not depend on
+    // this (a bound-but-silent holder fails the bind with WSAEADDRINUSE and is
+    // classified from that), but the ADDRESS MATCHING is only observable for a holder
+    // the tables report.
+    auto Hold = [](uint16_t port, const wchar_t* address) -> SOCKET {
+        SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (s == INVALID_SOCKET) return INVALID_SOCKET;
+        BOOL exclusive = TRUE;
+        setsockopt(s, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+                   reinterpret_cast<const char*>(&exclusive), sizeof(exclusive));
+        sockaddr_in addr = {};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        InetPtonW(AF_INET, address, &addr.sin_addr);
+        if (bind(s, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) != 0 ||
+            listen(s, SOMAXCONN) != 0) {
+            closesocket(s);
+            return INVALID_SOCKET;
+        }
+        return s;
+    };
+
+    // A holder on another loopback address of the same port is NOT in the way, and must
+    // not be named. Nothing is terminated over it.
+    {
+        const SOCKET holder = Hold(53450, L"127.0.0.2");
+        CHECK(holder != INVALID_SOCKET);
+        if (holder != INVALID_SOCKET) {
+            const Ports::PortClaim claim{L"127.0.0.3", 53450, Ports::Transport::Tcp,
+                                         Ports::BindMode::Exclusive};
+            // The bind agrees: these two coexist.
+            CHECK(Ports::CanBind(claim));
+            CHECK(Ports::BlockersOf(claim).empty());
+            closesocket(holder);
+        }
+    }
+
+    // The same holder IS in the way of a claim for THAT address, and is named.
+    {
+        const SOCKET holder = Hold(53451, L"127.0.0.4");
+        CHECK(holder != INVALID_SOCKET);
+        if (holder != INVALID_SOCKET) {
+            const Ports::PortClaim claim{L"127.0.0.4", 53451, Ports::Transport::Tcp,
+                                         Ports::BindMode::Exclusive};
+            CHECK(!Ports::CanBind(claim));
+            const std::vector<DWORD> blockers = Ports::BlockersOf(claim);
+            CHECK(!blockers.empty());
+            CHECK(!blockers.empty() && blockers[0] == GetCurrentProcessId());
+            closesocket(holder);
+        }
+    }
+
+    // The wildcard covers every address of its family, so it is in the way of a claim
+    // for one specific address — and is named, because that one really has to go.
+    {
+        const SOCKET holder = Hold(53452, L"0.0.0.0");
+        CHECK(holder != INVALID_SOCKET);
+        if (holder != INVALID_SOCKET) {
+            const Ports::PortClaim claim{L"127.0.0.5", 53452, Ports::Transport::Tcp,
+                                         Ports::BindMode::Exclusive};
+            const std::vector<DWORD> blockers = Ports::BlockersOf(claim);
+            CHECK(!blockers.empty());
+            closesocket(holder);
+        }
+    }
+
+    // A claim for the wildcard wants every address, so a holder on any single one of
+    // them is in the way and is named.
+    {
+        const SOCKET holder = Hold(53453, L"127.0.0.6");
+        CHECK(holder != INVALID_SOCKET);
+        if (holder != INVALID_SOCKET) {
+            const Ports::PortClaim claim{L"0.0.0.0", 53453, Ports::Transport::Tcp,
+                                         Ports::BindMode::Exclusive};
+            CHECK(!Ports::BlockersOf(claim).empty());
+            closesocket(holder);
+        }
+    }
+
+    // A port nobody holds names nobody, whatever the address.
+    CHECK(Ports::BlockersOf(Ports::PortClaim{L"127.0.0.7", 53454, Ports::Transport::Both,
+                                             Ports::BindMode::Exclusive})
+              .empty());
+}
+
+void TestPayloadPortClaims() {
+    wchar_t tempDir[MAX_PATH + 1] = {};
+    const DWORD dirLen = GetTempPathW(MAX_PATH, tempDir);
+    CHECK(dirLen != 0 && dirLen < MAX_PATH);
+    if (dirLen == 0 || dirLen >= MAX_PATH) return;
+
+    const std::wstring path = std::wstring(tempDir) + L"snib_test_meta.ini";
+    const std::string ini =
+        "[Paths]\n"
+        "Nginx=data\\nginx.exe\n"
+        "\n"
+        "[Resolver]\n"
+        "Address=127.5.5.5\n"
+        "\n"
+        "[Ports]\n"
+        // The short form: tcp and default are implied.
+        "Required=0.0.0.0:80"
+        // Transport and mode named explicitly.
+        "|0.0.0.0:443/tcp/exclusive"
+        // UDP alone.
+        "|127.0.0.1:5353/udp"
+        // Bracketed IPv6, because a bare one is ambiguous about where the port starts.
+        "|[::1]:53/both/reuse"
+        // Refused: no port.
+        "|0.0.0.0"
+        // Refused: the port is not a number.
+        "|0.0.0.0:8x"
+        // Refused: out of range.
+        "|0.0.0.0:70000"
+        // Refused: an unknown transport.
+        "|0.0.0.0:90/sctp"
+        // Refused: an unknown mode.
+        "|0.0.0.0:91/tcp/whatever"
+        // Refused: trailing fields.
+        "|0.0.0.0:92/tcp/default/extra\n";
+    {
+        std::FILE* f = _wfopen(path.c_str(), L"wb");
+        CHECK(f != nullptr);
+        if (!f) return;
+        const size_t written = std::fwrite(ini.data(), 1, ini.size(), f);
+        CHECK(written == ini.size());
+        static_cast<void>(std::fclose(f));
+    }
+
+    const std::vector<Ports::PortClaim> claims = Payload::LoadPortClaims(path);
+
+    // The resolver's endpoint comes from its own section, where only the address is
+    // configurable; the port is fixed because the policy table's rule format carries
+    // no port.
+    const Dns::BindEndpoint endpoint = Payload::LoadResolverEndpoint(path);
+    CHECK(endpoint.address == L"127.5.5.5");
+    CHECK(endpoint.port == 53);
+
+    DeleteFileW(path.c_str());
+
+    // Four of the ten entries are usable; each of the other six is refused for a
+    // different reason and none of them reaches the caller.
+    CHECK(claims.size() == 4);
+    if (claims.size() != 4) return;
+
+    CHECK(claims[0].address == L"0.0.0.0");
+    CHECK(claims[0].port == 80);
+    CHECK(claims[0].transport == Ports::Transport::Tcp);
+    CHECK(claims[0].mode == Ports::BindMode::Default);
+
+    CHECK(claims[1].port == 443);
+    CHECK(claims[1].mode == Ports::BindMode::Exclusive);
+
+    CHECK(claims[2].address == L"127.0.0.1");
+    CHECK(claims[2].port == 5353);
+    CHECK(claims[2].transport == Ports::Transport::Udp);
+
+    // The brackets are stripped, so the claim holds the literal it will bind with.
+    CHECK(claims[3].address == L"::1");
+    CHECK(claims[3].port == 53);
+    CHECK(claims[3].transport == Ports::Transport::Both);
+    CHECK(claims[3].mode == Ports::BindMode::Reuse);
+
+    // A missing file yields no claims rather than a default set: a payload that
+    // declares nothing is checked against what the caller adds, not against a guess.
+    CHECK(Payload::LoadPortClaims(std::wstring(tempDir) + L"snib_no_such_meta.ini").empty());
+}
+
+void TestTranslatedLists() {
+    // The bullet and the join separator are translated, so these assert the shape
+    // rather than the exact glyph: every item appears, and the bullet count matches
+    // the item count.
+    const std::vector<std::wstring> items = {L"alpha", L"beta", L"gamma"};
+
+    const std::wstring full = BulletList(items);
+    CHECK(full.find(L"alpha") != std::wstring::npos);
+    CHECK(full.find(L"beta") != std::wstring::npos);
+    CHECK(full.find(L"gamma") != std::wstring::npos);
+    // Two separators for three items, and no trailing newline.
+    CHECK(std::count(full.begin(), full.end(), L'\n') == 2);
+    CHECK(!full.empty() && full.back() != L'\n');
+
+    // A cap replaces the remainder with one counted line, so a long list cannot push
+    // what follows it off a dialog.
+    const std::vector<std::wstring> many = {L"a", L"b", L"c", L"d", L"e"};
+    const std::wstring capped = BulletList(many, 2);
+    CHECK(capped.find(L'a') != std::wstring::npos);
+    CHECK(capped.find(L'b') != std::wstring::npos);
+    CHECK(capped.find(L'c') == std::wstring::npos);
+    CHECK(capped.find(L'3') != std::wstring::npos);  // "… and 3 more"
+
+    // At or below the cap nothing is dropped, and the whole list is shown.
+    CHECK(BulletList(many, 5).find(L'e') != std::wstring::npos);
+    CHECK(BulletList(many, 6).find(L'e') != std::wstring::npos);
+
+    // An empty list is empty rather than a stray bullet.
+    CHECK(BulletList({}).empty());
+
+    // One item still gets its bullet, and no separator line follows it.
+    CHECK(BulletList({L"solo"}).find(L"solo") != std::wstring::npos);
+    CHECK(BulletList({L"solo"}).find(L'\n') == std::wstring::npos);
+}
+
+void TestTfmt() {
+    // A template with no specifiers is returned as-is.
+    CHECK(TFmt(L"msg.started") == std::wstring(T(L"msg.started")));
+
+    // %s takes a std::wstring and a wide literal alike.
+    CHECK(TFmt(L"punct.andMore", 7).find(L'7') != std::wstring::npos);
+    const std::wstring text = TFmt(L"punct.bullet") + L"x";
+    CHECK(text.find(L'x') != std::wstring::npos);
+
+    // Length comes back in CHARACTERS, not bytes, which is what makes the buffer
+    // growth correct for a translation that is all non-ASCII.
+    const std::wstring cjk = TFmt(L"%s", std::wstring(L"约剩余 2 分钟"));
+    CHECK(cjk == L"约剩余 2 分钟");
+    CHECK(cjk.size() == 8);
+
+    // A result past the initial buffer is not silently clipped. This is the defect
+    // that made the sizing pass _snwprintf rather than swprintf: the latter returns
+    // the truncated count and looks like success.
+    const std::wstring longArg(3000, L'x');
+    const std::wstring grown = TFmt(L"%s", longArg);
+    CHECK(grown.size() == 3000);
+    CHECK(!grown.empty() && grown.back() == L'x');
+
+    // An unknown key is passed through with its specifiers intact rather than
+    // becoming empty text — a visible identifier beats a blank dialog.
+    CHECK(TFmt(L"no.such.key.at.all") == L"no.such.key.at.all");
+}
+
+// ---- Child output capture -----------------------------------------------------
+
+// The switch that turns this very executable into the child the capture tests read.
+// A plain argument, not `cmd /c` (a path re-parsed as command language) and not an
+// environment variable (inherited by the children, quietly changing what they are).
+constexpr const wchar_t* kEmitOutputFixture = L"--emit-output-fixture";
+
+// The second switch, for output whose shape the first one cannot express: a line far
+// longer than the capture will hold, and a line after it. Separate from the fixture above
+// rather than appended to it, because that one asserts a vector of exact lines and a
+// chunk count is a property of the reader, not of this test.
+constexpr const wchar_t* kEmitLongRunFixture = L"--emit-long-run-fixture";
+
+// Comfortably past kMaxPendingBytes, so the reader has to decide what to do with a run it
+// cannot hold rather than being handed one that happens to fit.
+constexpr size_t kLongRunBytes = 70000;
+
+// Raw handles rather than CRT stdio: text mode rewrites every "\n" as "\r\n", which
+// would turn the fixture's own input into the thing being tested.
+void WriteAll(HANDLE handle, const char* bytes, size_t size) {
+    DWORD written = 0;
+    WriteFile(handle, bytes, static_cast<DWORD>(size), &written, nullptr);
+}
+
+void EmitOutputFixture() {
+    const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+    const HANDLE err = GetStdHandle(STD_ERROR_HANDLE);
+
+    const std::string stdoutText =
+        "out-1\n"    // LF
+        "out-2\r\n"  // CRLF
+        "\n"         // nothing but a terminator
+        "out-3-"
+        "\xe4\xb8\xad\xe6\x96\x87"
+        "\n"                             // UTF-8, written as bytes
+        + std::string(5000, 'L') + "\n"  // one line, many reads
+        + "out-tail-no-newline";
+    WriteAll(out, stdoutText.data(), stdoutText.size());
+
+    const std::string stderrText =
+        "err-1\n"
+        "err-2\r\n"
+        "err-tail-no-newline";
+    WriteAll(err, stderrText.data(), stderrText.size());
+}
+
+// One line far past kMaxPendingBytes and no newline until the very end of it, followed by
+// a short line. The run is what a component that separates updates with '\r' — a progress
+// line — produces, and it is the input the pending cap has to survive.
+void EmitLongRunFixture() {
+    const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+    const std::string run = std::string(kLongRunBytes, 'X') + "\n" + "after-the-run\n";
+    WriteAll(out, run.data(), run.size());
+}
+
+// A sink that fails is a case the capture must survive rather than one it must report: it
+// is other people's code on a thread this program owns, and an exception out of a thread
+// function is std::terminate.
+void TestOutputSinkThatThrows() {
+    std::atomic<int> delivered{0};
+
+    {
+        Process::OutputCapture capture([&delivered](Process::OutputLine&&) {
+            delivered.fetch_add(1, std::memory_order_acq_rel);
+            throw std::runtime_error("the sink failed");
+        });
+
+        const std::string text = "one\ntwo\n";
+        WriteAll(capture.stdoutWrite(), text.data(), text.size());
+
+        capture.Begin();
+        capture.Drain();
+    }
+
+    // Reaching this line at all is the assertion that matters: a sink exception that
+    // escaped its reader thread would have ended the process instead. The count confirms
+    // the reader kept going rather than stopping at the first failure.
+    CHECK(delivered.load() == 2);
+}
+
+// A long line is forwarded in pieces rather than held until the writer ends it. The
+// boundary is a guess and deliberately not asserted on — it depends on where the reads
+// land — so what is asserted is the property that survives any boundary: the bytes all
+// arrive, in order, and the line that follows is still a line.
+void TestOutputCaptureLongLine() {
+    wchar_t self[MAX_PATH * 2] = L"";
+    const DWORD selfLength =
+        GetModuleFileNameW(nullptr, self, static_cast<DWORD>(std::size(self)));
+    CHECK(selfLength > 0 && selfLength < std::size(self));
+    const std::wstring selfPath(self, selfLength);
+
+    std::mutex collectedMutex;
+    std::vector<std::wstring> lines;
+    const Process::OutputSink sink = [&](Process::OutputLine&& line) {
+        std::lock_guard<std::mutex> lock(collectedMutex);
+        lines.push_back(std::move(line.text));
+    };
+
+    Process::Child child = Process::LaunchChild(selfPath, kEmitLongRunFixture, {{}, sink});
+    CHECK(static_cast<bool>(child));
+    if (!child) return;
+
+    CHECK(child.WaitForExit(30000));
+    child.Terminate();
+
+    std::lock_guard<std::mutex> lock(collectedMutex);
+    CHECK(!lines.empty());
+    if (lines.empty()) return;
+
+    // Everything before the last line is the run, however many pieces it arrived in.
+    CHECK(lines.back() == L"after-the-run");
+    std::wstring run;
+    for (size_t i = 0; i + 1 < lines.size(); ++i) run += lines[i];
+    CHECK(run == std::wstring(kLongRunBytes, L'X'));
+
+    // And it really was split, or the cap was never reached and the test proved nothing.
+    CHECK(lines.size() >= 2);
+}
+
+// Captures that are never begun are the ones nothing else would notice: the launch failed,
+// Begin was never reached, and every handle they own goes away with them — the gate, both
+// write ends, both read ends, and both reader threads. The old code closed only what it
+// remembered to, which on this path was neither read end.
+void TestAbandonedCaptureReleasesItsPipes() {
+    DWORD before = 0;
+    CHECK(GetProcessHandleCount(GetCurrentProcess(), &before));
+
+    for (int i = 0; i < 32; ++i) {
+        Process::OutputCapture abandoned([](Process::OutputLine&&) {});
+        CHECK(static_cast<bool>(abandoned));
+        CHECK(abandoned.stdoutWrite() != nullptr);
+        CHECK(abandoned.stderrWrite() != nullptr);
+        // Deliberately never Begin()ed: this is the failed-launch path.
+    }
+
+    DWORD after = 0;
+    CHECK(GetProcessHandleCount(GetCurrentProcess(), &after));
+
+    // Not zero drift — the logger, the CRT and the kernel's own bookkeeping are all free
+    // to take a handle while this runs. 64 leaked handles against an allowance of 8 is not
+    // ambiguous in either direction.
+    CHECK(after <= before + 8);
+}
+
+// The primitive on its own, with no child process: bytes go into the write ends and the
+// lines come back out of the sink. Separate from the launch test so a failure points at
+// framing/decoding rather than at "something in the chain".
+void TestOutputCapturePrimitive() {
+    std::mutex collectedMutex;
+    std::vector<std::wstring> stdoutLines;
+    std::vector<std::wstring> stderrLines;
+
+    {
+        Process::OutputCapture capture([&](Process::OutputLine&& line) {
+            std::lock_guard<std::mutex> lock(collectedMutex);
+            (line.channel == Process::Channel::Stdout ? stdoutLines : stderrLines)
+                .push_back(std::move(line.text));
+        });
+        CHECK(capture.stdoutWrite() != nullptr);
+        CHECK(capture.stderrWrite() != nullptr);
+
+        // Before Begin: the readers exist but are parked on the capture's gate, so
+        // nothing is draining the pipe and the write only completes because this fits in
+        // the pipe's buffer. That is a real bound and not a formality — these writes are
+        // synchronous, so anything past the buffer blocks here with no reader to unblock
+        // it, and the test would hang against its own fixture. The bytes below are a few
+        // dozen, well under 4 KiB.
+        const std::string out = "first\nsecond\r\n\nlast-no-newline";
+        const std::string err = "e1\r\ne2";
+        WriteAll(capture.stdoutWrite(), out.data(), out.size());
+        WriteAll(capture.stderrWrite(), err.data(), err.size());
+
+        capture.Begin();  // closes our write ends and releases the readers onto EOF
+        capture.Drain();
+    }  // the destructor drains again, which must be a no-op
+
+    std::lock_guard<std::mutex> lock(collectedMutex);
+    CHECK(stdoutLines ==
+          std::vector<std::wstring>({L"first", L"second", L"", L"last-no-newline"}));
+    CHECK(stderrLines == std::vector<std::wstring>({L"e1", L"e2"}));
+}
+
+void TestChildOutputCapture() {
+    Process::OutputCapture unasked;
+    CHECK(!unasked);  // not asked for, so a launcher must not decide anything from it
+    CHECK(unasked.stdoutWrite() == nullptr);
+    CHECK(unasked.stderrWrite() == nullptr);
+    unasked.Begin();  // nothing to start, nothing to complain about
+    unasked.Drain();
+    unasked.Drain();  // idempotent
+
+    wchar_t self[MAX_PATH * 2] = L"";
+    const DWORD selfLength =
+        GetModuleFileNameW(nullptr, self, static_cast<DWORD>(std::size(self)));
+    CHECK(selfLength > 0 && selfLength < std::size(self));
+    const std::wstring selfPath(self, selfLength);
+
+    std::mutex collectedMutex;
+    std::vector<std::wstring> stdoutLines;
+    std::vector<std::wstring> stderrLines;
+    const Process::OutputSink sink = [&](Process::OutputLine&& line) {
+        std::lock_guard<std::mutex> lock(collectedMutex);
+        (line.channel == Process::Channel::Stdout ? stdoutLines : stderrLines)
+            .push_back(std::move(line.text));
+    };
+
+    Process::Child child = Process::LaunchChild(selfPath, kEmitOutputFixture, {{}, sink});
+    CHECK(static_cast<bool>(child));
+    if (!child) return;
+
+    CHECK(child.WaitForExit(30000));
+    child.Terminate();
+
+    const std::vector<std::wstring> expectedStdout = {
+        L"out-1",
+        L"out-2",                  // the CRLF did not leave a \r behind
+        L"",                       // an empty line is forwarded, not filtered
+        L"out-3-中文",             // decoded from UTF-8
+        std::wstring(5000, L'L'),  // not cut at a read boundary
+        L"out-tail-no-newline",    // the last line had no terminator
+    };
+    const std::vector<std::wstring> expectedStderr = {
+        L"err-1",
+        L"err-2",
+        L"err-tail-no-newline",
+    };
+
+    std::lock_guard<std::mutex> lock(collectedMutex);
+    CHECK(stdoutLines == expectedStdout);
+    CHECK(stderrLines == expectedStderr);
+
+    // The channels are independent, and each line was handed over whole and unedited:
+    // no prefix, no rewriting, nothing appended.
+    CHECK(stdoutLines.size() + stderrLines.size() == 9);
+}
+
 int main() {
+    // Before any check, and before anything is printed by the suite: with one of these
+    // switches this executable IS the fixture, and every byte it writes to stdout would
+    // otherwise be a test report.
+    const std::wstring ownCommandLine = GetCommandLineW();
+    if (Command::CommandLineHasFlag(ownCommandLine, kEmitOutputFixture)) {
+        EmitOutputFixture();
+        return 0;
+    }
+    if (Command::CommandLineHasFlag(ownCommandLine, kEmitLongRunFixture)) {
+        EmitLongRunFixture();
+        return 0;
+    }
+
     TestNormalizeDomain();
     TestSuffixMatch();
     TestExactMatch();
@@ -2071,11 +3290,21 @@ int main() {
     TestBuildResponseBlock();
     TestResponseCarriesRuleAddress();
     TestUpdateHelpers();
+    TestParseNotes();
     TestBase64Canonical();
     TestLowerW();
     TestCommandLineHasFlag();
     TestIniReader();
+    TestIniList();
     TestIniWriteReadAgreement();
+    TestPortClaim();
+    TestPortClaimGroupBinding();
+    TestBlockersAddressMatching();
+    TestClaimAudit();
+    TestBoundEndpointsBeforeStart();
+    TestPayloadPortClaims();
+    TestTranslatedLists();
+    TestTfmt();
     TestUpdaterPlanRoundTrip();
     TestFileSystemSafety();
     TestGlobMatching();
@@ -2090,6 +3319,12 @@ int main() {
     TestHttpCancellation();
     TestProgressMeter();
     TestTcpSessionFraming();
+    TestCertCacheConcurrentFetch();
+    TestOutputCapturePrimitive();
+    TestChildOutputCapture();
+    TestOutputCaptureLongLine();
+    TestOutputSinkThatThrows();
+    TestAbandonedCaptureReleasesItsPipes();
     TestLiveDnsTransports();
 
     if (g_failures) {

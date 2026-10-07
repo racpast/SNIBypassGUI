@@ -1,6 +1,6 @@
 # SNIBypassGUI Proprietary License
 
-**Version 4.0 — Effective Date: October 5, 2026**
+**Version 5.0 — Effective Date: October 14, 2026**
 
 Copyright © 2026 Racpast. All rights reserved.
 
@@ -464,7 +464,9 @@ exclusion attaches to the person or persons operating it:
 controls, or operates either;
 
 (b) any GitHub account that has at any time used the username **coolapijust**,
-**mechrevo**, **dongzheyu**, **lzpls**, **snishaper**, **JetCPP-dongle**, or
+**mechrevo**, **dongzheyu**, **lzpls**, **snishaper**, **JetCPP-dongle**,
+**dongle-china**, **wuguo13842**, **UcnacDx2**, **UjuiUjuMandan**,
+**RememberOurPromise**, **haygcao**, **eroneko**, **cjh0613**, **changsongyang**, or
 **Calvin1-tech**, and any person who created, controls, or operates such an account;
 
 (c) the repository **snishaper**, its forks, and its successors under any name, and

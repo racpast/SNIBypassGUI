@@ -13,44 +13,13 @@
 //
 // For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 //
-// See the LICENSE.md file in the project root for full terms and conditions.
+// See the license file in the project root for full terms and conditions.
 
 #pragma once
-// DNS redirection, whole: the rules, the policy table that routes names here, and
-// the server that answers them.
-//
-// The two mechanisms are one feature and are owned together, because they are only
-// ever correct together. A policy rule pointing at a resolver that is not listening
-// breaks every name it covers; a resolver holding rules the policy table has not
-// been told about answers nothing. So they are brought up in the order that is safe
-// to be interrupted in — resolver first, policy table second — taken down in the
-// reverse one, and a hot-reload updates both from the same parse of the file.
-//
-// The rule set is owned here rather than by the resolver. The resolver needs
-// something to match against; which names are redirected, and how many, is a question
-// about the file this class read.
-//
-// Nothing is left behind by a clean stop. What an unclean one leaves is a single
-// registry key with a fixed name, which the next start removes before it does
-// anything else (see Services::EnforceCleanSlate).
-//
-// Being up is not a promise about the next second, and this class is what keeps
-// watch over its own half of it. A guardian thread holds the invariant above for as
-// long as the redirection is meant to be up, waiting — never polling — on the two
-// events that can break it:
-//
-//   * the server's loop ending, which cannot be repaired in place and takes the
-//     whole stack down with it;
-//   * the policy rule being deleted or altered by something else, which CAN be
-//     repaired exactly, because what the table should say is known here.
-//
-// The difference in treatment is the difference in what the two states cost. A rule
-// that has gone missing sends the listed names back to their real addresses: those
-// sites break the way they break when this program is not running, which is a
-// recoverable, familiar failure. A server that has stopped answering while the rule
-// still points at it is the other thing entirely — the queries are accepted by a
-// socket nobody reads and never answered, so every listed name hangs until the
-// client gives up. That one is not repaired, it is escaped.
+// DNS redirection: rule set, policy table (NRPT), and local resolver.
+// Start order (interruptible): resolver → policy table. Stop: reverse.
+// Guardian thread watches server loop and policy table, repairs rule deletion,
+// fails on unrecoverable states (server stopped, rule repeatedly deleted).
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -115,6 +84,17 @@ public:
     size_t LoadRules(const std::wstring& path);
 
     size_t RuleCount() const;
+
+    // Where the local server binds, and therefore what the policy rule names.
+    //
+    // Set here rather than on the resolver directly, because the two halves have to
+    // agree: a rule pointing at an address the server is not listening on breaks
+    // every name it covers, and one pointing at a *different* address than the
+    // server's is the same failure spelled less obviously. One call sets both, so
+    // there is no ordering in which they can disagree.
+    //
+    // Takes effect on the next Start: a bound listener is not moved.
+    void SetEndpoint(const BindEndpoint& endpoint);
 
     // Start the local server, then route every namespace the rules name to it, then
     // begin watching both. Returns false having undone whatever it managed to do.
@@ -226,6 +206,16 @@ private:
     LocalResolver m_resolver;
     std::unique_ptr<FileWatcher> m_watcher;
     std::wstring m_rulesPath;  // path being monitored
+
+    // Where the resolver binds and what the policy rule names. Read under m_tableMx
+    // by the paths that touch the registry, so a change cannot land between the rule
+    // being compared and being repaired.
+    //
+    // Defaulted rather than left empty: a redirector that was never configured —
+    // which is what the tests and any future caller that does not read a payload
+    // get — has to bind somewhere, and binding the compiled default is the only
+    // answer that cannot be wrong about what the rule should say.
+    BindEndpoint m_endpoint = {kDefaultResolverAddress, kDefaultResolverPort};
 
     // Both manual-reset. m_guardCancel says the guardian is no longer wanted;
     // m_failed is the one fact this class publishes outward.

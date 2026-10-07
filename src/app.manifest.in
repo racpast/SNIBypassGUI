@@ -15,7 +15,7 @@
 
   For licensing inquiries: snibypassgui@gmail.com or racpast@gmail.com
 
-  See the LICENSE.md file in the project root for full terms and conditions.
+  See the license file in the project root for full terms and conditions.
 
   GENERATED FROM app.manifest.in by CMake; do not edit the copy in the build
   tree. The version comes from APP_VERSION_NUM in src/app/version.h, like every
