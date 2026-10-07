@@ -32,14 +32,6 @@ uint64_t Now() {
     return GetTickCount64();
 }
 
-bool EnsureWinsock() {
-    static const bool ready = [] {
-        WSADATA data;
-        return WSAStartup(MAKEWORD(2, 2), &data) == 0;
-    }();
-    return ready;
-}
-
 void SetNonBlocking(SOCKET s) {
     u_long mode = 1;
     ioctlsocket(s, FIONBIO, &mode);
@@ -126,7 +118,36 @@ bool PrepareSessionSocket(SOCKET client) {
 }
 
 SOCKET BindListener(const wchar_t* address, uint16_t port, int type, int protocol) {
-    SOCKET s = socket(AF_INET, type, protocol);
+    // The family is taken from the literal rather than assumed, in the order a
+    // sentence like "127.0.0.1" or "::1" is unambiguous in: a dotted quad is IPv4
+    // and anything else that parses is IPv6. Both are needed because a listener's
+    // address is configuration — the resolver's endpoint comes from the payload —
+    // and a configured value the parser accepted must not then fail at bind time on
+    // a family this never tried.
+    sockaddr_storage storage = {};
+    int addrLen = 0;
+    in_addr v4 = {};
+    in6_addr v6 = {};
+    if (InetPtonW(AF_INET, address, &v4) == 1) {
+        auto& addr = reinterpret_cast<sockaddr_in&>(storage);
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        addr.sin_addr = v4;
+        addrLen = sizeof(sockaddr_in);
+    } else if (InetPtonW(AF_INET6, address, &v6) == 1) {
+        auto& addr = reinterpret_cast<sockaddr_in6&>(storage);
+        addr.sin6_family = AF_INET6;
+        addr.sin6_port = htons(port);
+        addr.sin6_addr = v6;
+        addrLen = sizeof(sockaddr_in6);
+    } else {
+        // Not a literal at all. Refused rather than resolved: a name here would be
+        // resolved through the DNS this program is in the middle of serving.
+        WSASetLastError(WSAEINVAL);
+        return INVALID_SOCKET;
+    }
+
+    SOCKET s = socket(storage.ss_family, type, protocol);
     if (s == INVALID_SOCKET) return INVALID_SOCKET;
 
     // SO_EXCLUSIVEADDRUSE is the whole point of binding here rather than with a
@@ -146,11 +167,7 @@ SOCKET BindListener(const wchar_t* address, uint16_t port, int type, int protoco
         return INVALID_SOCKET;
     }
 
-    sockaddr_in addr = {};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    if (InetPtonW(AF_INET, address, &addr.sin_addr) != 1 ||
-        bind(s, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR) {
+    if (bind(s, reinterpret_cast<const sockaddr*>(&storage), addrLen) == SOCKET_ERROR) {
         const int err = WSAGetLastError();
         closesocket(s);
         WSASetLastError(err);

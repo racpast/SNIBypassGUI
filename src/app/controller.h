@@ -136,7 +136,7 @@ void CheckForUpdates();
 // The same path with every failure swallowed to a log line, for the startup check.
 void StartSilentUpdateCheck();
 
-// Check whether the payload (paths.ini) is present. If it is missing, prompt the
+// Check whether the payload descriptor (meta.ini) is present. If it is missing, prompt the
 // user once and, if they agree, fetch and apply the full manifest to restore it.
 // Runs synchronously on the calling thread; call it from a worker after the tray
 // is up so it does not block the message loop.

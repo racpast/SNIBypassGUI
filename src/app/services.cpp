@@ -38,6 +38,7 @@
 #include "app/i18n.h"
 #include "app/logging.h"
 #include "app/paths.h"
+#include "app/payload.h"
 #include "app/text.h"
 #include "app/version.h"
 #include "dns/dns_proxy.h"
@@ -347,13 +348,7 @@ namespace {
 
 // ---- Payload-declared locations ---------------------------------------------
 
-// The service-location interface lives at a fixed path next to the executable, so
-// the layout it points at can change across releases without breaking startup.
-std::wstring PathsConfigFile() {
-    return ExeDir() + L"paths.ini";
-}
-
-// A parsed paths.ini, kept until the file changes underneath it.
+// A parsed payload descriptor (meta.ini), kept until the file changes underneath it.
 //
 // Every lookup below used to parse the file from scratch, and the ones that matter
 // run often: NginxRunning and SniGateRunning resolve an executable path each time the
@@ -370,24 +365,28 @@ std::wstring PathsConfigFile() {
 // Guarded because these are called from the tray's worker threads as well as the UI
 // thread. The vector is returned by value rather than by reference so a caller cannot
 // hold a reference into it while another thread replaces it.
-struct PathsStamp {
+//
+// The parsed contents are the whole descriptor, not just [Paths]: the resolver
+// endpoint lives in the same file, and reading it twice for one start would be two
+// parses of a file the user edits by hand.
+struct PayloadStamp {
     long long size = -1;
     long long mtime = -1;
     bool known = false;
 
-    bool operator==(const PathsStamp& o) const {
+    bool operator==(const PayloadStamp& o) const {
         return size == o.size && mtime == o.mtime && known == o.known;
     }
 };
 
-std::mutex g_pathsMx;
-PathsStamp g_pathsStamp;
-std::vector<Ini::Section> g_pathsSections;
+std::mutex g_payloadMx;
+PayloadStamp g_payloadStamp;
+std::vector<Ini::Section> g_payloadSections;
 
-PathsStamp StampOfPathsFile() {
-    PathsStamp stamp;
+PayloadStamp StampOfPayloadFile() {
+    PayloadStamp stamp;
     WIN32_FILE_ATTRIBUTE_DATA data = {};
-    if (!GetFileAttributesExW(PathsConfigFile().c_str(), GetFileExInfoStandard, &data))
+    if (!GetFileAttributesExW(Payload::ConfigPath().c_str(), GetFileExInfoStandard, &data))
         return stamp;
     stamp.size =
         static_cast<long long>((static_cast<unsigned long long>(data.nFileSizeHigh) << 32u) |
@@ -399,19 +398,19 @@ PathsStamp StampOfPathsFile() {
     return stamp;
 }
 
-std::vector<Ini::Section> PathsSections() {
-    const std::wstring path = PathsConfigFile();
-    const PathsStamp stamp = StampOfPathsFile();
+std::vector<Ini::Section> PayloadSections() {
+    const std::wstring path = Payload::ConfigPath();
+    const PayloadStamp stamp = StampOfPayloadFile();
 
-    std::lock_guard<std::mutex> lock(g_pathsMx);
-    if (g_pathsStamp == stamp && g_pathsStamp.known) return g_pathsSections;
+    std::lock_guard<std::mutex> lock(g_payloadMx);
+    if (g_payloadStamp == stamp && g_payloadStamp.known) return g_payloadSections;
 
-    g_pathsSections = Ini::Read(path);
-    g_pathsStamp = stamp;
-    return g_pathsSections;
+    g_payloadSections = Ini::Read(path);
+    g_payloadStamp = stamp;
+    return g_payloadSections;
 }
 
-// Read one string value out of paths.ini.
+// Read one string value out of the payload descriptor.
 //
 // This goes through Ini::Value rather than GetPrivateProfileStringW, because the
 // profile API cannot serve a value longer than 32767 characters: at exactly 32768 it
@@ -425,7 +424,7 @@ std::vector<Ini::Section> PathsSections() {
 std::wstring ResolvedPath(const wchar_t* key, const std::wstring& fallback) {
     // An unreadable or oversized value falls back to the built-in default rather than
     // resolving a truncated path to a directory that is not the one intended.
-    std::wstring rel = Ini::Value(PathsSections(), L"Paths", key);
+    std::wstring rel = Ini::Value(PayloadSections(), L"Paths", key);
     if (rel.empty()) rel = fallback;
     return PathUnder(rel);
 }
@@ -461,12 +460,18 @@ constexpr DWORD kPortPollMs = 50;
 void AwaitPortsReleased(DWORD timeoutMs) {
     const ULONGLONG deadline = GetTickCount64() + timeoutMs;
     for (;;) {
+        // The same test the start will make, so "released" means what the next start
+        // needs rather than what a table happens to say. A process still winding down
+        // can have closed its listener while its socket lingers; that one binds, and
+        // waiting on it would spend the timeout on nothing.
         bool anyHeld = false;
-        for (int port : Ports::kServicePorts)
-            if (Ports::IsOccupied(port)) anyHeld = true;
+        for (const Ports::PortClaim& claim : RequiredPorts())
+            if (!Ports::CanBind(claim)) anyHeld = true;
         if (!anyHeld) return;
         if (GetTickCount64() >= deadline) {
-            LOGW(L"A service port is still held after stopping; a restart may fail to bind.");
+            LOGW(
+                L"A required endpoint is still unavailable after stopping; a restart may "
+                L"fail to bind.");
             return;
         }
         Sleep(kPortPollMs);
@@ -865,26 +870,40 @@ bool StartLocked(Runtime::State& state, bool interactive, StartFailure& failure,
     // that reports itself running while not one site works.
     if (!EnsureDnsClientRunning(failure, interactive)) return false;
 
-    if (AnyPortOccupied()) {
+    // Every endpoint this program needs, tested the way the services will bind them.
+    //
+    // One check, before anything is launched, rather than the two it used to be: the
+    // payload's three ports were checked here and the DNS endpoints were left to fail
+    // as component errors when their bind went wrong, so a conflict on 127.11.45.14:53
+    // reached the user as "DNS redirection could not start" and sent them looking at
+    // the network stack instead of at the process holding the port.
+    if (const std::vector<Ports::PortClaim> unavailable = UnavailablePorts();
+        !unavailable.empty()) {
         // The question itself was asked by the caller, outside this lock. All that is
         // decided here is what to do with the answer, and the answer to "free them"
         // for a non-interactive start is not a question at all: the logon path and the
         // cache clean have nobody to ask and must not put a dialog in front of anyone.
         if (!portsApproved && !interactive) {
-            LOGW(L"Ports are held and this start cannot ask; aborting.");
+            LOGW(L"Required endpoints are unavailable and this start cannot ask; aborting.");
             return false;
         }
         if (!portsApproved) {
-            LOGW(L"User declined port cleanup; aborting start.");
+            LOGW(L"User declined endpoint cleanup; aborting start.");
             return false;
         }
         if (!KillPortHolders()) {
-            LOGE(L"Cannot free ports held by system-critical processes; aborting start.");
-            failure.Set(interactive, T(L"msg.portsCritical"));
+            // Named individually rather than described as "the ports": which one is
+            // still held decides what the user can do about it, and a message that
+            // said "80, 443 or 22222" would be wrong the moment a claim moved.
+            std::vector<std::wstring> still;
+            for (const Ports::PortClaim& claim : UnavailablePorts())
+                still.push_back(claim.Describe());
+            LOGE(L"Endpoint(s) could not be freed; aborting start.");
+            failure.Set(interactive, TFmt(L"msg.portsCritical", BulletList(still)));
             return false;
         }
-        if (AnyPortOccupied()) {
-            LOGE(L"Ports still occupied after cleanup; aborting start.");
+        if (!UnavailablePorts().empty()) {
+            LOGE(L"Endpoint(s) still unavailable after cleanup; aborting start.");
             failure.Set(interactive, T(L"msg.portsStillInUse"));
             return false;
         }
@@ -895,8 +914,22 @@ bool StartLocked(Runtime::State& state, bool interactive, StartFailure& failure,
     const std::wstring proxyConfig = ResolvedPath(L"DnsProxyConfig", L"data\\dns_proxy.ini");
     if (!state.proxy.LoadConfig(proxyConfig) || !state.proxy.Start()) {
         LOGE(L"Failed to start DNS proxy from " + proxyConfig + L".");
+        // Named by what actually failed to bind, which is the listener the proxy
+        // reports. With several listeners configured, "another program is using
+        // 127.191.98.10:53" would be a guess at which one, and a wrong one whenever
+        // the conflict is on the second.
+        //
+        // Nothing bound means the configuration itself was refused, and then the
+        // file it came from is the useful thing to name rather than an endpoint that
+        // was never reached.
+        std::wstring endpoints;
+        for (const std::wstring& endpoint : state.proxy.BoundEndpoints()) {
+            if (!endpoints.empty()) endpoints += L", ";
+            endpoints += endpoint;
+        }
+        if (endpoints.empty()) endpoints = proxyConfig;
         StopLocked(state);
-        failure.Set(interactive, T(L"msg.dnsProxyStartFail"));
+        failure.Set(interactive, TFmt(L"msg.dnsProxyStartFail", endpoints));
         return false;
     }
     LOGI(L"DNS proxy started.");
@@ -915,11 +948,17 @@ bool StartLocked(Runtime::State& state, bool interactive, StartFailure& failure,
         return false;
     }
 
+    const Dns::BindEndpoint resolverEndpoint =
+        Payload::LoadResolverEndpoint(Payload::ConfigPath());
+    state.redirector.SetEndpoint(resolverEndpoint);
     state.redirector.LoadRules(DnsRulesPath());
     if (!state.redirector.Start()) {
         LOGE(L"Failed to start DNS redirection.");
         StopLocked(state);
-        if (interactive) Dialogs::Show(T(L"msg.dnsStartFail"), MB_ICONERROR);
+        if (interactive) {
+            Dialogs::Show(TFmt(L"msg.dnsStartFail", resolverEndpoint.Text()).c_str(),
+                          MB_ICONERROR);
+        }
         return false;
     }
 
@@ -943,31 +982,8 @@ bool StartLocked(Runtime::State& state, bool interactive, StartFailure& failure,
 
 // ---- Uninstall helpers ------------------------------------------------------
 
-// Split a '|'-separated list, trimming each item and dropping empties.
-std::vector<std::wstring> SplitList(const std::wstring& s) {
-    std::vector<std::wstring> out;
-    size_t start = 0;
-    for (;;) {
-        const size_t bar = s.find(L'|', start);
-        std::wstring token =
-            TrimW(bar == std::wstring::npos ? s.substr(start) : s.substr(start, bar - start));
-        if (!token.empty()) out.push_back(std::move(token));
-        if (bar == std::wstring::npos) break;
-        start = bar + 1;
-    }
-    return out;
-}
-
-// Read one '|'-separated value from a section in paths.ini.
-//
-// An oversized value comes back empty from the reader, so a truncated list can never be
-// produced: either every entry is present in full or the list reads as absent. That
-// matters because these lists drive deletion — the last entry, cut mid-word, becomes a
-// prefix glob that matches more than it should, and a cleanup that silently does
-// nothing is the recoverable direction while one that deletes by a pattern nobody wrote
-// is not.
-std::vector<std::wstring> ReadPathsList(const wchar_t* section, const wchar_t* key) {
-    return SplitList(Ini::Value(PathsConfigFile(), section, key));
+std::vector<std::wstring> ReadPayloadList(const wchar_t* section, const wchar_t* key) {
+    return Ini::List(PayloadSections(), section, key);
 }
 
 // Read a certificate's subject or issuer common name.
@@ -1179,10 +1195,56 @@ bool AnyRunning() {
 
 // ---- Ports -------------------------------------------------------------------
 
-bool AnyPortOccupied() {
-    for (int port : Ports::kServicePorts)
-        if (Ports::IsOccupied(port)) return true;
-    return false;
+std::vector<Ports::PortClaim> RequiredPorts() {
+    std::vector<Ports::PortClaim> claims;
+
+    // The payload's own declarations first, in the order the file lists them, so a
+    // conflict is reported in the order the person who wrote the file will read it.
+    for (const Ports::PortClaim& claim : Payload::LoadPortClaims(Payload::ConfigPath()))
+        claims.push_back(claim);
+
+    // Then the DNS endpoints, which are declared in their own files rather than in
+    // meta.ini — the proxy's listeners in dns_proxy.ini, the resolver's address in
+    // [Resolver] — so this is the one place they all meet.
+    //
+    // Both are UDP and TCP and both are exclusive, which is not a guess: every one of
+    // these sockets is opened through SocketUtils::BindListener, which sets
+    // SO_EXCLUSIVEADDRUSE. The claim has to describe the bind that will actually be
+    // attempted, or the check answers a different question than the start will ask.
+    {
+        const std::wstring proxyConfig =
+            ResolvedPath(L"DnsProxyConfig", L"data\\dns_proxy.ini");
+        const Dns::DnsProxyConfig proxy = Dns::DnsProxyConfig::Load(proxyConfig);
+        for (const Dns::DnsProxyListener& listener : proxy.listeners) {
+            claims.push_back(Ports::PortClaim{listener.address, listener.port,
+                                              Ports::Transport::Both,
+                                              Ports::BindMode::Exclusive});
+        }
+    }
+    {
+        const Dns::BindEndpoint resolver = Payload::LoadResolverEndpoint(Payload::ConfigPath());
+        claims.push_back(Ports::PortClaim{resolver.address, resolver.port,
+                                          Ports::Transport::Both, Ports::BindMode::Exclusive});
+    }
+
+    return claims;
+}
+
+std::vector<DWORD> HoldersOf(const Ports::PortClaim& claim) {
+    // Which table describes the holder depends on the transport. A TCP conflict is a
+    // listener; a UDP one is any bound socket, because UDP has no LISTEN state to
+    // filter on. A claim for both is answered by the TCP list, which is where a
+    // process that took the port deliberately is found first.
+    if (claim.transport == Ports::Transport::Udp) return Ports::UdpHoldersOn(claim.port);
+    return Ports::ListenersOn(claim.port);
+}
+
+std::vector<Ports::PortClaim> UnavailablePorts() {
+    std::vector<Ports::PortClaim> unavailable;
+    for (const Ports::PortClaim& claim : RequiredPorts()) {
+        if (!Ports::CanBind(claim)) unavailable.push_back(claim);
+    }
+    return unavailable;
 }
 
 bool KillPortHolders() {
@@ -1192,27 +1254,37 @@ bool KillPortHolders() {
     Command::RunHidden(L"net stop w3svc /y", nullptr, 30000);
     Command::RunHidden(L"net stop was /y", nullptr, 30000);
 
+    // Only the claims that are actually blocked, and each is tested again by a bind
+    // rather than assumed to be blocked because it was earlier: stopping HTTP.sys
+    // above frees 80 and 443 without any process being terminated, and the calls
+    // below would otherwise report a conflict the cleanup has already resolved.
     bool allFreed = true;
-    for (int port : Ports::kServicePorts) {
-        for (DWORD pid : Ports::ListenersOn(port)) {
+    for (const Ports::PortClaim& claim : RequiredPorts()) {
+        if (Ports::CanBind(claim)) continue;
+
+        for (DWORD pid : HoldersOf(claim)) {
             if (pid == 0) continue;
 
             std::wstring image;
             const bool identified = Process::TryImagePath(pid, image);
 
             if (Ports::IsSystemCritical(pid)) {
-                LOGE(L"Port " + std::to_wstring(port) +
-                     L" held by a system-critical process (pid " + std::to_wstring(pid) +
-                     L": " + (identified ? image : std::wstring(L"<unknown>")) + L")");
+                LOGE(L"Endpoint " + claim.Text() + L" held by a system-critical process (pid " +
+                     std::to_wstring(pid) + L": " +
+                     (identified ? image : std::wstring(L"<unknown>")) + L")");
                 allFreed = false;
                 continue;
             }
 
-            LOGW(L"Freeing port " + std::to_wstring(port) + L": terminating pid " +
-                 std::to_wstring(pid) + L" (" +
-                 (identified ? image : std::wstring(L"<unknown>")) + L")");
+            LOGW(L"Freeing " + claim.Text() + L": terminating pid " + std::to_wstring(pid) +
+                 L" (" + (identified ? image : std::wstring(L"<unknown>")) + L")");
             if (!Process::KillTree(pid)) allFreed = false;
         }
+
+        // The bind is the verdict, not the kill: a process that ignored the
+        // termination, or a holder the table did not name, leaves this unavailable
+        // and the caller has to be told.
+        if (!Ports::CanBind(claim)) allFreed = false;
     }
     return allFreed;
 }
@@ -1255,15 +1327,15 @@ void EnforceCleanSlate() {
     // is a conflict the user is asked about, in KillPortHolders, on the way into a
     // start.
     const std::wstring oursLower[] = {LowerW(ours[0]), LowerW(ours[1])};
-    for (int port : Ports::kServicePorts) {
-        for (DWORD pid : Ports::ListenersOn(port)) {
+    for (const Ports::PortClaim& claim : RequiredPorts()) {
+        for (DWORD pid : HoldersOf(claim)) {
             std::wstring image;
             if (pid == 0 || !Process::TryImagePath(pid, image)) continue;
             image = LowerW(image);
             for (const std::wstring& mine : oursLower) {
                 if (image != mine) continue;
                 LOGW(L"Terminating a leftover " + image + L" (pid " + std::to_wstring(pid) +
-                     L") still holding port " + std::to_wstring(port) + L".");
+                     L") still holding " + claim.Text() + L".");
                 Process::KillTree(pid);
                 break;
             }
@@ -1302,10 +1374,14 @@ bool Start(bool interactive) {
     // services the user is using. The full check is repeated under the lock below,
     // where the decision is actually made.
     bool portsApproved = true;
-    if (interactive && !AnythingRunning(*state) && AnyPortOccupied()) {
-        portsApproved = Dialogs::Show(T(L"msg.portsInUse"), MB_ICONWARNING | MB_YESNO) == IDYES;
+    if (interactive && !AnythingRunning(*state) && !UnavailablePorts().empty()) {
+        std::vector<std::wstring> held;
+        for (const Ports::PortClaim& claim : UnavailablePorts())
+            held.push_back(claim.Describe());
+        portsApproved = Dialogs::Show(TFmt(L"msg.portsInUse", BulletList(held)).c_str(),
+                                      MB_ICONWARNING | MB_YESNO) == IDYES;
         if (!portsApproved) {
-            LOGW(L"User declined port cleanup; aborting start.");
+            LOGW(L"User declined endpoint cleanup; aborting start.");
             return false;
         }
     }
@@ -1338,9 +1414,9 @@ void RunAutostartMode() {
 // unrelated files. So uninstall removes only what this program owns, and removes the
 // directory itself ONLY if that left it empty.
 //
-// WHAT we own is declared by the payload ([Uninstall] in paths.ini), not baked into
+// WHAT we own is declared by the payload ([Uninstall] in meta.ini), not baked into
 // this executable — the same reason the service locations live there. A payload that
-// grows a new folder ships an updated paths.ini through the ordinary signed update.
+// grows a new folder ships an updated meta.ini through the ordinary signed update.
 // This code is the executor of that declaration, never the author of it.
 void Uninstall() {
     LOGI(L"Uninstalling.");
@@ -1351,11 +1427,11 @@ void Uninstall() {
     Shortcut::RemoveIfOurs();
 
     // Pull sni-gate's locally generated CA out of the Trusted Root stores. Done
-    // BEFORE the files go away, since the names come from paths.ini, which is itself
+    // BEFORE the files go away, since the names come from meta.ini, which is itself
     // on the removal list. Both the machine store (where an elevated install lands)
     // and the current user's store are swept.
     const std::vector<std::wstring> certNames =
-        ReadPathsList(L"Uninstall", L"RootCertificates");
+        ReadPayloadList(L"Uninstall", L"RootCertificates");
     if (!certNames.empty()) {
         size_t n = RemoveRootCertificates(CERT_SYSTEM_STORE_LOCAL_MACHINE, certNames);
         n += RemoveRootCertificates(CERT_SYSTEM_STORE_CURRENT_USER, certNames);
@@ -1364,10 +1440,10 @@ void Uninstall() {
 
     // Remove exactly what the payload declares as ours; nothing else in the program
     // directory is touched.
-    const std::vector<std::wstring> patterns = ReadPathsList(L"Uninstall", L"Remove");
+    const std::vector<std::wstring> patterns = ReadPayloadList(L"Uninstall", L"Remove");
     if (patterns.empty()) {
         LOGW(
-            L"Uninstall: paths.ini declares no [Uninstall] Remove list; "
+            L"Uninstall: meta.ini declares no [Uninstall] Remove list; "
             L"only the executable will be removed.");
     } else {
         const size_t deleted = FileSystem::DeleteByPatterns(ExeDir(), patterns);
@@ -1385,9 +1461,9 @@ CacheCleanResult CleanCache() {
     std::lock_guard<std::mutex> lock(state->operationMutex);
 
     LOGI(L"Cleaning cache.");
-    const std::vector<std::wstring> patterns = ReadPathsList(L"Cache", L"Clean");
+    const std::vector<std::wstring> patterns = ReadPayloadList(L"Cache", L"Clean");
     if (patterns.empty()) {
-        LOGW(L"Cache: paths.ini declares no [Cache] Clean patterns.");
+        LOGW(L"Cache: meta.ini declares no [Cache] Clean patterns.");
         result.ok = true;
         return result;
     }
@@ -1421,7 +1497,7 @@ CacheCleanResult CleanCache() {
 }
 
 size_t EnsureRequiredDirectories() {
-    const std::vector<std::wstring> dirs = ReadPathsList(L"Directories", L"Required");
+    const std::vector<std::wstring> dirs = ReadPayloadList(L"Directories", L"Required");
     if (dirs.empty()) return 0;
 
     std::vector<std::wstring> fullPaths;

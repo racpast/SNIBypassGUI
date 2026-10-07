@@ -57,6 +57,28 @@
 #include "dns/cancel.h"
 
 namespace Dns {
+
+// An address and a port, as one value.
+//
+// In Dns rather than in SocketUtils below, because it is not plumbing: it is the
+// shape two different configurations arrive in — the resolver's endpoint from the
+// payload, and the forwarder's listeners from its own file — and it is named by
+// headers that have no business including this one. What SocketUtils takes is the
+// two values it binds with, which is why BindListener below still takes them
+// separately.
+//
+// A pair rather than two parameters because every caller treats it as a single
+// setting that is configured, logged and compared as a whole, and because two
+// adjacent parameters of the same shape are how an address ends up in a port.
+struct BindEndpoint {
+    std::wstring address;
+    uint16_t port = 53;
+
+    // "address:port". For logging and for the places that need the whole endpoint
+    // in one string; the address alone is what a bind takes.
+    std::wstring Text() const { return address + L":" + std::to_wstring(port); }
+};
+
 namespace SocketUtils {
 
 // How often a loop that is otherwise waiting checks its deadlines, in
@@ -243,13 +265,11 @@ private:
 // deadline in this program is measured against.
 uint64_t Now();
 
-// Winsock, started once for the process and never stopped.
-//
-// WSACleanup belongs to a program that is finished with sockets, and this one is
-// finished with them only when it exits — at which point the kernel does the same
-// work. Tying it to a static destructor instead would run it in an order no
-// translation unit here controls, while a worker thread may still hold a socket.
-bool EnsureWinsock();
+// Winsock is NOT started here any more. A socket cannot be opened before WSAStartup,
+// and the components that need one start the runtime themselves — see
+// platform/socket_runtime.h, which owns it now. It moved because the port checker
+// needs sockets and is not a DNS component, and having it here made the runtime a
+// DNS-layer concern that a lower layer had to reach up for.
 
 void SetNonBlocking(SOCKET s);
 
@@ -368,6 +388,12 @@ inline constexpr uint64_t kWaitPollMs = 25;
 // address with SO_REUSEADDR and quietly taking delivery of the queries meant for
 // us. The socket comes back non-blocking, so the caller only has to call
 // listen() for a stream socket.
+//
+// `address` must be a numeric literal: a dotted quad for IPv4, anything else that
+// parses for IPv6. The family is taken from the literal rather than assumed, so a
+// configured value the caller validated cannot then fail here on a family this
+// never tried. A name is refused rather than resolved — resolving it would go
+// through the DNS these servers exist to be in the middle of.
 //
 // Returns INVALID_SOCKET on failure, with the Winsock error left set.
 SOCKET BindListener(const wchar_t* address, uint16_t port, int type, int protocol);

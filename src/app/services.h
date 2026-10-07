@@ -19,6 +19,9 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
+
+#include "platform/ports.h"
 
 // High-level orchestration of the local proxy stack: DNS redirection, encrypted
 // DNS forwarding, and the two loopback services redirected names resolve to.
@@ -63,7 +66,7 @@ private:
 };
 
 // Resolved executable and data locations. Every one comes from [Paths] in
-// paths.ini, so the payload owns its own layout and can be restructured in a later
+// meta.ini, so the payload owns its own layout and can be restructured in a later
 // release without rebuilding this executable. These need no Runtime.
 std::wstring NginxExe();
 std::wstring SniGateExe();
@@ -124,11 +127,35 @@ void Stop();
 void EnforceCleanSlate();
 
 // ---- Ports ----
-bool AnyPortOccupied();
+//
+// The endpoints this program needs, assembled from every declaration that names
+// one: [Ports] Required in the payload descriptor, the proxy's listeners from
+// dns_proxy.ini, and the resolver's address.
+//
+// One list rather than a check per component, because the question "can this start"
+// is about all of them at once. It used to be asked in two places and at two
+// different times — the payload's three ports early, the DNS endpoints implicitly,
+// when a bind failed — so a conflict on a DNS endpoint surfaced as a component
+// failure rather than as the port conflict it was.
+std::vector<Ports::PortClaim> RequiredPorts();
 
-// Attempt to free occupied ports by stopping HTTP.sys services and terminating
-// non-critical holders. Returns true if all ports ended up free.
+// The claims from RequiredPorts() that cannot be bound right now, in declaration
+// order. Empty means everything this program needs is free.
+//
+// Answered by BINDING each claim in the mode it declares, not by reading a table:
+// whether a bind succeeds depends on the socket options the holder chose, and those
+// are not visible from outside its process. See platform/ports.h for the measured
+// combinations.
+std::vector<Ports::PortClaim> UnavailablePorts();
+
+// Attempt to free the endpoints nothing else critical holds, by stopping HTTP.sys
+// services and terminating non-critical holders. Returns true if every claim in
+// UnavailablePorts() can be bound afterwards.
 bool KillPortHolders();
+
+// The PIDs holding `claim`, for the message and for the decision to terminate.
+// Diagnostics only: never the test for whether a port is free.
+std::vector<DWORD> HoldersOf(const Ports::PortClaim& claim);
 
 // ---- Uninstall ----
 // Stop everything, remove what the payload's [Uninstall] manifest declares as ours,
@@ -142,7 +169,7 @@ struct CacheCleanResult {
 };
 
 // Stop the stack if it is running, delete everything matching [Cache] Clean from
-// paths.ini, then bring it back up if it was up before.
+// meta.ini, then bring it back up if it was up before.
 CacheCleanResult CleanCache();
 
 // ---- Directory management ----

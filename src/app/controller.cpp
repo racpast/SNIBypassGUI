@@ -277,8 +277,12 @@ void PromptAndApply(const Update::Info& info, const std::wstring& summary) {
 
     std::wstring message = std::wstring(T(titleKey)) + L" (" + info.version + L")" +
                            T(L"punct.colonEol") + L"\n\n" + summary;
+    // Bulleted here rather than in the manifest. One item reads as a sentence under
+    // the heading; several read as a list, which is what BulletList decides — and the
+    // cap keeps a long changelog from pushing the question off the dialog.
     if (!info.notes.empty())
-        message += std::wstring(L"\n") + T(L"msg.updNotes") + L"\n" + info.notes + L"\n";
+        message +=
+            std::wstring(L"\n") + T(L"msg.updNotes") + L"\n" + BulletList(info.notes) + L"\n";
     message += std::wstring(L"\n") + T(confirmKey);
     if (Dialogs::Show(message, MB_ICONQUESTION | MB_YESNO) != IDYES) return;
 
@@ -286,8 +290,9 @@ void PromptAndApply(const Update::Info& info, const std::wstring& summary) {
 }
 
 void DoRepairIfNeeded() {
-    // Cheap local check first: if paths.ini is present the payload is intact enough to
-    // run, so skip the network entirely. This is the common case — a normal install.
+    // Cheap local check first: if the payload descriptor is present, the payload is
+    // intact enough to run, so skip the network entirely. This is the common case —
+    // a normal install.
     if (Bootstrap::PayloadPresent()) return;
 
     // Claim the update gate so a concurrent manual check cannot race us. The dialog
@@ -295,7 +300,7 @@ void DoRepairIfNeeded() {
     if (!Claim(g_updateBusy)) return;
     if (!RunDetached("Repair", [] {
             BusyGuard guard(g_updateBusy);
-            LOGW(L"Repair: paths.ini missing; prompting the user.");
+            LOGW(L"Repair: meta.ini missing; prompting the user.");
             if (Dialogs::Show(T(L"msg.repairNeeded"), MB_ICONWARNING | MB_YESNO) != IDYES) {
                 LOGI(L"Repair: user declined; running without payload.");
                 return;

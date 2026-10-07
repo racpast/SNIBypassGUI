@@ -36,12 +36,12 @@
 #include "dns/message.h"
 #include "dns/socket_utils.h"
 #include "dns/tcp_session.h"
+#include "platform/socket_runtime.h"
 
 namespace Dns {
 namespace {
 
 using SocketUtils::CloseSocket;
-using SocketUtils::EnsureWinsock;
 using SocketUtils::kMaxMessage;
 using SocketUtils::kMaxTcpSessions;
 using SocketUtils::kTcpIdleTimeoutMs;
@@ -78,17 +78,16 @@ constexpr uint64_t kUpstreamRefreshMs = 10000;
 static_assert(kMaxTcpSessions * 2 + 4 <= FD_SETSIZE,
               "select() cannot watch that many sockets at once");
 
-// Bind the resolver's UDP listener. The shared binder takes the address
-// explicitly, so the loopback endpoint this server owns stays a property of this
-// file rather than of the plumbing both servers share.
-SOCKET BindUdpListener() {
-    return SocketUtils::BindListener(kResolverAddress, kResolverPort, SOCK_DGRAM, IPPROTO_UDP);
+// Bind the resolver's UDP listener on `endpoint`.
+SOCKET BindUdpListener(const BindEndpoint& endpoint) {
+    return SocketUtils::BindListener(endpoint.address.c_str(), endpoint.port, SOCK_DGRAM,
+                                     IPPROTO_UDP);
 }
 
 // Bind and listen on the resolver's TCP listener.
-SOCKET BindTcpListener() {
-    const SOCKET s =
-        SocketUtils::BindListener(kResolverAddress, kResolverPort, SOCK_STREAM, IPPROTO_TCP);
+SOCKET BindTcpListener(const BindEndpoint& endpoint) {
+    const SOCKET s = SocketUtils::BindListener(endpoint.address.c_str(), endpoint.port,
+                                               SOCK_STREAM, IPPROTO_TCP);
     if (s == INVALID_SOCKET) return INVALID_SOCKET;
     if (listen(s, SOMAXCONN) == SOCKET_ERROR) {
         const int err = WSAGetLastError();
@@ -117,15 +116,23 @@ struct Upstream {
 };
 
 // True if `sa` is a server worth sending a query to.
-bool UsableUpstream(const sockaddr* sa) {
+//
+// `self` is this resolver's own bound address. Forwarding to it would be a loop with
+// itself: the query would come back here, match a rule or be forwarded again, and
+// the client would get either no answer or the same one it just sent. Passed in
+// rather than read from a constant because the endpoint is configuration, and a
+// check against the wrong address would only fail the machine where the two differ.
+bool UsableUpstream(const sockaddr* sa, const BindEndpoint& self) {
     if (sa->sa_family == AF_INET) {
         const in_addr& v4 = reinterpret_cast<const sockaddr_in*>(sa)->sin_addr;
         if (v4.s_addr == 0) return false;  // "no server configured"
 
-        // Our own listener: forwarding to it would be a loop with itself.
-        in_addr self = {};
-        InetPtonW(AF_INET, kResolverAddress, &self);
-        return v4.s_addr != self.s_addr;
+        // Our own listener, when it is an IPv4 address. A v6 endpoint cannot match
+        // a v4 upstream, and InetPtonW simply fails on one, which leaves this check
+        // as the "not ours" it should be.
+        in_addr own = {};
+        if (InetPtonW(AF_INET, self.address.c_str(), &own) == 1) return v4.s_addr != own.s_addr;
+        return true;
     }
     if (sa->sa_family == AF_INET6) {
         const in6_addr& v6 = reinterpret_cast<const sockaddr_in6*>(sa)->sin6_addr;
@@ -143,6 +150,12 @@ bool UsableUpstream(const sockaddr* sa) {
         if (std::memcmp(b, kPlaceholderPrefix, sizeof(kPlaceholderPrefix)) == 0 && b[14] == 0 &&
             b[15] >= 1 && b[15] <= 3)
             return false;
+
+        // Our own listener, when it is an IPv6 one.
+        in6_addr own = {};
+        if (InetPtonW(AF_INET6, self.address.c_str(), &own) == 1 &&
+            std::memcmp(b, own.s6_addr, 16) == 0)
+            return false;
         return true;
     }
     return false;
@@ -150,7 +163,7 @@ bool UsableUpstream(const sockaddr* sa) {
 
 // The DNS servers configured on every adapter that is up, deduplicated and in the
 // order Windows reports them — which is the order Windows itself would try.
-std::vector<Upstream> DiscoverUpstreams() {
+std::vector<Upstream> DiscoverUpstreams(const BindEndpoint& self) {
     std::vector<Upstream> out;
 
     ULONG size = 16 * 1024;
@@ -178,7 +191,7 @@ std::vector<Upstream> DiscoverUpstreams() {
             const int len = server->Address.iSockaddrLength;
             if (!sa || len <= 0 || static_cast<size_t>(len) > sizeof(sockaddr_storage))
                 continue;
-            if (!UsableUpstream(sa)) continue;
+            if (!UsableUpstream(sa, self)) continue;
 
             Upstream entry;
             std::memcpy(&entry.addr, sa, static_cast<size_t>(len));
@@ -263,6 +276,12 @@ struct ResolverState {
     SOCKET upstream4 = INVALID_SOCKET;
     SOCKET upstream6 = INVALID_SOCKET;
 
+    // The endpoint this session bound, so the upstream filter can recognise the
+    // server's own address and refuse to forward to it. Kept here rather than read
+    // from the object because the loop runs on another thread and this is one of the
+    // values it has to be able to read without taking a lock.
+    BindEndpoint endpoint;
+
     std::vector<Upstream> upstreams;
     uint64_t upstreamsAt = 0;
 
@@ -294,7 +313,7 @@ namespace {
 void RefreshUpstreams(ResolverState& s) {
     const uint64_t now = Now();
     if (s.upstreamsAt != 0 && now - s.upstreamsAt < kUpstreamRefreshMs) return;
-    s.upstreams = DiscoverUpstreams();
+    s.upstreams = DiscoverUpstreams(s.endpoint);
     s.upstreamsAt = now;
 }
 
@@ -752,6 +771,16 @@ void LocalResolver::Publish(std::shared_ptr<const RuleSet> rules) {
     m_activeRules = std::move(rules);
 }
 
+void LocalResolver::SetEndpoint(const BindEndpoint& endpoint) {
+    std::lock_guard<std::mutex> lock(m_mx);
+    m_endpoint = endpoint;
+}
+
+BindEndpoint LocalResolver::Endpoint() const {
+    std::lock_guard<std::mutex> lock(m_mx);
+    return m_endpoint;
+}
+
 std::shared_ptr<const RuleSet> LocalResolver::ActiveRules() const {
     std::lock_guard<std::mutex> lock(m_mx);
     return m_activeRules;
@@ -770,30 +799,33 @@ bool LocalResolver::Start() {
         return false;
     }
 
-    if (!EnsureWinsock()) {
+    if (!SocketRuntime::Ensure()) {
         LOGE(L"Resolver: winsock could not be initialized.");
         return false;
     }
 
+    // Read once, so every half of this session binds and filters against one
+    // endpoint even if another thread calls SetEndpoint midway through.
+    const BindEndpoint endpoint = Endpoint();
+
     // Held locally until everything has succeeded: on any failure the state object
     // goes out of scope and its destructor closes whatever was already opened.
     auto state = std::make_unique<ResolverState>();
+    state->endpoint = endpoint;
 
-    state->udp = BindUdpListener();
+    state->udp = BindUdpListener(endpoint);
     if (state->udp == INVALID_SOCKET) {
-        LOGE(std::wstring(L"Resolver: cannot bind UDP ") + kResolverAddress + L":" +
-             std::to_wstring(kResolverPort) + L" (err " + std::to_wstring(WSAGetLastError()) +
-             L").");
+        LOGE(std::wstring(L"Resolver: cannot bind UDP ") + endpoint.Text() + L" (err " +
+             std::to_wstring(WSAGetLastError()) + L").");
         return false;
     }
 
     // The shared binder already turned off ICMP-port-unreachable poisoning, which
     // is what a forwarder sharing one socket across several upstreams needs.
-    state->tcp = BindTcpListener();
+    state->tcp = BindTcpListener(endpoint);
     if (state->tcp == INVALID_SOCKET) {
-        LOGE(std::wstring(L"Resolver: cannot listen on TCP ") + kResolverAddress + L":" +
-             std::to_wstring(kResolverPort) + L" (err " + std::to_wstring(WSAGetLastError()) +
-             L").");
+        LOGE(std::wstring(L"Resolver: cannot listen on TCP ") + endpoint.Text() + L" (err " +
+             std::to_wstring(WSAGetLastError()) + L").");
         return false;
     }
 
@@ -833,8 +865,7 @@ bool LocalResolver::Start() {
         return false;
     }
 
-    LOGI(std::wstring(L"Resolver: listening on ") + kResolverAddress + L":" +
-         std::to_wstring(kResolverPort) + L".");
+    LOGI(std::wstring(L"Resolver: listening on ") + endpoint.Text() + L".");
     return true;
 }
 

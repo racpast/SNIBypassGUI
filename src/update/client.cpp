@@ -22,6 +22,8 @@
 #include <shellapi.h>
 
 #include <cstdint>
+#include <cstring>
+#include <cwchar>
 #include <fstream>
 #include <map>
 #include <set>
@@ -412,6 +414,82 @@ bool IsHexDigest(const std::wstring& s) {
     return true;
 }
 
+namespace {
+
+// One language's value out of the notes object, as items.
+//
+// The array case is the shape written since the notes became a list. The string case
+// is what every earlier publish wrote, and it is still what the channel serves, so it
+// is not a compatibility nicety — it is the shape this client will actually be handed
+// until the next release.
+//
+// A legacy string is split on newlines and one leading marker is stripped from each
+// line. THE MARKER IS NOT COSMETIC: those lines were written as "• Added support for
+// X." because the reader at the time showed the text verbatim, and the renderer that
+// draws these items now prefixes its own bullet — so a marker left in place renders as
+// "• • Added support for X." Stripping it here is what keeps the old publishes
+// looking the way they always did.
+//
+// An empty item is dropped rather than kept: a blank line in a block scalar is
+// spacing, not a note.
+std::vector<std::wstring> NoteItems(const Json::Value& value) {
+    std::vector<std::wstring> items;
+
+    if (value.type == Json::Value::Type::Array && value.arr) {
+        for (const Json::Value& item : *value.arr) {
+            if (item.type != Json::Value::Type::String) continue;
+            const std::wstring text = TrimW(Utf8ToWide(item.str));
+            if (!text.empty()) items.push_back(text);
+        }
+        return items;
+    }
+
+    if (value.type != Json::Value::Type::String) return items;
+
+    const std::wstring whole = Utf8ToWide(value.str);
+    size_t start = 0;
+    for (;;) {
+        const size_t brk = whole.find(L'\n', start);
+        std::wstring line = TrimW(brk == std::wstring::npos ? whole.substr(start)
+                                                            : whole.substr(start, brk - start));
+
+        // One marker, not a loop: a line that genuinely begins with a second bullet
+        // character after the first is text, and eating it would be this parser
+        // inventing an item boundary the author did not write.
+        for (const wchar_t* marker : {L"• ", L"•", L"- ", L"* "}) {
+            if (line.rfind(marker, 0) == 0) {
+                line = TrimW(line.substr(std::wcslen(marker)));
+                break;
+            }
+        }
+
+        if (!line.empty()) items.push_back(std::move(line));
+        if (brk == std::wstring::npos) break;
+        start = brk + 1;
+    }
+    return items;
+}
+
+}  // namespace
+
+std::vector<std::wstring> ParseNotes(const Json::Value& notes, const char* lang) {
+    std::vector<std::wstring> items;
+    if (notes.type != Json::Value::Type::Object) return items;
+
+    // The requested language if it says anything, English otherwise.
+    //
+    // The test is whether the value PRODUCED items, not what type it is. Testing the
+    // type is the defect this replaced: a language stored as a plain string was
+    // rejected as "not an array" and its reader was handed English instead, so a
+    // Chinese install would show English notes from a manifest that carried Chinese
+    // ones — the shape the channel is serving right now.
+    if (const Json::Value* wanted = notes.Find(lang)) items = NoteItems(*wanted);
+    if (items.empty() && std::strcmp(lang, "en") != 0) {
+        if (const Json::Value* english = notes.Find("en")) items = NoteItems(*english);
+    }
+    return items;
+}
+
 std::wstring Sha256File(const std::wstring& path) {
     std::ifstream in(path.c_str(), std::ios::binary);
     if (!in) return L"";
@@ -495,14 +573,10 @@ Info FetchManifest() {
         return info;
     }
 
-    // Release notes for the active language, falling back to English.
+    // Release notes for the active language, falling back to English. The decisions
+    // about which language and what shape are in ParseNotes, which is tested.
     if (const Json::Value* notes = root.Find("notes")) {
-        if (notes->type == Json::Value::Type::Object) {
-            const char* want = (GetLang() == Lang::Chinese) ? "zh-CN" : "en";
-            std::string text = notes->GetStr(want);
-            if (text.empty()) text = notes->GetStr("en");
-            info.notes = TrimW(Utf8ToWide(text));
-        }
+        info.notes = ParseNotes(*notes, GetLang() == Lang::Chinese ? "zh-CN" : "en");
     }
 
     // An install older than min_upgradable_from cannot be stepped forward
@@ -595,18 +669,12 @@ bool UpdateAvailable(const Info& info, std::wstring& summary) {
 
     if (paths.empty()) return false;
 
-    constexpr int kMaxShown = 8;
-    const int total = static_cast<int>(paths.size());
-    const int shown = total < kMaxShown ? total : kMaxShown;
-    for (int i = 0; i < shown; ++i) summary += L"• " + paths[i] + L"\n";
-
-    const int remaining = total - shown;
-    if (remaining > 0) {
-        wchar_t buf[64];
-        static_cast<void>(swprintf(buf, 64, T(L"msg.updFileMore"), remaining));
-        summary += buf;
-        summary += L'\n';
-    }
+    // Rendered through the shared list builder rather than here, so this and the
+    // release notes above it truncate at the same count and with the same wording.
+    // The count used to be a local constant, which is how two lists in one dialog
+    // came to shorten at different points.
+    summary = BulletList(paths);
+    summary += L'\n';
     return true;
 }
 

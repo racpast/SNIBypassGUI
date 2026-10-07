@@ -52,7 +52,7 @@ CURVE = ec.SECP256R1()
 # the build shipped. The human APP_VERSION_STR is display-only and never packed.
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _VERSION_H = _REPO_ROOT / "src" / "app" / "version.h"
-# Canonical extract-and-run payload tree (paths.ini, data/, licenses/).
+# Canonical extract-and-run payload tree (meta.ini, data/, licenses/).
 # Both the ZIP and the signed update tree are built from this exact directory.
 _DEFAULT_PAYLOAD = _REPO_ROOT / "resources" / "payload"
 
@@ -306,6 +306,53 @@ def collect_files(exe: Path, payload: Path) -> list[tuple[str, str, Path]]:
     return items
 
 
+def as_note_items(value) -> list[str]:
+    """Normalize one language's notes into the list of plain items the manifest carries.
+
+    Both spellings are accepted and produce the same shape:
+
+      * a YAML list of scalars — the preferred form:
+            en:
+              - Added support for X.
+              - Fixed Y.
+      * a plain string — the historical form, whose lines each began with a bullet
+        marker the client used to be shown verbatim:
+            en: |
+              • Added support for X.
+
+    The normalization happens here rather than in the client so that the display side
+    never has to know which marker an author typed: the bullet, the separator and the
+    truncation of a long list are the client's, decided once per language. A string
+    carries its own list syntax and every future marker would otherwise become a
+    client change.
+
+    A legacy string is split on newlines and a leading "• ", "- " or "* " is
+    stripped, so entries written under the old convention — including the ones
+    already deployed, which are never rewritten — arrive as the items they meant.
+
+    Module-level rather than nested inside the loader because `--notes-en` and
+    `--notes-zh` are the other way notes reach the manifest, and a publish that used
+    one of those would otherwise write a bare string into a field the client reads as
+    an array.
+    """
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    items = []
+    for line in str(value).splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        for marker in ("• ", "•", "- ", "* "):
+            if text.startswith(marker):
+                text = text[len(marker):].strip()
+                break
+        if text:
+            items.append(text)
+    return items
+
+
 def _load_release_notes(path: Path) -> dict:
     """Return the per-language notes for THIS publish from a cumulative changelog.
 
@@ -314,22 +361,27 @@ def _load_release_notes(path: Path) -> dict:
     keep the same version yet still deserve their own note (e.g. "updated a
     site's IP"), which the client surfaces on its update check. A missing file or
     empty list yields {} (a publish with no notes is allowed, e.g. a data refresh
-    the author chose not to annotate)."""
+    the author chose not to annotate).
+
+    Each language becomes a list of plain items; see as_note_items for the two
+    spellings accepted and why the normalization lives on this side.
+    """
     if not path.is_file():
         raise SystemExit(f"notes file not found: {path}")
     try:
         import yaml  # lazy: only `pack --notes-file` needs it
     except ImportError:  # pragma: no cover
         raise SystemExit("--notes-file needs PyYAML.  pip install pyyaml")
+
     doc = yaml.safe_load(path.read_text(encoding="utf-8")) or []
     if not isinstance(doc, list) or not doc:
         return {}
     top = doc[0] or {}
     notes = {}
     for key in ("en", "zh-CN"):
-        val = top.get(key)
-        if val and str(val).strip():
-            notes[key] = str(val).strip()
+        items = as_note_items(top.get(key))
+        if items:
+            notes[key] = items
     return notes
 
 
@@ -382,15 +434,24 @@ def cmd_pack(args) -> int:
 
     # Notes come from the newest changelog entry (--notes-file); the explicit
     # --notes-en/--notes-zh remain as per-language overrides for one-off packs.
+    #
+    # The overrides go through as_note_items too, so every path into this field
+    # produces the same list-of-items shape. Assigning the raw string here would put
+    # a bare string into a manifest field the client reads as an array, which it
+    # tolerates as a single item — so the publish would go out working but shaped
+    # differently depending on which flag produced it, and nothing would say so.
     notes = _load_release_notes(Path(args.notes_file)) if args.notes_file else {}
     if args.notes_en:
-        notes["en"] = args.notes_en
+        notes["en"] = as_note_items(args.notes_en)
     if args.notes_zh:
-        notes["zh-CN"] = args.notes_zh
+        notes["zh-CN"] = as_note_items(args.notes_zh)
     if notes:
-        for lang, text in notes.items():
-            first = text.splitlines()[0] if text else ""
-            print(f"  notes[{lang}]: {first}")
+        for lang, items in notes.items():
+            # A summary line, not the payload: the first item names what changed and
+            # the count says how much else there is.
+            first = items[0] if items else ""
+            more = f" (+{len(items) - 1} more)" if len(items) > 1 else ""
+            print(f"  notes[{lang}]: {first}{more}")
     else:
         print("  notes: (none)")
 

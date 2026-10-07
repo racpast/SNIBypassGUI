@@ -23,6 +23,12 @@
 
 #include "update/http.h"
 
+// The manifest is parsed by update/json.h; named here only so the note parser below
+// can take one by reference without this header pulling in the JSON reader.
+namespace Json {
+struct Value;
+}
+
 // Update endpoints. Chunk URLs in the manifest are relative to the manifest's own
 // directory, so the whole tree can be rehosted under any prefix without editing it.
 #define UPDATE_MANIFEST_URL L"https://update.rpnet.cc/snibypassgui/manifest.json"
@@ -53,7 +59,18 @@ struct Info {
     bool ok = false;
     std::wstring error;  // populated when ok == false
     std::wstring version;
-    std::wstring notes;  // release notes for the current language
+
+    // What changed in this publish, for the current language, as items rather than
+    // as a pre-formatted block.
+    //
+    // The manifest carries an array per language (see _load_release_notes in
+    // tools/release.py, which normalizes the older bullet-prefixed string into one),
+    // so the rendering decision — one line, or a bulleted list, and where it
+    // truncates — belongs to whoever shows it. Keeping the text here with its
+    // markers intact would move that decision into the changelog file, where it
+    // would differ per entry and per language.
+    std::vector<std::wstring> notes;
+
     uint64_t chunkSize = 0;
     bool reinstallRequired = false;  // we predate min_upgradable_from
     std::vector<File> files;
@@ -173,5 +190,30 @@ int CompareVersions(const std::wstring& a, const std::wstring& b);
 
 // True if `s` is a 64-character lowercase hex SHA-256 digest.
 bool IsHexDigest(const std::wstring& s);
+
+// The release notes for `lang` out of a manifest's `notes` object, as items.
+//
+// Pure, and public for that reason: which language a reader gets, and how a value
+// is turned into items, are decisions the tray's message depends on and nothing else
+// can check. It was inline in FetchManifest, and that is where two defects lived
+// unnoticed — see the implementation for both.
+//
+// Three shapes are accepted, because the field's shape is a contract between this
+// client and whatever publish is currently being served, and the two get updated at
+// different times:
+//
+//   {"en": ["a", "b"]}          the shape tools/release.py writes now
+//   {"en": "a\nb"}              what every publish before it wrote, and what the
+//   {"en": "• a\n• b"}          channel still serves until the next release
+//
+// A string is treated as one item per line, with a leading bullet marker removed —
+// the marker belonged to a reader that showed the text verbatim, and the renderer
+// that draws these items adds its own.
+//
+// `lang` is the manifest's key ("en" / "zh-CN"), not a Lang: this has no opinion
+// about which language is wanted, only about what the manifest says. English is the
+// fallback for a language the manifest does not carry, and only then — a value that
+// is present, whatever its shape, is read.
+std::vector<std::wstring> ParseNotes(const Json::Value& notes, const char* lang);
 
 }  // namespace Update

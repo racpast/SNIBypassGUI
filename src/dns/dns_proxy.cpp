@@ -43,6 +43,7 @@
 #include "dns/plain_client.h"
 #include "dns/socket_utils.h"
 #include "dns/tcp_session.h"
+#include "platform/socket_runtime.h"
 
 namespace Dns {
 namespace {
@@ -61,11 +62,15 @@ using SocketUtils::WaitSet;
 using SocketUtils::WritePending;
 using SocketUtils::WriteResult;
 
-// Queries allowed to be raced at once. Each one holds a task per enabled
-// upstream, so this is the backpressure that keeps a client burst from queueing
-// work faster than the pool can drain it. A query past the cap is answered
-// SERVFAIL rather than dropped: a resolver that goes silent makes its clients
-// retry, which turns one overload into an avalanche.
+// Queries allowed to be raced at once, across every listener. Each one holds a
+// task per upstream in the pool it was dispatched to, so this is the backpressure
+// that keeps a client burst from queueing work faster than the pool can drain it.
+// A query past the cap is answered SERVFAIL rather than dropped: a resolver that
+// goes silent makes its clients retry, which turns one overload into an avalanche.
+//
+// Shared across listeners rather than per-listener, because the resource it
+// protects is: one worker pool serves them all, and a per-listener cap would let
+// eight listeners queue eight times the work this number exists to bound.
 constexpr size_t kMaxPendingQueries = 512;
 
 // Enough workers for several independent queries to race every configured
@@ -75,14 +80,42 @@ constexpr size_t kParallelQueryCapacity = 4;
 constexpr size_t kMaxWorkerThreads = 256;
 constexpr size_t kWorkerQueueBatches = 8;
 
-// Every socket the loop watches has to fit in one fd_set: two listeners, the
-// wake pair, and one client connection per TCP session.
+// Every socket the loop watches has to fit in one fd_set: both sockets of every
+// listener, the wake pair, and one client connection per TCP session.
 //
 // One per session rather than the resolver's two: a query here runs on a pool
 // thread that owns its upstream socket, so the loop itself holds only the
 // client's half of a connection.
-static_assert(kMaxTcpSessions + 4 <= FD_SETSIZE,
+static_assert(kMaxTcpSessions + kMaxListeners * 2 + 1 <= FD_SETSIZE,
               "select() cannot watch that many sockets at once");
+
+// ---- Per-listener state ------------------------------------------------------
+
+// One bound endpoint and the upstreams it races.
+//
+// The sockets live here rather than in a pair of scalars on the state because
+// everything downstream has to know WHICH listener a query arrived on: a reply
+// leaves from the socket that received the query, and the pool a query is raced
+// against is this one's. Holding them together is what makes that a property of
+// one object instead of a parameter every function has to carry.
+//
+// Pointers into this are stable for a session's whole life: the vector is filled
+// once, in Start(), and never resized or reordered while the loop runs.
+struct Listener {
+    std::wstring address;
+    uint16_t port = 0;
+
+    SOCKET udp = INVALID_SOCKET;
+    SOCKET tcp = INVALID_SOCKET;
+
+    // The endpoints raced for a query that arrived here. Snapshotted from the
+    // configuration at Start(), so a config reload cannot change the set underneath
+    // a query already in flight.
+    std::vector<DnsProxyEndpoint> upstreams;
+
+    // "address:port", rebuilt once for the log and for the accessor.
+    std::wstring Text() const { return address + L":" + std::to_wstring(port); }
+};
 
 // ---- Racing state shared between the loop and the pool -----------------------
 
@@ -132,7 +165,7 @@ public:
         std::unique_lock<std::mutex> lock(m_mx);
         if (!m_threads.empty()) return false;
         m_stopping = false;
-        // One client query fans out to every configured upstream. nginx sends a
+        // One client query fans out to every upstream in its pool. nginx sends a
         // little over twenty distinct lookups while loading the bundled config,
         // before the first cold TLS race has necessarily completed. Keep enough
         // bounded backlog for that normal startup burst so later names are not
@@ -223,13 +256,18 @@ private:
 // cheapest one: sending a byte to the peer makes the reading end readable, which
 // select() reports like any other socket. A TCP pair would need a listener and a
 // connection to set up; two UDP sockets need nothing but a bind and a connect.
+//
+// Bound to 127.0.0.1 rather than to any configured listen address. This pair is
+// internal plumbing between this process's own threads, so it has no reason to
+// share an endpoint the payload chose — and binding it to one would make a
+// listener's address and this pair's lifetime depend on each other for no gain.
 class WakePair {
 public:
     bool Open() {
         sockaddr_in addr = {};
         addr.sin_family = AF_INET;
         addr.sin_port = 0;  // ephemeral
-        InetPtonW(AF_INET, kDnsProxyAddress, &addr.sin_addr);
+        InetPtonW(AF_INET, L"127.0.0.1", &addr.sin_addr);
 
         m_read.reset(socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP));
         if (!m_read.IsValid()) return false;
@@ -292,11 +330,14 @@ private:
 // connection needs.
 //
 // The client-facing half — the socket, its reader, the response owed to it and
-// the write cursor into that response — is the shared TcpClientConnection. What
-// is added here is the state of the query this connection is waiting on, none of
-// which the resolver has an analogue of: the resolver keeps the upstream
-// connection in its own loop, while this one names the raced query instead.
+// the write cursor into that response — is the shared TcpClientConnection. What is
+// added here is the state of the query this connection is waiting on, plus the
+// listener it was accepted on, which is what decides the pool its queries race.
 struct TcpSession : TcpClientConnection {
+    // The listener this connection arrived on. Not owned: it lives in the state's
+    // listener vector, which outlives every session by construction.
+    const Listener* listener = nullptr;
+
     // A query has been dispatched for this client and a response is owed. Kept as
     // a flag rather than inferred from `race`, so the connection's state cannot
     // depend on a weak pointer that a racing task may already have outlived.
@@ -310,7 +351,7 @@ struct TcpSession : TcpClientConnection {
     // The loop's handle on this session, so a dispatched query can name its
     // connection without the loop searching for it. Set once, when the session
     // is created, and never after — the session cannot outlive the loop's own
-    // shared_ptr, so this can never dangle where the weak_ptr can be locked.
+    // shared_ptr, so this can never dangle where the weak_ptr can lock.
     std::weak_ptr<TcpSession> self;
 };
 
@@ -329,6 +370,12 @@ struct PendingQuery {
 
     std::shared_ptr<RaceState> race;
     Query query;
+
+    // The listener the query arrived on. Its UDP socket is where the answer leaves
+    // from, for a UDP client — a reply sent from another listener's socket would
+    // carry the wrong source address, and the client would discard it.
+    const Listener* listener = nullptr;
+
     uint64_t deadline = 0;
     Client origin = Client::Udp;
 
@@ -363,15 +410,13 @@ struct PendingQuery {
 // the header's unique_ptr would be instantiated against an incomplete
 // Dns::DnsProxyState — which is a hard error, not a warning.
 struct DnsProxyState {
-    SOCKET udp = INVALID_SOCKET;
-    SOCKET tcp = INVALID_SOCKET;
+    // Fixed once Start() has filled it, so a pointer into it — which every pending
+    // query and every session holds — stays valid for the session's whole life.
+    std::vector<Listener> listeners;
 
     WakePair wake;
     WorkerPool pool;
 
-    // Snapshotted at Start(), so the loop never takes the config lock and a
-    // reload cannot change the upstream set underneath a query already in flight.
-    std::vector<DnsProxyEndpoint> upstreams;
     uint32_t timeoutMs = 0;
 
     std::vector<std::shared_ptr<TcpSession>> sessions;
@@ -381,6 +426,9 @@ struct DnsProxyState {
     // member rather than a global so its lifetime is the session's: the workers
     // that use it are shut down by ~DnsProxyState before this is destroyed, and
     // no query can outlive the state that owns it.
+    //
+    // Shared by every listener: the cache is keyed by provider, and two listeners
+    // racing the same provider should not each pay for its certificate.
     CertCache certCache;
 
     // Completions posted by workers, drained once per loop pass. Guarded by its
@@ -388,7 +436,14 @@ struct DnsProxyState {
     std::mutex completionsMx;
     std::vector<Completion> completions;
 
-    std::vector<uint8_t> scratch;  // one datagram at a time
+    // One datagram at a time, shared by every listener.
+    //
+    // One buffer rather than one per listener, and it is safe for the same reason
+    // a single-listener loop could reuse one: every read is parsed and dispatched
+    // before the next begins, and HandleQuery copies the query's bytes into the
+    // race that will outlive this pass. Nothing holds a pointer into this past the
+    // call that filled it.
+    std::vector<uint8_t> scratch;
 
     // The descriptor sets for one pass, kept here rather than in the loop body
     // because they are several hundred bytes and the loop is the hot path this
@@ -400,8 +455,10 @@ struct DnsProxyState {
         for (std::shared_ptr<TcpSession>& session : sessions) {
             CloseSocket(session->socket);
         }
-        CloseSocket(udp);
-        CloseSocket(tcp);
+        for (Listener& listener : listeners) {
+            CloseSocket(listener.udp);
+            CloseSocket(listener.tcp);
+        }
     }
 
     // Post a finished task's answer and wake the loop.
@@ -512,19 +569,27 @@ std::vector<uint8_t> QueryUpstream(const DnsProxyEndpoint& upstream, const RaceS
     }
 }
 
-// Hand one query to the pool: one task per enabled upstream, all sharing `race`.
-// Called from the loop, which is the only thread that touches `pending` and
-// `sessions`; the tasks themselves only ever touch `race` and the network.
-void DispatchQuery(DnsProxyState& s, const std::shared_ptr<RaceState>& race) {
+// Hand one query to the pool: one task per upstream in `listener`'s pool, all
+// sharing `race`. Called from the loop, which is the only thread that touches
+// `pending` and `sessions`; the tasks themselves only ever touch `race` and the
+// network.
+//
+// The listener decides the pool, so this is where "which upstreams does this
+// endpoint race" is answered: it is the set of the listener the query arrived on,
+// and nothing else in the process gets a say.
+void DispatchQuery(DnsProxyState& s, const Listener& listener,
+                   const std::shared_ptr<RaceState>& race) {
     race->total = 0;
     race->done.store(0, std::memory_order_relaxed);
 
-    for (const DnsProxyEndpoint& upstream : s.upstreams) {
-        DnsProxyEndpoint endpoint = upstream;  // copied into the task, not referenced
-        const bool submitted = s.pool.Submit([&s, endpoint, race] {
+    for (const DnsProxyEndpoint& upstream : listener.upstreams) {
+        // Captured by value, which is what puts a copy in the task: the lambda outlives
+        // this loop, and the listener's vector is not guaranteed to. Capturing a
+        // reference and copying it into a local first would be the same copy twice.
+        const bool submitted = s.pool.Submit([&s, upstream, race] {
             std::vector<uint8_t> response;
             if (!race->won.load(std::memory_order_acquire)) {
-                response = QueryUpstream(endpoint, *race, s.certCache);
+                response = QueryUpstream(upstream, *race, s.certCache);
             }
             // Counted even when the query was already won or abandoned: the loop
             // uses this to know when the query can be dropped for good.
@@ -546,14 +611,23 @@ void DispatchQuery(DnsProxyState& s, const std::shared_ptr<RaceState>& race) {
 
 // The client's own datagram socket, through the shared helper, so the empty
 // check and the cast live beside the other one.
-void SendUdp(DnsProxyState& s, const std::vector<uint8_t>& message, const sockaddr_storage& to,
-             int toLen) {
-    SendDatagram(s.udp, message, to, toLen);
+//
+// Sent from the listener's own UDP socket, which is the one the query arrived on:
+// a reply from a different listener would carry a source address the client never
+// sent to, and it would drop the answer as unrelated.
+void SendUdp(const Listener& listener, const std::vector<uint8_t>& message,
+             const sockaddr_storage& to, int toLen) {
+    SendDatagram(listener.udp, message, to, toLen);
 }
 
 // Hand a response to the client that asked for it. A TCP client that has since
 // gone away is simply dropped: the connection is already being torn down.
-void Deliver(DnsProxyState& s, PendingQuery& pending, const std::vector<uint8_t>& response) {
+//
+// The state is not a parameter: everything it would supply — the socket to send
+// from, the session to queue to — is reachable from the pending query itself,
+// because the query records the listener it arrived on and the session it belongs
+// to. Taking the state as well would be a second way to reach both.
+void Deliver(PendingQuery& pending, const std::vector<uint8_t>& response) {
     if (pending.origin == PendingQuery::Client::Udp) {
         // The last chance to notice the answer does not fit. A UDP client's
         // buffer size is a property of the client, not of the query, so it cannot
@@ -566,11 +640,11 @@ void Deliver(DnsProxyState& s, PendingQuery& pending, const std::vector<uint8_t>
             ApplyUdpBudget(pending.race->message.data(), pending.race->message.size(), payload,
                            pending.udpPayload);
         if (budget == UdpBudget::CannotFit) {
-            SendUdp(s, Failure(*pending.race, pending.query), pending.address,
+            SendUdp(*pending.listener, Failure(*pending.race, pending.query), pending.address,
                     pending.addressLen);
             return;
         }
-        SendUdp(s, payload, pending.address, pending.addressLen);
+        SendUdp(*pending.listener, payload, pending.address, pending.addressLen);
         return;
     }
     const std::shared_ptr<TcpSession> session = pending.session.lock();
@@ -604,12 +678,21 @@ bool DnsProxy::LoadConfig(const std::wstring& path) {
     std::lock_guard<std::mutex> lock(m_mx);
     m_config = DnsProxyConfig::Load(path);
 
-    if (m_config.EnabledCount() == 0) {
-        LOGE(L"DNS forwarder: no enabled upstreams in config");
+    if (m_config.listeners.empty()) {
+        LOGE(L"DNS forwarder: configuration declares no usable listener");
         return false;
     }
 
     return true;
+}
+
+std::vector<std::wstring> DnsProxy::BoundEndpoints() const {
+    std::lock_guard<std::mutex> lock(m_mx);
+    std::vector<std::wstring> endpoints;
+    if (!m_state) return endpoints;
+    endpoints.reserve(m_state->listeners.size());
+    for (const Listener& listener : m_state->listeners) endpoints.push_back(listener.Text());
+    return endpoints;
 }
 
 bool DnsProxy::Start() {
@@ -628,54 +711,79 @@ bool DnsProxy::Start() {
         return false;
     }
 
-    if (!SocketUtils::EnsureWinsock()) {
+    if (!SocketRuntime::Ensure()) {
         LOGE(L"DNS forwarder: cannot initialize Winsock");
         return false;
     }
 
     // Read once, here, so a reload while the loop runs cannot change the pool
-    // size or the upstream set underneath queries already in flight.
-    std::vector<DnsProxyEndpoint> upstreams;
+    // size, the listener set or the upstream sets underneath queries already in
+    // flight.
+    std::vector<DnsProxyListener> configured;
     uint32_t timeoutMs = 0;
     size_t poolSize = 0;
     {
         std::lock_guard<std::mutex> lock(m_mx);
-        upstreams = m_config.EnabledUpstreams();
+        configured = m_config.listeners;
         timeoutMs = m_config.timeoutMs;
         poolSize = m_config.threadPoolSize;
     }
-    if (upstreams.empty()) {
-        LOGE(L"DNS forwarder: no enabled upstreams, cannot start");
+    if (configured.empty()) {
+        LOGE(L"DNS forwarder: no listeners configured, cannot start");
         return false;
     }
 
-    const size_t scaledPool = upstreams.size() * kParallelQueryCapacity;
+    // Sized for the widest pool, not the sum of them: a query fans out to one
+    // listener's endpoints, so the concurrent tasks one query can create is the
+    // largest pool's size. Summing would size the pool for eight listeners all
+    // being hit at once by a single client, which is not a load this serves.
+    size_t widestPool = 0;
+    for (const DnsProxyListener& listener : configured)
+        widestPool = std::max(widestPool, listener.upstreams.size());
+    const size_t scaledPool = widestPool * kParallelQueryCapacity;
     poolSize = std::min(kMaxWorkerThreads, std::max(poolSize, scaledPool));
 
     // Held locally until everything has succeeded: on any failure the state
     // object goes out of scope and its destructor closes what was already opened.
     auto state = std::make_unique<DnsProxyState>();
-    state->upstreams = std::move(upstreams);
     state->timeoutMs = timeoutMs;
-    state->scratch.resize(kMaxMessage);
 
-    state->udp =
-        SocketUtils::BindListener(kDnsProxyAddress, kDnsProxyPort, SOCK_DGRAM, IPPROTO_UDP);
-    if (state->udp == INVALID_SOCKET) {
-        LOGE(L"DNS forwarder: cannot bind UDP listener (err " +
-             std::to_wstring(WSAGetLastError()) + L")");
-        return false;
+    // Recorded on the state in the order the configuration declared them, then
+    // bound in the same order, so a listener's position in the vector and its line
+    // in the file agree — which is what makes the log and BoundEndpoints() name
+    // them in the order a reader of the file expects.
+    state->listeners.reserve(configured.size());
+    for (const DnsProxyListener& listener : configured) {
+        Listener bound;
+        bound.address = listener.address;
+        bound.port = listener.port;
+        bound.upstreams = listener.upstreams;
+        state->listeners.push_back(std::move(bound));
     }
-    // Without this a single dead upstream's ICMP port-unreachable fails every
-    // later read on this socket, which is the socket every client shares.
-    SocketUtils::DisableUdpConnReset(state->udp);
 
-    state->tcp =
-        SocketUtils::BindListener(kDnsProxyAddress, kDnsProxyPort, SOCK_STREAM, IPPROTO_TCP);
-    if (state->tcp == INVALID_SOCKET || listen(state->tcp, SOMAXCONN) == SOCKET_ERROR) {
-        LOGE(L"DNS forwarder: cannot listen on TCP (err " + std::to_wstring(WSAGetLastError()) +
-             L")");
-        return false;
+    // Every listener, or none. A partial bind would leave names pointed at an
+    // endpoint that is not listening, which is the one state this program treats
+    // as worse than not starting at all.
+    for (Listener& listener : state->listeners) {
+        listener.udp = SocketUtils::BindListener(listener.address.c_str(), listener.port,
+                                                 SOCK_DGRAM, IPPROTO_UDP);
+        if (listener.udp == INVALID_SOCKET) {
+            LOGE(L"DNS forwarder: cannot bind UDP " + listener.Text() + L" (err " +
+                 std::to_wstring(WSAGetLastError()) + L")");
+            return false;
+        }
+        // Without this a single dead upstream's ICMP port-unreachable fails every
+        // later read on this socket, which is the socket every client of this
+        // listener shares.
+        SocketUtils::DisableUdpConnReset(listener.udp);
+
+        listener.tcp = SocketUtils::BindListener(listener.address.c_str(), listener.port,
+                                                 SOCK_STREAM, IPPROTO_TCP);
+        if (listener.tcp == INVALID_SOCKET || listen(listener.tcp, SOMAXCONN) == SOCKET_ERROR) {
+            LOGE(L"DNS forwarder: cannot listen on TCP " + listener.Text() + L" (err " +
+                 std::to_wstring(WSAGetLastError()) + L")");
+            return false;
+        }
     }
 
     if (!state->wake.Open()) {
@@ -719,9 +827,13 @@ bool DnsProxy::Start() {
         return false;
     }
 
-    LOGI(L"DNS forwarder started on " + std::wstring(kDnsProxyAddress) + L":" +
-         std::to_wstring(kDnsProxyPort) + L" with " + std::to_wstring(poolSize) +
-         L" worker(s) and " + std::to_wstring(m_state->upstreams.size()) + L" upstream(s)");
+    std::wstring where;
+    for (const Listener& listener : m_state->listeners) {
+        if (!where.empty()) where += L", ";
+        where += listener.Text();
+    }
+    LOGI(L"DNS forwarder started on " + where + L" with " + std::to_wstring(poolSize) +
+         L" worker(s)");
     return true;
 }
 
@@ -777,9 +889,10 @@ void DnsProxy::StopLocked() {
 namespace {
 // ---- Query intake ------------------------------------------------------------
 
-// Register a client's query and race it against every upstream. Called only from
-// the loop thread, which is the only thread that touches `pending`.
-void HandleQuery(DnsProxyState& s, const uint8_t* message, size_t len,
+// Register a client's query and race it against the pool of the listener it
+// arrived on. Called only from the loop thread, which is the only thread that
+// touches `pending`.
+void HandleQuery(DnsProxyState& s, const Listener& listener, const uint8_t* message, size_t len,
                  const sockaddr_storage& client, int clientLen) {
     Query query;
     // A message that cannot be read has no question to echo back, so there is
@@ -789,7 +902,7 @@ void HandleQuery(DnsProxyState& s, const uint8_t* message, size_t len,
         // broken client or a stray datagram, and which one it is decides whether
         // anything is worth doing about it.
         LOGW(L"DNS forwarder: malformed query of " + std::to_wstring(len) + L" byte(s) from " +
-             SocketUtils::AddressText(client, clientLen, true));
+             SocketUtils::AddressText(client, clientLen, true) + L" on " + listener.Text());
         return;
     }
 
@@ -800,13 +913,14 @@ void HandleQuery(DnsProxyState& s, const uint8_t* message, size_t len,
     if (s.pending.size() >= kMaxPendingQueries) {
         // Refused, but answered: a client told the lookup failed will retry
         // against whatever else it has, while one that hears nothing just waits.
-        SendUdp(s, Failure(*race, query), client, clientLen);
+        SendUdp(listener, Failure(*race, query), client, clientLen);
         return;
     }
 
     PendingQuery pending;
     pending.race = race;
     pending.query = std::move(query);
+    pending.listener = &listener;
     pending.deadline = Now() + s.timeoutMs + kTickMs;
     pending.origin = PendingQuery::Client::Udp;
     pending.address = client;
@@ -817,7 +931,7 @@ void HandleQuery(DnsProxyState& s, const uint8_t* message, size_t len,
     pending.udpPayload = NegotiateUdpPayload(message, len);
     s.pending.push_back(std::move(pending));
 
-    DispatchQuery(s, race);
+    DispatchQuery(s, listener, race);
 }
 
 // ---- TCP intake --------------------------------------------------------------
@@ -828,6 +942,11 @@ void HandleQuery(DnsProxyState& s, const uint8_t* message, size_t len,
 // they already have an answer in flight. If all sessions are busy, reject the
 // newcomer so the vector can never outgrow the fd_set sized for it.
 //
+// The cap is global rather than per-listener, because the resource is: every
+// session on every listener shares one fd_set and one session vector. A
+// per-listener share would let eight listeners hold eight times the descriptors
+// this array is sized for.
+//
 // The resolver's acceptor refuses the newcomer instead, and both are right for
 // themselves. The reason this one can afford to evict: a query here is being
 // served by a worker thread holding its own upstream socket, so a session costs
@@ -835,7 +954,7 @@ void HandleQuery(DnsProxyState& s, const uint8_t* message, size_t len,
 // dropped is free to open another. The resolver holds two descriptors per
 // session inside this same loop, and dropping one would abandon a client already
 // waiting on a reply from a real server.
-void AcceptTcpClient(DnsProxyState& s, SOCKET client) {
+void AcceptTcpClient(DnsProxyState& s, const Listener& listener, SOCKET client) {
     if (s.sessions.size() >= kMaxTcpSessions) {
         // The longest-idle session that is not mid-answer. Erasing a busy one
         // would drop a client waiting on an answer it has already been promised.
@@ -863,6 +982,7 @@ void AcceptTcpClient(DnsProxyState& s, SOCKET client) {
     if (!PrepareSessionSocket(client)) return;
     auto session = std::make_shared<TcpSession>();
     session->socket = client;
+    session->listener = &listener;
     session->deadline = Now() + kTcpIdleTimeoutMs;
     // The session's own handle on itself, so a query it dispatches can name this
     // connection without the loop walking the list to find it.
@@ -898,6 +1018,7 @@ void ServiceTcpSession(DnsProxyState& s, TcpSession& session) {
         PendingQuery pending;
         pending.race = race;
         pending.query = std::move(query);
+        pending.listener = session.listener;
         pending.deadline = session.deadline;
         pending.origin = PendingQuery::Client::Tcp;
         // The session's own weak pointer, so the query refers back to the
@@ -907,7 +1028,10 @@ void ServiceTcpSession(DnsProxyState& s, TcpSession& session) {
         // an answer into, and the length prefix carries the size it does have.
         s.pending.push_back(std::move(pending));
 
-        DispatchQuery(s, race);
+        // The pool follows the connection, which is the listener it was accepted
+        // on: a client that opened a TCP connection to the encrypted endpoint is
+        // answered by encrypted upstreams for the life of that connection.
+        DispatchQuery(s, *session.listener, race);
         return;
     }
 }
@@ -938,7 +1062,7 @@ void DrainCompletions(DnsProxyState& s) {
             ValidAnswer(completion.response, *race, it->query)) {
             race->won.store(true, std::memory_order_release);
             race->cancel.Cancel();  // stop the others still in flight
-            Deliver(s, *it, completion.response);
+            Deliver(*it, completion.response);
             s.pending.erase(it);
             continue;
         }
@@ -948,7 +1072,7 @@ void DrainCompletions(DnsProxyState& s) {
         const bool last = race->done.load(std::memory_order_acquire) >= race->total;
         if (!decided && last) {
             race->won.store(true, std::memory_order_release);
-            Deliver(s, *it, Failure(*race, it->query));
+            Deliver(*it, Failure(*race, it->query));
             s.pending.erase(it);
         }
     }
@@ -966,7 +1090,7 @@ void ExpireQueries(DnsProxyState& s) {
         // client if no answer has been taken already.
         it->race->cancel.Cancel();
         if (!it->race->won.exchange(true, std::memory_order_acq_rel)) {
-            Deliver(s, *it, Failure(*it->race, it->query));
+            Deliver(*it, Failure(*it->race, it->query));
         }
         // A TCP client whose query ran out is free to send the next one; the
         // connection itself is not at fault and stays open.
@@ -1008,10 +1132,16 @@ void DnsProxy::Loop(DnsProxyState& s) {
         // makes this one differ in kind rather than in shape: a completion
         // posted by a worker arrives without anything else happening, so this
         // loop has something to be woken by and the resolver does not.
+        //
+        // Every listener is watched on every pass. Each contributes both of its
+        // sockets, which is what the static_assert at the top of this file sizes
+        // the fd_set for.
         s.waits.Reset();
-        s.waits.WatchRead(s.udp);
-        s.waits.WatchRead(s.tcp);
         s.waits.WatchRead(s.wake.Read());
+        for (const Listener& listener : s.listeners) {
+            s.waits.WatchRead(listener.udp);
+            s.waits.WatchRead(listener.tcp);
+        }
 
         for (const std::shared_ptr<TcpSession>& session : s.sessions) {
             if (session->out.empty()) {
@@ -1032,24 +1162,31 @@ void DnsProxy::Loop(DnsProxyState& s) {
         if (!s.waits.TimedOut()) {
             if (s.waits.Readable(s.wake.Read())) s.wake.Drain();
 
-            if (s.waits.Readable(s.udp)) {
+            // One scratch buffer is shared by every listener, which is what makes
+            // this a loop over them rather than a block per socket: each datagram
+            // is parsed and dispatched before the next is read, so nothing holds
+            // the buffer across a pass.
+            for (const Listener& listener : s.listeners) {
+                if (!s.waits.Readable(listener.udp)) continue;
                 sockaddr_storage from = {};
                 int fromLen = sizeof(from);
-                const int received = recvfrom(s.udp, reinterpret_cast<char*>(s.scratch.data()),
-                                              static_cast<int>(s.scratch.size()), 0,
-                                              reinterpret_cast<sockaddr*>(&from), &fromLen);
+                const int received =
+                    recvfrom(listener.udp, reinterpret_cast<char*>(s.scratch.data()),
+                             static_cast<int>(s.scratch.size()), 0,
+                             reinterpret_cast<sockaddr*>(&from), &fromLen);
                 if (received > 0) {
-                    HandleQuery(s, s.scratch.data(), static_cast<size_t>(received), from,
-                                fromLen);
+                    HandleQuery(s, listener, s.scratch.data(), static_cast<size_t>(received),
+                                from, fromLen);
                 }
             }
 
-            if (s.waits.Readable(s.tcp)) {
+            for (const Listener& listener : s.listeners) {
+                if (!s.waits.Readable(listener.tcp)) continue;
                 sockaddr_storage from = {};
                 int fromLen = sizeof(from);
                 const SOCKET client =
-                    accept(s.tcp, reinterpret_cast<sockaddr*>(&from), &fromLen);
-                if (client != INVALID_SOCKET) AcceptTcpClient(s, client);
+                    accept(listener.tcp, reinterpret_cast<sockaddr*>(&from), &fromLen);
+                if (client != INVALID_SOCKET) AcceptTcpClient(s, listener, client);
             }
 
             for (size_t i = 0; i < s.sessions.size();) {

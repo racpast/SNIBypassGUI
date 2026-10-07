@@ -19,7 +19,7 @@
 
 // First-run and payload-presence checks.
 //
-// The payload (paths.ini and accompanying data files) ships beside the executable
+// The payload (meta.ini and accompanying data files) ships beside the executable
 // in the distribution archive. The executable copes with it being absent in two
 // distinct situations:
 //
@@ -32,9 +32,9 @@
 // Controller::RepairIfNeeded(), which runs after the tray is up.
 namespace Bootstrap {
 
-// True if paths.ini is present beside the executable. paths.ini is the payload's
-// root — everything the application reads is located through it — so its presence
-// is the one stable contract regardless of what else the payload contains.
+// True if the payload descriptor is present beside the executable. It is the
+// payload's root — everything the application reads is located through it — so its
+// presence is the one stable contract regardless of what else the payload contains.
 bool PayloadPresent();
 
 // True if the executable is running from an archiver's scratch directory rather than

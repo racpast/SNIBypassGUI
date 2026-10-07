@@ -334,6 +334,7 @@ add_library(snib_core OBJECT
     src/app/i18n.cpp
     src/app/logging.cpp
     src/app/paths.cpp
+    src/app/payload.cpp
     src/app/services.cpp
     src/app/settings.cpp
     src/app/text.cpp
@@ -369,6 +370,7 @@ add_library(snib_core OBJECT
     src/platform/process.cpp
     src/platform/shell.cpp
     src/platform/shortcut.cpp
+    src/platform/socket_runtime.cpp
     src/update/client.cpp
     src/update/crypto.cpp
     src/update/http.cpp

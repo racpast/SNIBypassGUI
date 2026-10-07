@@ -241,4 +241,30 @@ int Int(const std::vector<Section>& sections, const wchar_t* section, const wcha
     return static_cast<int>(parsed);
 }
 
+std::vector<std::wstring> Split(const std::wstring& value) {
+    std::vector<std::wstring> out;
+    size_t start = 0;
+    for (;;) {
+        const size_t bar = value.find(L'|', start);
+        std::wstring item = TrimW(bar == std::wstring::npos ? value.substr(start)
+                                                            : value.substr(start, bar - start));
+        if (!item.empty()) out.push_back(std::move(item));
+        if (bar == std::wstring::npos) break;
+        start = bar + 1;
+    }
+    return out;
+}
+
+std::vector<std::wstring> List(const std::vector<Section>& sections, const wchar_t* section,
+                               const wchar_t* key) {
+    // An oversized value comes back empty from Value(), so a truncated list can never
+    // be produced: either every item arrives in full or the list reads as absent.
+    //
+    // That guarantee is the reason these lists are read through this module at all
+    // rather than through the profile API, and it is not cosmetic here: these lists
+    // drive deletion and port claims. A list cut mid-item would be a glob that still
+    // compiles and still deletes, or a port that is not the one written.
+    return Split(Value(sections, section, key));
+}
+
 }  // namespace Ini

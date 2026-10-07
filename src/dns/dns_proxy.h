@@ -16,23 +16,26 @@
 // See the LICENSE.md file in the project root for full terms and conditions.
 
 #pragma once
-// DNS Proxy: a local DNS server that forwards every query to upstream resolvers.
+// DNS Proxy: local DNS servers that forward every query to upstream resolvers.
 //
-// This server listens on a fixed loopback address and races every enabled
-// upstream, returning whichever answer arrives first. Unlike LocalResolver it
-// has no rules and never synthesizes answers — every query is forwarded to
-// configured upstreams, which may use encrypted protocols (DoH, DoT, DNSCrypt).
+// This server binds every listener its configuration declares and races, for each
+// query, the upstream pool that listener names — returning whichever answer arrives
+// first. Unlike LocalResolver it has no rules and never synthesizes answers: every
+// query is forwarded to configured upstreams, which may use encrypted protocols
+// (DoH, DoT, DNSCrypt) or plain DNS.
 //
 // It exists to let Nginx's resolver use DNS protocols that Nginx cannot speak
-// directly: Nginx points its `resolver` directive at this server, which
-// translates on its behalf.
+// directly: Nginx points its `resolver` directive at one of these listeners, which
+// translates on its behalf. Several listeners exist so that different consumers can
+// be given different transports — an endpoint racing encrypted upstreams beside one
+// racing plain ones — which is a property of the file, not of this class.
 //
-// Shape of the thing: one event loop owns every client socket and never blocks.
-// The loop parses a query, records it in a pending table under a freshly drawn
-// transaction id, hands one task per upstream to a worker pool, and goes back to
-// select(). Workers own their own upstream sockets, so nothing they do can stall
-// the loop. Each finished task posts a completion back, which wakes the loop
-// through a socket pair; the first valid answer is returned to the client and
+// Shape of the thing: one event loop owns every client socket on every listener and
+// never blocks. The loop parses a query, records it in a pending table under a
+// freshly drawn transaction id, hands one task per upstream to a worker pool, and
+// goes back to select(). Workers own their own upstream sockets, so nothing they do
+// can stall the loop. Each finished task posts a completion back, which wakes the
+// loop through a socket pair; the first valid answer is returned to the client and
 // the token shared by that query's tasks is cancelled, closing the sockets of
 // the ones still in flight.
 //
@@ -53,11 +56,6 @@
 
 namespace Dns {
 
-// The loopback endpoint this proxy binds to. Fixed, like LocalResolver's
-// address, so that Nginx's config can hardcode it.
-inline constexpr wchar_t kDnsProxyAddress[] = L"127.191.98.10";
-inline constexpr uint16_t kDnsProxyPort = 53;
-
 // Sockets, in-flight state and the worker pool, defined in the implementation.
 struct DnsProxyState;
 
@@ -68,14 +66,20 @@ public:
     DnsProxy(const DnsProxy&) = delete;
     DnsProxy& operator=(const DnsProxy&) = delete;
 
-    // Load configuration from `path`. Returns false if the file cannot be read
-    // or contains no enabled upstreams — a proxy with nothing to forward to
-    // is refused before it starts.
+    // Load configuration from `path`. Returns false if the file cannot be read or
+    // declares no usable listener — a proxy with nothing to forward to, or with
+    // nowhere to listen, is refused before it starts.
     bool LoadConfig(const std::wstring& path);
 
-    // Bind both listeners and run the event loop on a worker thread. Any previous
-    // session is torn down first. Returns false if the endpoint is unavailable or
-    // no upstreams are configured.
+    // Bind every configured listener and run the event loop on a worker thread. Any
+    // previous session is torn down first. Returns false — having bound nothing — if
+    // any endpoint is unavailable or no upstreams are configured.
+    //
+    // All-or-nothing on purpose: a proxy that came up on some of its listeners would
+    // answer for the names pointed at the ones it managed, and leave the rest of the
+    // configuration silently unserved. Nginx resolving an upstream name through this
+    // proxy cannot tell the two states apart, so a partial start is refused and the
+    // caller rolls the whole stack back.
     bool Start();
 
     // Stop the loop, cancel everything in flight, and join every worker. Safe to
@@ -83,6 +87,10 @@ public:
     void Stop();
 
     bool Running() const { return m_running.load(); }
+
+    // The endpoints this proxy last started with, for the log and for a caller that
+    // has to say where it tried to listen. Empty until a successful Start.
+    std::vector<std::wstring> BoundEndpoints() const;
 
     // Signalled while the loop is NOT running, cleared by a successful Start().
     // Typed as void* rather than HANDLE for the same reason as LocalResolver.

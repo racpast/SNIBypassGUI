@@ -229,17 +229,6 @@ COLORREF Accent() {
     return RGB(0, 120, 212);
 }
 
-// Replace the first "%s" in a translated string. The table has no formatting of its
-// own, and the alternative -- building the sentence by concatenation -- cannot express
-// a language whose word order differs, which is exactly the case here.
-std::wstring Expand(const wchar_t* key, const std::wstring& arg) {
-    std::wstring s = T(key);
-    const size_t at = s.find(L"%s");
-    if (at == std::wstring::npos) return s + L" " + arg;
-    s.replace(at, 2, arg);
-    return s;
-}
-
 // Resolve a function from user32, satisfying both gates at once.
 //
 // GetProcAddress returns FARPROC, and every way of turning that into a concrete
@@ -473,7 +462,7 @@ void Paint(State* st) {
         const std::wstring rate = Update::FormatRate(snap.bytesPerSecond);
         const std::wstring eta =
             snap.etaSeconds >= 0
-                ? Expand(L"msg.updEtaRemaining", Update::FormatDuration(snap.etaSeconds))
+                ? TFmt(L"msg.updEtaRemaining", Update::FormatDuration(snap.etaSeconds))
                 : std::wstring();
         if (!rate.empty()) second = rate;
         if (!eta.empty()) {

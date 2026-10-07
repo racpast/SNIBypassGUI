@@ -116,6 +116,17 @@ public:
 
     size_t RuleCount() const;
 
+    // Where the local server binds, and therefore what the policy rule names.
+    //
+    // Set here rather than on the resolver directly, because the two halves have to
+    // agree: a rule pointing at an address the server is not listening on breaks
+    // every name it covers, and one pointing at a *different* address than the
+    // server's is the same failure spelled less obviously. One call sets both, so
+    // there is no ordering in which they can disagree.
+    //
+    // Takes effect on the next Start: a bound listener is not moved.
+    void SetEndpoint(const BindEndpoint& endpoint);
+
     // Start the local server, then route every namespace the rules name to it, then
     // begin watching both. Returns false having undone whatever it managed to do.
     //
@@ -226,6 +237,16 @@ private:
     LocalResolver m_resolver;
     std::unique_ptr<FileWatcher> m_watcher;
     std::wstring m_rulesPath;  // path being monitored
+
+    // Where the resolver binds and what the policy rule names. Read under m_tableMx
+    // by the paths that touch the registry, so a change cannot land between the rule
+    // being compared and being repaired.
+    //
+    // Defaulted rather than left empty: a redirector that was never configured —
+    // which is what the tests and any future caller that does not read a payload
+    // get — has to bind somewhere, and binding the compiled default is the only
+    // answer that cannot be wrong about what the rule should say.
+    BindEndpoint m_endpoint = {kDefaultResolverAddress, kDefaultResolverPort};
 
     // Both manual-reset. m_guardCancel says the guardian is no longer wanted;
     // m_failed is the one fact this class publishes outward.

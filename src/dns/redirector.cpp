@@ -68,6 +68,26 @@ size_t Redirector::LoadRules(const std::wstring& path) {
     return loaded;
 }
 
+void Redirector::SetEndpoint(const BindEndpoint& endpoint) {
+    // The resolver is told first and the rule is brought in line under the table
+    // lock, in that order, because the rule must never name an endpoint the server
+    // has not been told about.
+    //
+    // A running redirector is re-pointed rather than restarted: the resolver's
+    // SetEndpoint takes effect on its next Start, so the rule keeps naming the
+    // endpoint the server is actually bound to until one happens. Writing the new
+    // address into the table now would route every listed name to a port nothing is
+    // listening on — the exact state this class exists to avoid.
+    std::lock_guard<std::mutex> table(m_tableMx);
+    m_endpoint = endpoint;
+    m_resolver.SetEndpoint(endpoint);
+
+    if (m_resolver.Running()) {
+        LOGW(L"DNS redirection: the endpoint changed to " + endpoint.Text() +
+             L" while the stack is running; it takes effect on the next start.");
+    }
+}
+
 void Redirector::Apply(std::shared_ptr<const RuleSet> rules) {
     const std::vector<std::string> namespaces = rules->Namespaces();
 
@@ -88,7 +108,7 @@ void Redirector::Apply(std::shared_ptr<const RuleSet> rules) {
     // changed. Writing what the table should say — instead of trusting a memory of
     // what it was last told — costs a registry write on a file the user just saved,
     // and keeps a reload and the guardian's repair as the same operation.
-    if (m_resolver.Running()) Nrpt::InstallRule(namespaces, kResolverAddress);
+    if (m_resolver.Running()) Nrpt::InstallRule(namespaces, Nrpt::ServerField(m_endpoint));
 }
 
 bool Redirector::Start() {
@@ -119,7 +139,7 @@ bool Redirector::Start() {
     // right: there is nothing to route.
     {
         std::lock_guard<std::mutex> table(m_tableMx);
-        if (!Nrpt::InstallRule(namespaces, kResolverAddress)) {
+        if (!Nrpt::InstallRule(namespaces, Nrpt::ServerField(m_endpoint))) {
             RollBackStart();
             return false;
         }
@@ -275,7 +295,7 @@ Redirector::RuleGuard Redirector::RepairRuleIfNeeded() {
     // own installs half done.
     std::lock_guard<std::mutex> table(m_tableMx);
     const std::vector<std::string> namespaces = Rules()->Namespaces();
-    if (Nrpt::RuleMatches(namespaces, kResolverAddress)) return RuleGuard::Held;
+    if (Nrpt::RuleMatches(namespaces, Nrpt::ServerField(m_endpoint))) return RuleGuard::Held;
 
     if (!m_repairs.Allow(GetTickCount64())) {
         Fail(RedirectFailure::RuleUnholdable,
@@ -285,7 +305,7 @@ Redirector::RuleGuard Redirector::RepairRuleIfNeeded() {
     }
 
     LOGW(L"NRPT: the policy rule no longer says what it should; restoring it.");
-    if (!Nrpt::InstallRule(namespaces, kResolverAddress)) {
+    if (!Nrpt::InstallRule(namespaces, Nrpt::ServerField(m_endpoint))) {
         Fail(RedirectFailure::RuleUnholdable,
              L"the DNS policy rule was removed and could not be written back.");
         return RuleGuard::Lost;
@@ -301,7 +321,7 @@ Redirector::RuleGuard Redirector::RepairRuleIfNeeded() {
     // milliseconds and take down a stack that is doing its job. So the watch is given
     // up and the server keeps being watched, which is the honest description of what
     // is left.
-    if (!Nrpt::RuleMatches(namespaces, kResolverAddress)) {
+    if (!Nrpt::RuleMatches(namespaces, Nrpt::ServerField(m_endpoint))) {
         LOGE(
             L"NRPT: the policy rule was written but does not read back as what was "
             L"written. Redirection is up and the rule is installed; it will no longer "

@@ -22,14 +22,33 @@
 
 // Configuration for the DNS Proxy (DnsProxy).
 //
-// The proxy listens on a fixed local address and forwards every DNS query it
+// The proxy binds one or more loopback listeners and forwards every query it
 // receives to one or more upstream DNS servers (DoH/DoT/DNSCrypt/plain DNS),
-// racing them and returning whichever answers first. Unlike LocalResolver, it
-// has no rules and never synthesizes answers — every query is forwarded.
+// racing them and returning whichever answers first. It has no rules and never
+// synthesizes answers — every query is forwarded.
 //
-// Upstream endpoints are configured using DNSStamp format (sdns://...), which
-// encodes protocol, address, hostname, path, and other parameters in a compact
-// base64 string. See https://dnscrypt.info/stamps-specifications for details.
+// Three kinds of section, each introduced by its prefix, and the shape of the file
+// is the shape of the thing:
+//
+//   [Upstream.NAME]   one server, described by a DNSStamp (sdns://...), which
+//                     encodes protocol, address, hostname, path and key material
+//                     in a compact string. See https://dnscrypt.info/stamps.
+//   [Pool.NAME]       a set of upstreams, named by an Upstreams= list, which is
+//                     the group a listener races against.
+//   [Listener.NAME]   an address and port to bind, and the pool it races.
+//
+// That split is what lets one endpoint race encrypted transports while another
+// races plain ones: 127.191.98.10:53 can serve DoH/DoT/DNSCrypt while
+// 127.191.98.10:5353 serves plain DNS, and nginx can then be pointed at whichever
+// it needs. A listener with no Pool= races every upstream in the file, which is
+// the one-listener case and is what a file that declares no pools means.
+//
+// There is no Enabled= key. A section's presence is the declaration: an upstream
+// listed in a pool is used, an upstream in no pool is used by every listener that
+// names no pool, and a listener with no address is not a listener. A key that
+// turned each section on and off was a second way to say something the file
+// already said, and it bought nothing — commenting a section out, or deleting it,
+// is what "off" means in a file a human maintains.
 namespace Dns {
 
 enum class DnsProxyProtocol {
@@ -55,8 +74,29 @@ struct DnsProxyEndpoint {
     // DNSCrypt fields
     std::string providerName;        // Provider name (e.g., "2.dnscrypt-cert....")
     std::vector<uint8_t> publicKey;  // Provider public key (32 bytes)
+};
 
-    bool enabled;
+// The most listeners one configuration may declare.
+//
+// A bound rather than a preference, and the reason is the select() budget: every
+// listener costs two sockets in the one fd_set the event loop watches — its UDP and
+// its TCP — so this number is half of an arithmetic that must fit in FD_SETSIZE,
+// beside the client sessions sharing the same array. dns_proxy.cpp asserts that sum;
+// this is the constraint the parser enforces so a file asking for more is reported
+// by name rather than by an obscure bind failure later.
+inline constexpr size_t kMaxListeners = 8;
+
+// One bound endpoint: where to listen, and what to race.
+//
+// `upstreams` is a resolved snapshot — the endpoints the named pool held at load
+// time — rather than a pool name, so the loop never has to look anything up and a
+// listener cannot end up racing a set that changed underneath a query already in
+// flight.
+struct DnsProxyListener {
+    std::wstring name;
+    std::wstring address;  // literal, as written in the file
+    uint16_t port = 53;
+    std::vector<DnsProxyEndpoint> upstreams;
 };
 
 struct DnsProxyConfig {
@@ -71,29 +111,22 @@ struct DnsProxyConfig {
     // progress concurrently, up to the hard worker cap.
     size_t threadPoolSize = 32;
 
+    // Every upstream the file declares, in file order, whether or not a pool names
+    // it. Kept because a listener with no Pool= races this list.
     std::vector<DnsProxyEndpoint> upstreams;
 
-    // Load from INI file at `path`. Returns a config with no upstreams if the
-    // file cannot be read or is malformed; the proxy refuses to start with
-    // nothing to forward to.
+    // Every listener that resolved to at least one upstream, in file order. A
+    // listener whose pool is empty or unnameable is not here, because a listener
+    // that cannot forward anything is not a listener this proxy can serve.
+    std::vector<DnsProxyListener> listeners;
+
+    // Load from the INI file at `path`.
+    //
+    // Returns a config with no listeners if the file cannot be read, declares no
+    // usable listener, or every listener it declares resolves to no upstream —
+    // all of which mean there is nothing to forward to, and the proxy refuses to
+    // start rather than binding a socket that answers nothing.
     static DnsProxyConfig Load(const std::wstring& path);
-
-    // All upstreams with Enabled=1.
-    std::vector<DnsProxyEndpoint> EnabledUpstreams() const {
-        std::vector<DnsProxyEndpoint> result;
-        for (const auto& up : upstreams) {
-            if (up.enabled) result.push_back(up);
-        }
-        return result;
-    }
-
-    size_t EnabledCount() const {
-        size_t count = 0;
-        for (const auto& up : upstreams) {
-            if (up.enabled) ++count;
-        }
-        return count;
-    }
 };
 
 }  // namespace Dns

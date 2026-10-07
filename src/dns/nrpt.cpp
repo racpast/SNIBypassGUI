@@ -193,6 +193,13 @@ bool MultiSzEquals(HKEY key, const wchar_t* name, const std::wstring& expectedBl
 
 }  // namespace
 
+std::wstring ServerField(const BindEndpoint& endpoint) {
+    // 53 is the port the field assumes, so it is the one value never written. See
+    // the header for why one endpoint must have exactly one spelling here.
+    if (endpoint.port == 53) return endpoint.address;
+    return endpoint.address + L":" + std::to_wstring(endpoint.port);
+}
+
 bool InstallRule(const std::vector<std::string>& namespaces, const std::wstring& dnsServer) {
     if (namespaces.empty()) {
         LOGW(L"NRPT: no namespaces to route; not installing a rule.");

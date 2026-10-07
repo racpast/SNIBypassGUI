@@ -24,7 +24,7 @@
 // GetPrivateProfileStringW cannot serve a value longer than 32767 characters: at
 // exactly 32768 it returns 0, and one character past that it returns a wrapped
 // fragment — a short value that looks real rather than an error. Growing the buffer
-// does not help, because the limit is the API's, not the caller's. For paths.ini, whose
+// does not help, because the limit is the API's, not the caller's. For meta.ini, whose
 // values are glob patterns the uninstall and cache-clean paths delete by, a wrapped
 // fragment is worse than a refusal: the file's last entry becomes a prefix glob that
 // still compiles and still deletes, just not what was written.
@@ -107,5 +107,23 @@ std::wstring Value(const std::wstring& file, const wchar_t* section, const wchar
 // start with a number. Trailing text is ignored, as the profile API ignores it.
 int Int(const std::vector<Section>& sections, const wchar_t* section, const wchar_t* key,
         int fallback);
+
+// A '|'-separated value split into items, each trimmed, blanks dropped.
+//
+// Deployed INI values are short lists — the paths an uninstall removes, the ports a
+// payload claims, the directories that must exist — and '|' rather than a comma is
+// the convention those lists were written to. Every one of them is read by more than
+// one caller: the uninstall list is walked by the uninstall and by the cache clean,
+// and the port list by both the check and the cleanup. Splitting them was written
+// three times before this, once per caller, which is how three copies of "trim and
+// drop empties" end up disagreeing about the empties.
+//
+// A value with no separator yields one item, and an empty value yields none — so a
+// caller never has to special-case a single-element list.
+std::vector<std::wstring> List(const std::vector<Section>& sections, const wchar_t* section,
+                               const wchar_t* key);
+
+// The same, on a bare value already in hand.
+std::vector<std::wstring> Split(const std::wstring& value);
 
 }  // namespace Ini

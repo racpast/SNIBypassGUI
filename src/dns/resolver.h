@@ -36,21 +36,27 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 
 #include "dns/rules.h"
+#include "dns/socket_utils.h"
 
 namespace Dns {
 
-// The loopback endpoint this server binds to and the policy table routes to.
+// The loopback endpoint this server binds by default.
 //
 // Deliberately not 127.0.0.1. All of 127.0.0.0/8 reaches loopback, and port 53 on
 // 127.0.0.1 is the conventional home of every other local DNS server a machine
 // might already run — Docker's, an ICS host's, a filtering proxy's. Taking an
 // address nobody picks by convention means coexisting with them instead of
 // fighting for a port.
-inline constexpr wchar_t kResolverAddress[] = L"127.11.45.14";
-inline constexpr uint16_t kResolverPort = 53;
+//
+// A default rather than the endpoint: where this server actually binds comes from
+// the payload (see app/payload.h), because the NRPT rule that routes names here
+// has to name the same address and both must move together.
+inline constexpr wchar_t kDefaultResolverAddress[] = L"127.11.45.14";
+inline constexpr uint16_t kDefaultResolverPort = 53;
 
 // Sockets and in-flight state, defined in the implementation so that no consumer
 // of this header has to see winsock.
@@ -67,6 +73,19 @@ public:
     // so the loop reads its snapshot without locking anything and a hot-reload only
     // changes which set the next query sees. Safe before or after Start().
     void Publish(std::shared_ptr<const RuleSet> rules);
+
+    // Where to bind, for the next Start(). Safe before or after one; a change does
+    // not move a listener that is already bound, so it takes effect on the next
+    // Start.
+    //
+    // Not a Start() parameter because the caller that knows the endpoint — the
+    // Redirector, which also has to write it into the policy table — must be able to
+    // state it before the server exists, and because the two have to be the same
+    // value at the moment the rule is installed rather than merely related.
+    void SetEndpoint(const BindEndpoint& endpoint);
+
+    // The endpoint in force, whether it came from SetEndpoint or the default.
+    BindEndpoint Endpoint() const;
 
     // Bind both listeners and run the event loop on a worker thread. Any previous
     // session is torn down first, so this always starts from a clean state.
@@ -116,6 +135,12 @@ private:
     std::shared_ptr<const RuleSet> ActiveRules() const;
 
     mutable std::mutex m_mx;
+
+    // Where the next Start() binds, and where the policy table sends names. Guarded
+    // by m_mx because the tray can set it while a status query reads it; a change
+    // takes effect on the next Start rather than moving a bound listener.
+    BindEndpoint m_endpoint;
+
     std::shared_ptr<const RuleSet> m_activeRules;
     std::unique_ptr<ResolverState> m_state;
     std::thread m_thread;

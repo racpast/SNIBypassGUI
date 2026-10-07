@@ -25,6 +25,7 @@
 #include "app/i18n.h"
 #include "app/logging.h"
 #include "app/paths.h"
+#include "app/payload.h"
 #include "app/settings.h"
 #include "app/text.h"
 #include "app/version.h"
@@ -33,12 +34,13 @@
 
 namespace Bootstrap {
 
-// paths.ini is the payload's root: every file the application opens is located
-// through it. Its absence reliably means the payload was never extracted beside
-// the executable, regardless of what else the payload contains — so this is the
-// one stable contract, not a check for a specific directory name.
+// The payload descriptor (meta.ini) is the payload's root: every file the
+// application opens is located through it. Its absence reliably means the payload
+// was never extracted beside the executable, regardless of what else the payload
+// contains — so this is the one stable contract, not a check for a specific
+// directory name.
 bool PayloadPresent() {
-    return GetFileAttributesW((ExeDir() + L"paths.ini").c_str()) != INVALID_FILE_ATTRIBUTES;
+    return Payload::Present();
 }
 
 // Archivers "open" an executable by extracting only it to a scratch directory under

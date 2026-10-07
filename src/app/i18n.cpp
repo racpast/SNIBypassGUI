@@ -54,7 +54,7 @@ const std::map<std::wstring, Pair>& Table() {
     // re-wrapped block. Automatic formatting packs every entry to the left, which
     // costs exactly that.
     static const std::map<std::wstring, Pair> t = {
-        {L"version.display",  {L"V5.2.0", L"V5.2.0"}},
+        {L"version.display",  {L"V5.2.1", L"V5.2.1"}},
 
         {L"status.dns",       {L"DNS Redirection", L"DNS 重定向"}},
         {L"status.proxy",     {L"DNS Proxy", L"DNS 代理"}},
@@ -101,17 +101,27 @@ const std::map<std::wstring, Pair>& Table() {
 
         {L"msg.needAdmin",    {L"SNIBypassGUI needs to run as administrator.",
                                L"SNIBypassGUI 需要以管理员身份运行。"}},
-        {L"msg.portsInUse",   {L"Port 80, 443 or 22222 is being used by another program.\n"
-                               L"Free these ports now? The programs holding them will be terminated.",
-                               L"端口 80、443 或 22222 已被其他程序占用。\n"
-                               L"是否立即释放这些端口？占用端口的程序将被强制结束。"}},
-        {L"msg.portsCritical", {L"Port 80, 443 or 22222 is held by a Windows system process, which "
-                               L"cannot be terminated safely.\nSNIBypassGUI did not start.",
-                               L"端口 80、443 或 22222 被 Windows 系统进程占用，无法安全结束该进程。\n"
+        // The list of held endpoints is an argument rather than part of the text, for
+        // two reasons. It is data — it depends on the payload's declarations and on
+        // what happens to be running — and it is a list, whose length and separator
+        // are the translator's to decide. BulletList() renders it in the current
+        // language and the sentence around it just carries the result.
+        //
+        // The "s" is the ordinary one, so a payload that declares a single endpoint
+        // reads "…is being used" without a list header, and one that declares six
+        // reads the same sentence above six lines. No second message is needed for
+        // either case: what changes is the argument, not the sentence.
+        {L"msg.portsInUse",   {L"These endpoints are being used by another program:\n\n%s\n\n"
+                               L"Free them now? The programs holding them will be terminated.",
+                               L"以下端点已被其他程序占用：\n\n%s\n\n"
+                               L"是否立即释放？占用端点的程序将被强制结束。"}},
+        {L"msg.portsCritical", {L"These endpoints are held by a Windows system process, which "
+                               L"cannot be terminated safely:\n\n%s\n\nSNIBypassGUI did not start.",
+                               L"以下端点被 Windows 系统进程占用，无法安全结束该进程：\n\n%s\n\n"
                                L"SNIBypassGUI 未能启动。"}},
-        {L"msg.portsStillInUse", {L"The required ports are still in use after the cleanup attempt.\n"
+        {L"msg.portsStillInUse", {L"The required endpoints are still in use after the cleanup attempt.\n"
                                L"SNIBypassGUI did not start.",
-                               L"所需端口在尝试清理后仍被占用。\nSNIBypassGUI 未能启动。"}},
+                               L"所需端点在尝试清理后仍被占用。\nSNIBypassGUI 未能启动。"}},
         {L"msg.restartFailed", {L"The services could not be started again.\n"
                                L"Use \"Start Services\" from the tray menu to retry.",
                                L"服务未能重新启动。\n请从托盘菜单中选择“启动服务”重试。"}},
@@ -126,6 +136,14 @@ const std::map<std::wstring, Pair>& Table() {
         // before the break.
         {L"punct.colon",      {L": ", L"："}},
         {L"punct.colonEol",   {L":", L"："}},
+
+        // The bullet a list item starts with. A translator's decision rather than a
+        // literal: a script that draws its bullet differently is a two-character edit
+        // here and a rewrite of every call site otherwise.
+        {L"punct.bullet",     {L"• ", L"• "}},
+
+        // The line that stands in for the items a capped list did not show.
+        {L"punct.andMore",    {L"… and %d more", L"… 及其他 %d 项"}},
 
         // A service dialog is one line naming the service and what happened to it,
         // then this — the consequence, which is the same however the service failed.
@@ -163,16 +181,19 @@ const std::map<std::wstring, Pair>& Table() {
         {L"reason.dnsProxyStopped", {L"The DNS proxy has stopped responding. This may be caused by "
                                L"a local network stack failure or interference from security software.",
                                L"DNS 代理已停止响应。可能是本机网络组件故障或被安全软件拦截。"}},
+        // The endpoint is an argument rather than part of the text: it comes from
+        // the payload, so a sentence with 127.11.45.14 written into it would tell a
+        // user who moved the listener to look at an address nothing is bound to.
         {L"msg.dnsStartFail", {L"Could not start DNS redirection.\n"
-                               L"Another program may already be using 127.11.45.14:53, or the "
+                               L"Another program may already be using %s, or the "
                                L"DNS Client service may be disabled.",
                                L"无法启动 DNS 重定向。\n"
-                               L"可能是 127.11.45.14:53 已被其他程序占用，或 DNS Client 服务被禁用。"}},
+                               L"可能是 %s 已被其他程序占用，或 DNS Client 服务被禁用。"}},
         {L"msg.dnsProxyStartFail", {L"Could not start the DNS proxy.\n"
                                L"Its configuration may be missing or invalid, or another program may "
-                               L"already be using 127.191.98.10:53.",
+                               L"already be using %s.",
                                L"无法启动 DNS 代理。\n"
-                               L"可能是配置缺失或无效，或 127.191.98.10:53 已被其他程序占用。"}},
+                               L"可能是配置缺失或无效，或 %s 已被其他程序占用。"}},
         {L"msg.dnsClientOff", {L"Windows' \"DNS Client\" service is not running. Without this "
                                L"service, SNIBypassGUI cannot redirect any domain and none of "
                                L"the supported sites will take effect, so the program has not "
@@ -242,7 +263,6 @@ const std::map<std::wstring, Pair>& Table() {
         {L"msg.updApplyFail", {L"Could not install the update. The previous version has been restored.",
                                L"更新安装失败，已还原到先前的版本。"}},
         {L"msg.updNotes",     {L"What's new:", L"更新内容："}},
-        {L"msg.updFileMore",  {L"… and %d more", L"… 及其他 %d 个"}},
 
         {L"msg.extractFirst", {L"SNIBypassGUI is running from a temporary folder and cannot find its "
                                L"data files.\n\nPlease extract the whole archive to a folder of your "
@@ -323,4 +343,26 @@ const wchar_t* T(const wchar_t* key) {
     auto it = t.find(key);
     if (it == t.end()) return key;
     return GetLang() == Lang::Chinese ? it->second.zh : it->second.en;
+}
+
+std::wstring BulletList(const std::vector<std::wstring>& items, size_t maxShown) {
+    if (items.empty()) return {};
+
+    const size_t shown = (maxShown == 0 || items.size() <= maxShown) ? items.size() : maxShown;
+
+    std::wstring out;
+    for (size_t i = 0; i < shown; ++i) {
+        if (i != 0) out += L'\n';
+        out += T(L"punct.bullet");
+        out += items[i];
+    }
+
+    // The remainder is one line rather than one per item: what a capped list is for
+    // is telling the reader there is more without pushing the items that matter off
+    // the dialog, and listing the rest would defeat it.
+    if (shown < items.size()) {
+        out += L'\n';
+        out += TFmt(L"punct.andMore", static_cast<int>(items.size() - shown));
+    }
+    return out;
 }
