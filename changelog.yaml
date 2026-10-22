@@ -44,6 +44,15 @@
 # --- newest first; CI reads the topmost entry ---
 
 - version: "5.2.1"
+  date: "2026-10-23"
+  en: |
+    - Added support for e621, mod.io, and other sites.
+    - Fixed an issue where thumbnails failed to load on E-Hentai.
+  zh-CN: |
+    - 新增对 e621、mod.io 等站点的支持。
+    - 修复了 E-Hentai 的缩略图无法加载的问题。
+
+- version: "5.2.1"
   date: "2026-10-07"
   en:
     - Reworked port occupancy checks to use probe-binding to eliminate false-positive conflicts, and unified all endpoint verifications before startup.

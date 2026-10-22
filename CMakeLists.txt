@@ -68,7 +68,7 @@ option(SNIB_BUILD_TESTS "Build the unit test suite" OFF)
 # ---------------------------------------------------------------------------
 set(SNIB_SODIUM_VERSION "1.0.22")
 set(SNIB_SODIUM_MINGW_SHA256
-    "12d7c395af85b9b8690230ae318db847f128d8c71cd7732c96b12a358d42007e")
+    "6bbfd284f34149fcb11cf7fc4ff17f2bf67fb3934d350125eebb105b64f34a56")
 
 include(FetchContent)
 FetchContent_Declare(libsodium_mingw

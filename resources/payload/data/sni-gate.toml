@@ -39,12 +39,12 @@ upstream = "52.80.248.44"
 
 [resolvers.cloudflare-doh]
 endpoint = "https://dns.cloudflare.com/dns-query"
-upstream = "cf.3666888.xyz"
+upstream = "saas.sin.fan"
 bootstrap = "@alidns-doh"
 
   [resolvers.cloudflare-doh.ech]
   mode = "doh-with-fallback"
-  config = "AEX+DQBBIQAgACBGUw71PF2Y8+J/YDxFlHSihgkaTCeUOm6C8+gzu3URDgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
+  config = "AEX+DQBBagAgACDxHksgvjRz7PGcNfswHCxrM4w/vfv6xWFZZS3QqXkqQgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
   require_ech = true
   ech_refresh = "1h"
   ech_domain = "cloudflare-ech.com"
@@ -171,7 +171,7 @@ addr = 443
 
   [listener.ech]
   mode = "doh-with-fallback"
-  config = "AEX+DQBBIQAgACBGUw71PF2Y8+J/YDxFlHSihgkaTCeUOm6C8+gzu3URDgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
+  config = "AEX+DQBBagAgACDxHksgvjRz7PGcNfswHCxrM4w/vfv6xWFZZS3QqXkqQgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
   ech_domain = "cloudflare-ech.com"
   require_ech = true
 
@@ -212,6 +212,12 @@ addr = 443
     # DLsite
     "img.dlsite.jp",
 
+    # E-Hentai
+    ".hentaiverse.org",
+
+    # e621
+    ".e621.net",
+
     # Fandom
     ".fandom.com",
 
@@ -250,6 +256,9 @@ addr = 443
 
     # Medium
     ".medium.com",
+
+    # mod.io
+    ".mod.io",
 
     # MyFigureCollection.net
     ".myfigurecollection.net",
@@ -322,6 +331,9 @@ addr = 443
 
     # 南+ South Plus
     "bbs.imoutolove.me", "east-plus.net", "bbs.east-plus.net", "www.east-plus.net", "south-plus.net", "www.south-plus.net", "bbs.south-plus.net", "north-plus.net", "www.north-plus.net", "bbs.north-plus.net", "spring-plus.net", "www.spring-plus.net", "bbs.spring-plus.net", "summer-plus.net", "www.summer-plus.net", "bbs.summer-plus.net", "snow-plus.net", "www.snow-plus.net", "bbs.snow-plus.net", "white-plus.net", "www.white-plus.net", "bbs.white-plus.net", "level-plus.net", "www.level-plus.net", "bbs.level-plus.net", "south-plus.org", "www.south-plus.org", "bbs.south-plus.org", "assets.south-plus.org",
+
+    # 轻小说机翻
+    ".novelia.cc",
 
     # 紳士漫畫
     ".wnacg.com", ".wnacg.ru", ".qy0.ru", ".wcdn.date",
