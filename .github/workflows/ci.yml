@@ -34,11 +34,12 @@ permissions:
 # Required repository configuration:
 #   secrets.SNIB_SIGNING_KEY   PEM contents of signing_key.pem (the ECDSA P-256
 #                              private key from `release.py keygen`).
-#   secrets.PAGES_DEPLOY_TOKEN A PAT (or deploy key) that can push to the
-#                              Cloudflare Pages content repository.
-#   vars.PAGES_REPO            "owner/repo" of that Pages repository.
-#   vars.PAGES_SUBDIR          Subdir the client fetches from (default
+#   secrets.DIST_DEPLOY_TOKEN  Fine-grained PAT, dist repository only,
+#                              Contents: Read and write.
+#   vars.DIST_REPO             "owner/repo" of the dist repository.
+#   vars.DIST_SUBDIR           Subdir the client fetches from (default
 #                              "snibypassgui"; must match UPDATE_MANIFEST_URL).
+#                              Replaced wholesale on every publish.
 #   vars.UPDATE_MANIFEST_URL   (optional) live manifest URL used to read the online
 #                              version; defaults to the snibypassgui channel below.
 # NOTE: src/update/public_key.h (the PUBLIC key) must be committed so the built
@@ -47,6 +48,9 @@ permissions:
 jobs:
   build-test-release:
     runs-on: windows-latest
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -309,37 +313,50 @@ jobs:
           }
 
       # ---- Every mode publishes the update tree. ----
-      - name: Publish update tree to the Pages repository
+      # Replaces DIST_SUBDIR wholesale; nothing else in the dist repository is touched.
+      - name: Publish update tree to the dist repository
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         shell: bash
         env:
-          TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
-          PAGES_REPO: ${{ vars.PAGES_REPO }}
-          PAGES_SUBDIR: ${{ vars.PAGES_SUBDIR }}
+          TOKEN: ${{ secrets.DIST_DEPLOY_TOKEN }}
+          DIST_REPO: ${{ vars.DIST_REPO }}
+          DIST_SUBDIR: ${{ vars.DIST_SUBDIR }}
         run: |
           set -e
-          subdir="${PAGES_SUBDIR:-snibypassgui}"
-          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${PAGES_REPO}.git" pages
-          dest="pages/${subdir}"
-          mkdir -p "$dest/blobs"
+          subdir="${DIST_SUBDIR:-snibypassgui}"
+          if [[ ! "$subdir" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*(/[a-zA-Z0-9][a-zA-Z0-9_-]*)*$ ]]; then
+            echo "::error::Invalid DIST_SUBDIR: '$subdir'. Must be a clean relative path without leading/trailing slashes, dots, or special characters (e.g. 'snibypassgui' or 'apps/snibypassgui')."
+            exit 1
+          fi
 
-          printf '%s\n' \
-            '# Update trees are content-addressed; bytes must round-trip verbatim.' \
-            '* -text' \
-            '*.chunk binary' \
-            '*.json -text' \
-            '*.sig binary' \
-            > pages/.gitattributes
-          git -C pages config core.autocrlf false
-
-          cp dist/manifest.json dist/manifest.json.sig "$dest/"
-          cp -r dist/blobs/* "$dest/blobs/" 2>/dev/null || true
-          cd pages
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${DIST_REPO}.git" dist-repo
+          cd dist-repo
+          # Commit chunks byte-for-byte.
+          git config core.autocrlf false
           git config user.name "racpast"
           git config user.email "racpast@gmail.com"
-          git add -A
-          git commit -m "chore(release): publish ${{ steps.ver.outputs.version }} update tree (${{ steps.decide.outputs.mode }})" || echo "no changes"
-          git push
+          branch="$(git symbolic-ref --short HEAD)"
+
+          # On a rejected push, rebuild the subdir on the latest remote commit.
+          for attempt in 1 2 3; do
+            rm -rf "$subdir"
+            mkdir -p "$subdir"
+            cp ../dist/manifest.json ../dist/manifest.json.sig "$subdir/"
+            cp -r ../dist/blobs "$subdir/"
+            git add -A -- "$subdir"
+            if git diff --cached --quiet; then
+              echo "No changes in $subdir."
+              exit 0
+            fi
+            git commit -q -m "chore(release): publish SNIBypassGUI ${{ steps.ver.outputs.version }} update tree (${{ steps.decide.outputs.mode }})" \
+                          -m "Source: ${{ github.repository }}@${{ github.sha }}"
+            git push origin "HEAD:$branch" && exit 0
+            echo "Push rejected; rebuilding on the latest $branch ($attempt/3)."
+            git fetch --depth 1 origin "$branch"
+            git reset -q --hard FETCH_HEAD
+          done
+          echo "::error::Could not push to $DIST_REPO after 3 attempts."
+          exit 1
 
       - name: Compose release body
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && steps.decide.outputs.mode != 'equal'
